@@ -70,6 +70,27 @@ arbiter report --run <run_id>
 | `arbiter findings --node <node>` | Consistency findings |
 | `arbiter conflicts --unresolved` | List unresolved conflicts |
 
+## HTTP API
+
+Start the API server with `arbiter serve` (default port 7700).
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check and version info |
+| POST | `/register` | Register an access graph |
+| POST | `/blast-radius` | Compute blast radius for a component |
+| GET | `/trust/<node_id>` | Get trust score and tier for a node |
+| POST | `/trust/reset-taint` | Clear taint lock after human review |
+| POST | `/trust/event` | Accept a trust event from Sentinel |
+| GET | `/authority` | Get the current authority map |
+| POST | `/canary/inject` | Inject canary data for taint detection |
+| POST | `/canary/register-fingerprint` | Register external canary fingerprints (Ledger) |
+| GET | `/canary/results/<run_id>` | Get canary escape results for a run |
+| POST | `/schema/classification-rules` | Push classification rules (Ledger) |
+| GET | `/schema/classification-rules` | Read current classification rules |
+| GET | `/report/<run_id>` | Get feedback report for a run |
+| POST | `/findings` | Ingest consistency findings |
+
 ## Trust Model
 
 Trust is earned, not declared. Every node starts at the configured floor (default 0.1) and its score changes based on observed behavior:

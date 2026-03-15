@@ -85,6 +85,44 @@ class CanaryCorpus:
 
         return injected
 
+    def register_fingerprints(
+        self,
+        fingerprints: list[dict[str, str]],
+        run_id: str,
+    ) -> int:
+        """Register externally-provided canary fingerprints.
+
+        Used by Ledger to push pre-generated fingerprints into the corpus
+        without going through Arbiter's own injection pipeline.
+
+        Args:
+            fingerprints: List of dicts with keys: fingerprint, category, tier.
+            run_id: The run identifier for these fingerprints.
+
+        Returns:
+            Number of fingerprints successfully registered.
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        registered = 0
+        for fp in fingerprints:
+            fingerprint = fp.get("fingerprint", "")
+            category = fp.get("category", "")
+            tier = fp.get("tier", category)
+            if not fingerprint:
+                continue
+            canary_id = f"ext-{tier.lower()}-{uuid.uuid4().hex[:8]}"
+            entry = CanaryEntry(
+                id=canary_id,
+                fingerprint=fingerprint,
+                classification=tier or category,
+                run_id=run_id,
+                injected_at=now,
+                active=True,
+            )
+            self._canaries.append(entry)
+            registered += 1
+        return registered
+
     def get_active_canaries(self) -> list[CanaryEntry]:
         """Return all currently active canaries.
 

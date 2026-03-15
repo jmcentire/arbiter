@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arbiter"
-version = "0.1.0"
+version = "0.2.0"
 description = "Access auditing, consistency analysis, blast-radius classification, and trust enforcement for the Pact/Baton stack."
 readme = "README.md"
 license = {text = "MIT"}

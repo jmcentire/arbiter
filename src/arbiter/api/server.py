@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import tempfile
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 try:
@@ -12,10 +14,32 @@ except ImportError:
     Flask = None  # type: ignore[assignment,misc]
 
 
-def create_app() -> Any:
-    """Create and configure the Flask application."""
+def create_app(
+    *,
+    ledger_path: str | Path | None = None,
+) -> Any:
+    """Create and configure the Flask application.
+
+    Args:
+        ledger_path: Path for the trust ledger JSONL file.
+            If None, uses a temporary file.
+    """
     if Flask is None:
         raise ImportError("Flask is required for the API server. Install with: pip install arbiter[api]")
+
+    from arbiter.models.enums import TrustEventType
+    from arbiter.taint.corpus import CanaryCorpus
+    from arbiter.trust.engine import compute_trust
+    from arbiter.trust.ledger import TrustLedger
+
+    # -- Module-level state for the server instance --
+    if ledger_path is None:
+        _ledger_dir = Path(tempfile.mkdtemp())
+        ledger_path = _ledger_dir / "trust_ledger.jsonl"
+    trust_ledger = TrustLedger(Path(ledger_path))
+    canary_corpus = CanaryCorpus()
+    # In-memory classification rules store (list of dicts)
+    classification_rules: list[dict[str, Any]] = []
 
     app = Flask("arbiter")
 
@@ -118,6 +142,190 @@ def create_app() -> Any:
     def receive_findings() -> tuple[Response, int]:
         data = request.get_json(force=True)
         return jsonify({"findings": []}), 200
+
+    # ------------------------------------------------------------------
+    # POST /trust/event — Accept trust events from Sentinel
+    # ------------------------------------------------------------------
+    @app.route("/trust/event", methods=["POST"])
+    def trust_event() -> tuple[Response, int]:
+        data = request.get_json(force=True)
+        if not data:
+            return jsonify({
+                "error_code": "INVALID_INPUT",
+                "message": "Empty request body",
+                "details": {},
+            }), 400
+
+        node_id = data.get("node_id", "")
+        event = data.get("event", "")
+        weight = data.get("weight")
+        run_id = data.get("run_id", "")
+        timestamp = data.get("timestamp", "")
+
+        # Validate required fields
+        missing = []
+        if not node_id:
+            missing.append("node_id")
+        if not event:
+            missing.append("event")
+        if weight is None:
+            missing.append("weight")
+        if not run_id:
+            missing.append("run_id")
+        if missing:
+            return jsonify({
+                "error_code": "MISSING_FIELD",
+                "message": f"Missing required fields: {', '.join(missing)}",
+                "details": {"missing_fields": missing},
+            }), 400
+
+        # Validate event type
+        try:
+            event_type = TrustEventType(event)
+        except ValueError:
+            return jsonify({
+                "error_code": "INVALID_EVENT_TYPE",
+                "message": f"Unknown event type: {event}",
+                "details": {"valid_types": [e.value for e in TrustEventType]},
+            }), 400
+
+        # Validate weight range
+        try:
+            weight = float(weight)
+        except (TypeError, ValueError):
+            return jsonify({
+                "error_code": "INVALID_INPUT",
+                "message": "weight must be a number",
+                "details": {},
+            }), 400
+        if weight < -1.0 or weight > 1.0:
+            return jsonify({
+                "error_code": "INVALID_INPUT",
+                "message": "weight must be in [-1.0, 1.0]",
+                "details": {"weight": weight},
+            }), 400
+
+        # Compute score_before from current ledger state
+        score_before = trust_ledger.get_score(node_id)
+
+        # Compute score_after using the trust engine
+        # First, get existing entries for this node
+        existing_entries = trust_ledger.get_entries(node_id)
+
+        # Append entry to ledger
+        detail = f"run_id={run_id}"
+        if timestamp:
+            detail += f" ts={timestamp}"
+        entry = trust_ledger.append_entry(
+            node=node_id,
+            event=event_type,
+            weight=weight,
+            score_before=score_before,
+            score_after=max(0.0, min(1.0, score_before + weight * 0.1)),
+            detail=detail,
+        )
+
+        # Re-compute trust score using the full engine
+        all_entries = trust_ledger.get_entries(node_id)
+        score_after = compute_trust(node_id, all_entries)
+
+        # If the engine-computed score differs from the simple one,
+        # the entry already has the simple estimate stored. The
+        # response returns the engine-computed value.
+        return jsonify({
+            "status": "ok",
+            "score_before": score_before,
+            "score_after": score_after,
+            "sequence_number": entry.sequence_number,
+        }), 200
+
+    # ------------------------------------------------------------------
+    # POST /canary/register-fingerprint — Ledger registers canary fingerprints
+    # ------------------------------------------------------------------
+    @app.route("/canary/register-fingerprint", methods=["POST"])
+    def canary_register_fingerprint() -> tuple[Response, int]:
+        data = request.get_json(force=True)
+        if not data:
+            return jsonify({
+                "error_code": "INVALID_INPUT",
+                "message": "Empty request body",
+                "details": {},
+            }), 400
+
+        fingerprints = data.get("fingerprints")
+        run_id = data.get("run_id", "")
+
+        if fingerprints is None or not isinstance(fingerprints, list):
+            return jsonify({
+                "error_code": "MISSING_FIELD",
+                "message": "fingerprints must be a non-empty list",
+                "details": {},
+            }), 400
+
+        if not run_id:
+            return jsonify({
+                "error_code": "MISSING_FIELD",
+                "message": "run_id is required",
+                "details": {},
+            }), 400
+
+        registered = canary_corpus.register_fingerprints(fingerprints, run_id)
+
+        return jsonify({
+            "status": "ok",
+            "registered": registered,
+        }), 200
+
+    # ------------------------------------------------------------------
+    # POST /schema/classification-rules — Ledger pushes classification rules
+    # ------------------------------------------------------------------
+    @app.route("/schema/classification-rules", methods=["POST"])
+    def post_classification_rules() -> tuple[Response, int]:
+        data = request.get_json(force=True)
+        if data is None:
+            return jsonify({
+                "error_code": "INVALID_INPUT",
+                "message": "Empty request body",
+                "details": {},
+            }), 400
+
+        rules = data.get("rules")
+        if rules is None or not isinstance(rules, list):
+            return jsonify({
+                "error_code": "MISSING_FIELD",
+                "message": "rules must be a list",
+                "details": {},
+            }), 400
+
+        added = 0
+        for rule in rules:
+            if not isinstance(rule, dict):
+                continue
+            field_pattern = rule.get("field_pattern", "")
+            tier = rule.get("tier", "")
+            if not field_pattern or not tier:
+                continue
+            classification_rules.append({
+                "field_pattern": field_pattern,
+                "tier": tier,
+                "authoritative_component": rule.get("authoritative_component"),
+                "rationale": rule.get("rationale", ""),
+            })
+            added += 1
+
+        return jsonify({
+            "status": "ok",
+            "rules_added": added,
+        }), 200
+
+    # ------------------------------------------------------------------
+    # GET /schema/classification-rules — Read current classification rules
+    # ------------------------------------------------------------------
+    @app.route("/schema/classification-rules", methods=["GET"])
+    def get_classification_rules() -> tuple[Response, int]:
+        return jsonify({
+            "rules": classification_rules,
+        }), 200
 
     return app
 
