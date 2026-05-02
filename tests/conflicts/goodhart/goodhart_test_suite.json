@@ -1,0 +1,818 @@
+{
+  "component_id": "conflicts",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "goodhart_resolve_authority_trust_just_above_floor",
+      "description": "Authority resolution should succeed when the authoritative node's trust score is strictly above the authority_override_floor by a tiny epsilon, confirming the comparison is strictly greater-than and not hardcoded to specific visible test values",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "One authoritative node with trust_score_snapshot = authority_override_floor + 0.001, one non-authoritative node",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.AUTHORITY_RESOLVED",
+        "result.resolution.strategy == ResolutionStrategy.AUTHORITY",
+        "result.resolution.winner_node_id == authoritative_node_id"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_authority_exactly_at_floor_rejects",
+      "description": "When authoritative node trust equals exactly the authority_override_floor, authority step must be skipped (trust must be strictly greater than floor) and resolution falls through to trust arbitration or unresolvable",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "One authoritative node with trust_score_snapshot == authority_override_floor (e.g., both 0.5), trust delta below threshold",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.status != ResolutionStatus.AUTHORITY_RESOLVED",
+        "result.status in (ResolutionStatus.TRUST_RESOLVED, ResolutionStatus.UNRESOLVABLE)"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_trust_delta_just_above_threshold",
+      "description": "Trust arbitration should succeed when the delta between top-2 trust scores is strictly above the trust_delta_threshold by a tiny margin, verifying the comparison uses strict greater-than",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "No authoritative nodes, top trust = 0.8, second = 0.8 - trust_delta_threshold - 0.001, with trust_delta_threshold = 0.1",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.TRUST_RESOLVED",
+        "result.resolution.strategy == ResolutionStrategy.TRUST_ARBITRATION",
+        "result.resolution.winner_node_id == highest_trust_node_id"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_trust_delta_just_below_threshold",
+      "description": "Trust arbitration should fail when the delta between top-2 trust scores is just below the trust_delta_threshold, resulting in UNRESOLVABLE",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "No authoritative nodes, top trust = 0.8, second = 0.8 - trust_delta_threshold + 0.001, with trust_delta_threshold = 0.1",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.UNRESOLVABLE",
+        "result.resolution.strategy == ResolutionStrategy.HUMAN"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_nway_5nodes_authority_one",
+      "description": "In a 5-way conflict with exactly one authoritative node above the floor, authority resolution should still select that node regardless of the number of competitors",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "5 competing nodes, exactly one is_authoritative=True with trust > floor, others non-authoritative",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.AUTHORITY_RESOLVED",
+        "result.resolution.winner_node_id == authoritative_node_id",
+        "len(conflict.competing_values) == 5"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_nway_trust_ignores_3rd_and_beyond",
+      "description": "In an N-way conflict, trust arbitration delta is computed only from the top-2 trust scores; the 3rd-highest score should not affect the delta comparison even if it equals the 2nd",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "4 nodes: trusts [0.9, 0.5, 0.5, 0.3], no authoritative, trust_delta_threshold=0.2. Delta between top-2 is 0.4 > 0.2",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.TRUST_RESOLVED",
+        "result.resolution.winner_node_id == node_with_0_9_trust"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_two_authoritative_nodes_skips_authority",
+      "description": "When two or more nodes are authoritative, the authority step must be skipped entirely (requires exactly one), falling through to trust arbitration",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "3 nodes, 2 are authoritative with trust above floor, trust delta between top-2 is above threshold",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.TRUST_RESOLVED",
+        "result.resolution.strategy == ResolutionStrategy.TRUST_ARBITRATION"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_unresolvable_protected_tier_blocks",
+      "description": "An UNRESOLVABLE conflict with data_tier in protected_tiers must set blocks_deploy=True, verified with a different protected tier name than visible tests use",
+      "function": "resolve",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Conflict with data_tier='pii_critical', protected_tiers=['pii_critical', 'financial'], no authoritative nodes, trust delta below threshold",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.UNRESOLVABLE",
+        "result.blocks_deploy == True"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_unresolvable_signal_fields_complete",
+      "description": "The ConflictSignal emitted for an unresolvable conflict must contain all required fields including competing_node_ids, max_trust_score, trust_delta, and blocks_deploy matching the conflict state",
+      "function": "resolve",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Unresolvable conflict with 3 nodes, protected tier",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "emitted_signal.conflict_id == conflict.conflict_id",
+        "emitted_signal.execution_id == conflict.execution_id",
+        "set(emitted_signal.competing_node_ids) == set of all node_ids",
+        "emitted_signal.max_trust_score == max trust score of competing nodes",
+        "emitted_signal.blocks_deploy == True"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_rationale_contains_all_threshold_values",
+      "description": "Resolution rationale must include the specific threshold values from config (authority_override_floor or trust_delta_threshold) used in the decision, not just node info",
+      "function": "resolve",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Authority resolution with authority_override_floor=0.35, trust of auth node=0.7",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'0.35' in result.resolution.rationale or 'authority_override_floor' in result.resolution.rationale",
+        "authoritative_node_id in result.resolution.rationale",
+        "str(0.7) in result.resolution.rationale or '0.7' in result.resolution.rationale"
+      ]
+    },
+    {
+      "id": "goodhart_ingest_three_distinct_values_conflict",
+      "description": "When three different nodes report three distinct values for the same key, the resulting conflict should have exactly 3 competing_values entries",
+      "function": "ingest",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Three spans from different nodes with different values for the same (exec_id, domain, field), window closes after all three are buffered",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(conflicts) == 1",
+        "len(conflicts[0].competing_values) == 3",
+        "conflicts[0].status == ResolutionStatus.DETECTED"
+      ]
+    },
+    {
+      "id": "goodhart_ingest_same_node_different_spans_both_kept",
+      "description": "Two spans from the same node but different span_ids should both be kept in the buffer (dedup is by node_id+span_id pair, not node_id alone)",
+      "function": "ingest",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two spans: same node_id, different span_ids, different values, same (exec_id, domain, field)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(conflicts) == 1",
+        "len(conflicts[0].competing_values) == 2"
+      ]
+    },
+    {
+      "id": "goodhart_ingest_different_nodes_same_span_id_both_kept",
+      "description": "Two spans from different nodes with the same span_id should both be kept since dedup is by (node_id, span_id) pair, not span_id alone",
+      "function": "ingest",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two spans: different node_ids, same span_id, different values",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(conflicts) == 1",
+        "len(conflicts[0].competing_values) == 2"
+      ]
+    },
+    {
+      "id": "goodhart_ingest_distinct_values_required_not_just_distinct_nodes",
+      "description": "Multiple nodes reporting the same value should not produce a conflict even though there are multiple nodes — conflict detection requires distinct value_serialized strings",
+      "function": "ingest",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Three spans from three different nodes, all with the same value_serialized, window closes",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(conflicts) == 0"
+      ]
+    },
+    {
+      "id": "goodhart_ingest_window_key_includes_execution_id",
+      "description": "Spans with the same domain and field but different execution_ids should be buffered into separate windows and not produce cross-execution conflicts",
+      "function": "ingest",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two spans with different execution_ids but same domain, field, different values",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "no conflict is produced combining spans across execution_ids"
+      ]
+    },
+    {
+      "id": "goodhart_flush_multiple_windows_mixed",
+      "description": "Flushing with multiple open windows should produce conflicts only for windows with 2+ distinct values, and no conflicts for single-value windows",
+      "function": "flush",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Three open windows: one with 2 distinct values, one with 3 distinct values, one with only 1 value",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(conflicts) == 2",
+        "all(c.status == ResolutionStatus.DETECTED for c in conflicts)",
+        "all(len(c.competing_values) >= 2 for c in conflicts)"
+      ]
+    },
+    {
+      "id": "goodhart_flush_second_flush_empty",
+      "description": "Calling flush() twice in succession should return an empty list on the second call since the buffer was emptied by the first flush",
+      "function": "flush",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Ingest spans, flush once, then flush again",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(second_flush_result) == 0"
+      ]
+    },
+    {
+      "id": "goodhart_submit_human_review_rationale_preserved",
+      "description": "The rationale provided to submit_human_review should be preserved in the returned record's resolution.rationale field",
+      "function": "submit_human_review",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "UNRESOLVABLE conflict, human review with a specific rationale string",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.resolution.rationale == provided_rationale"
+      ]
+    },
+    {
+      "id": "goodhart_submit_human_review_authority_resolved_rejects",
+      "description": "Attempting human review on an AUTHORITY_RESOLVED conflict must fail because AUTHORITY_RESOLVED is a terminal state — human review is only valid from UNRESOLVABLE",
+      "function": "submit_human_review",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Conflict with status AUTHORITY_RESOLVED",
+      "expected_output_description": "",
+      "expected_error": "invalid_status",
+      "assertions": [
+        "error code is CONFLICT_ALREADY_RESOLVED or invalid_status"
+      ]
+    },
+    {
+      "id": "goodhart_has_blocking_human_reviewed_not_blocking",
+      "description": "A conflict that was previously blocking (UNRESOLVABLE + protected tier) should no longer block deployment after human review transitions it to HUMAN_REVIEWED",
+      "function": "has_blocking_conflicts",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Create UNRESOLVABLE conflict in protected tier (blocks_deploy=True), submit human review, then check has_blocking_conflicts",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "has_blocking_conflicts(domain) == False"
+      ]
+    },
+    {
+      "id": "goodhart_has_blocking_detected_protected_blocks",
+      "description": "A DETECTED conflict in a protected tier should also block deployment, not just UNRESOLVABLE ones — the contract says status in (DETECTED, UNRESOLVABLE) with blocks_deploy=True",
+      "function": "has_blocking_conflicts",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "DETECTED conflict with data_tier in protected_tiers and blocks_deploy=True",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "has_blocking_conflicts(domain) == True"
+      ]
+    },
+    {
+      "id": "goodhart_get_unresolved_excludes_authority_resolved",
+      "description": "get_unresolved should not return AUTHORITY_RESOLVED conflicts — only DETECTED and UNRESOLVABLE are considered unresolved",
+      "function": "get_unresolved",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Store has one AUTHORITY_RESOLVED and one UNRESOLVABLE conflict in the same domain",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 1",
+        "result[0].status == ResolutionStatus.UNRESOLVABLE"
+      ]
+    },
+    {
+      "id": "goodhart_get_unresolved_excludes_trust_resolved",
+      "description": "get_unresolved should not return TRUST_RESOLVED conflicts",
+      "function": "get_unresolved",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Store has one TRUST_RESOLVED and one DETECTED conflict in the same domain",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 1",
+        "result[0].status == ResolutionStatus.DETECTED"
+      ]
+    },
+    {
+      "id": "goodhart_get_unresolved_excludes_human_reviewed",
+      "description": "get_unresolved should not return HUMAN_REVIEWED conflicts since they are fully resolved",
+      "function": "get_unresolved",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Store has one HUMAN_REVIEWED conflict and one DETECTED conflict",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 1",
+        "result[0].status == ResolutionStatus.DETECTED"
+      ]
+    },
+    {
+      "id": "goodhart_get_unresolved_domain_filter_exact_match",
+      "description": "Domain filtering must use exact match, not substring or prefix matching",
+      "function": "get_unresolved",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Conflicts in domains 'auth' and 'authorization', query for domain='auth'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all(r.domain == 'auth' for r in result)",
+        "no results have domain 'authorization'"
+      ]
+    },
+    {
+      "id": "goodhart_get_summary_deploy_blocking_excludes_resolved",
+      "description": "deploy_blocking_count should not count conflicts that have blocks_deploy=True but are in a resolved status (AUTHORITY_RESOLVED, TRUST_RESOLVED, HUMAN_REVIEWED)",
+      "function": "get_summary",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Mix of resolved and unresolved conflicts, some with blocks_deploy=True in resolved states",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "summary.deploy_blocking_count counts only DETECTED/UNRESOLVABLE with blocks_deploy=True"
+      ]
+    },
+    {
+      "id": "goodhart_get_summary_domains_affected_only_unresolved",
+      "description": "domains_affected should only include domains that have unresolved conflicts (DETECTED or UNRESOLVABLE), not domains where all conflicts are resolved",
+      "function": "get_summary",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Domain A has only AUTHORITY_RESOLVED conflicts, domain B has one DETECTED conflict",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'B' in summary.domains_affected or domain_B in summary.domains_affected",
+        "domain_A not in summary.domains_affected"
+      ]
+    },
+    {
+      "id": "goodhart_get_summary_unresolved_count_includes_both",
+      "description": "unresolved_count must include both DETECTED and UNRESOLVABLE statuses, not just one of them",
+      "function": "get_summary",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Store has 2 DETECTED and 3 UNRESOLVABLE conflicts",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "summary.unresolved_count == 5"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_all_zero_trust_scores",
+      "description": "When all competing nodes have trust_score_snapshot of 0.0, the delta is 0.0 which should be below any positive threshold, making the conflict unresolvable",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two non-authoritative nodes both with trust_score_snapshot=0.0, trust_delta_threshold=0.1",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.UNRESOLVABLE"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_equal_trust_scores_unresolvable",
+      "description": "When two nodes have identical trust scores, the delta is 0.0 which is below any positive threshold, making the conflict unresolvable via trust arbitration",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two non-authoritative nodes both with trust_score_snapshot=0.75, trust_delta_threshold=0.05",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.UNRESOLVABLE"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_authority_below_floor_and_trust_delta_sufficient",
+      "description": "When the authoritative node has trust at or below the floor but the top-2 trust delta exceeds the threshold, the conflict should be TRUST_RESOLVED (authority skipped to trust arbitration, not directly to unresolvable)",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "One authoritative node with trust=0.3 (floor=0.5), another node with trust=0.9. Delta 0.6 > threshold 0.1",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.TRUST_RESOLVED",
+        "result.resolution.strategy == ResolutionStrategy.TRUST_ARBITRATION",
+        "result.resolution.winner_node_id == node_with_0_9_trust"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_no_signal_emitted_for_authority_resolved",
+      "description": "No ConflictSignal should be emitted to stigmergy when a conflict is resolved via authority — signals are only for UNRESOLVABLE conflicts",
+      "function": "resolve",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Conflict resolved via authority step",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "signal_emitter.emit_signal was NOT called"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_no_signal_emitted_for_trust_resolved",
+      "description": "No ConflictSignal should be emitted to stigmergy when a conflict is resolved via trust arbitration",
+      "function": "resolve",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Conflict resolved via trust arbitration",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "signal_emitter.emit_signal was NOT called"
+      ]
+    },
+    {
+      "id": "goodhart_load_config_authority_floor_at_1_0",
+      "description": "authority_override_floor at exactly 1.0 should be valid since the range is [0.0, 1.0] inclusive",
+      "function": "load_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML config with authority_override_floor=1.0",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.authority_override_floor == 1.0"
+      ]
+    },
+    {
+      "id": "goodhart_load_config_authority_floor_at_0_0",
+      "description": "authority_override_floor at exactly 0.0 should be valid since the range is [0.0, 1.0] inclusive",
+      "function": "load_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML config with authority_override_floor=0.0",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.authority_override_floor == 0.0"
+      ]
+    },
+    {
+      "id": "goodhart_load_config_threshold_slightly_above_1",
+      "description": "A threshold value of 1.001 should be rejected as it is outside the [0.0, 1.0] valid range",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML config with trust_delta_threshold=1.001",
+      "expected_output_description": "",
+      "expected_error": "invalid_config",
+      "assertions": [
+        "raises invalid_config error"
+      ]
+    },
+    {
+      "id": "goodhart_load_config_negative_threshold",
+      "description": "A negative threshold value should be rejected as it is outside the [0.0, 1.0] valid range",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML config with authority_override_floor=-0.01",
+      "expected_output_description": "",
+      "expected_error": "invalid_config",
+      "assertions": [
+        "raises invalid_config error"
+      ]
+    },
+    {
+      "id": "goodhart_load_config_window_timeout_at_0_1",
+      "description": "window_timeout_seconds at exactly 0.1 should be valid (minimum allowed value)",
+      "function": "load_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML config with window_timeout_seconds=0.1",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.window_timeout_seconds == 0.1"
+      ]
+    },
+    {
+      "id": "goodhart_load_config_window_timeout_0_09_rejected",
+      "description": "window_timeout_seconds at 0.09 should be rejected as it is below the 0.1 minimum",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML config with window_timeout_seconds=0.09",
+      "expected_output_description": "",
+      "expected_error": "invalid_config",
+      "assertions": [
+        "raises invalid_config error"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_resolved_at_is_utc_iso8601",
+      "description": "The resolved_at timestamp in the resolution must be a valid UTC ISO-8601 string, not local time",
+      "function": "resolve",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Any conflict resolved through any step",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "resolved_at is parseable as ISO-8601",
+        "resolved_at ends with 'Z' or '+00:00' indicating UTC"
+      ]
+    },
+    {
+      "id": "goodhart_ingest_conflict_id_unique_per_conflict",
+      "description": "Each detected conflict should receive a unique conflict_id, even when multiple conflicts are detected in the same ingest/flush call",
+      "function": "flush",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Buffer two separate windows that both have conflicts, flush to get multiple conflicts",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all conflict_ids are distinct",
+        "len(set(c.conflict_id for c in conflicts)) == len(conflicts)"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_winner_matches_highest_trust_in_trust_arb",
+      "description": "In trust arbitration with novel trust scores not used in visible tests, the winner must be the node with the highest trust_score_snapshot",
+      "function": "resolve",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Three non-authoritative nodes with trust scores [0.33, 0.67, 0.99], trust_delta_threshold=0.1",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.resolution.winner_node_id == node_with_trust_0_99",
+        "result.status == ResolutionStatus.TRUST_RESOLVED"
+      ]
+    },
+    {
+      "id": "goodhart_submit_human_review_resolution_strategy_is_human",
+      "description": "After human review, the resolution strategy must be HUMAN regardless of what the previous unresolvable resolution had",
+      "function": "submit_human_review",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "UNRESOLVABLE conflict with resolution.strategy=HUMAN, submit human review selecting a specific winner",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.resolution.strategy == ResolutionStrategy.HUMAN",
+        "result.resolution.reviewed_by == provided_reviewed_by"
+      ]
+    },
+    {
+      "id": "goodhart_get_unresolved_ordering_with_same_timestamp",
+      "description": "When multiple unresolved conflicts have the same detected_at timestamp, get_unresolved should still return a stable result without error",
+      "function": "get_unresolved",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Three DETECTED conflicts all with detected_at='2024-01-01T00:00:00Z'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 3",
+        "all have status DETECTED"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_blocks_deploy_false_for_non_unresolvable",
+      "description": "Authority-resolved and trust-resolved conflicts should not have blocks_deploy=True, even if their data_tier is in protected_tiers — blocks_deploy only applies to DETECTED or UNRESOLVABLE",
+      "function": "resolve",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Conflict with data_tier in protected_tiers, resolved via authority (one auth node with trust above floor)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.AUTHORITY_RESOLVED",
+        "result.blocks_deploy == False"
+      ]
+    },
+    {
+      "id": "goodhart_ingest_execution_id_field_preserved",
+      "description": "The conflict record's execution_id, domain, and field must match the ingested span reports' values, not be hardcoded",
+      "function": "ingest",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Spans with unusual execution_id='exec-zzzz-9999', domain='exotic.domain.v2', field='nested.field.path'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "conflict.execution_id == 'exec-zzzz-9999'",
+        "conflict.domain == 'exotic.domain.v2'",
+        "conflict.field == 'nested.field.path'"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_error_already_resolved_unresolvable_after_human_review",
+      "description": "A conflict that has been human-reviewed (HUMAN_REVIEWED) should raise already_resolved if resolve() is called on it, since only DETECTED conflicts can be resolved",
+      "function": "resolve",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ConflictRecord with status=HUMAN_REVIEWED",
+      "expected_output_description": "",
+      "expected_error": "already_resolved",
+      "assertions": [
+        "raises already_resolved error"
+      ]
+    },
+    {
+      "id": "goodhart_ingest_conflict_detected_at_is_utc_iso8601",
+      "description": "The detected_at timestamp on a newly detected conflict must be a valid UTC ISO-8601 string",
+      "function": "ingest",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Standard two-span conflict detection",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "detected_at is parseable as ISO-8601",
+        "detected_at ends with 'Z' or '+00:00'"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_signal_trust_delta_accuracy",
+      "description": "The trust_delta field in the emitted ConflictSignal must accurately reflect the difference between the top-2 trust scores, not a hardcoded value",
+      "function": "resolve",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Unresolvable 3-node conflict with trust scores [0.82, 0.79, 0.50], trust_delta_threshold=0.1",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "emitted_signal.trust_delta == approx(0.03)",
+        "emitted_signal.max_trust_score == approx(0.82)"
+      ]
+    },
+    {
+      "id": "goodhart_load_config_checkpoint_interval_exactly_1",
+      "description": "checkpoint_interval of exactly 1 should be valid (minimum allowed value)",
+      "function": "load_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML config with checkpoint_interval=1",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.checkpoint_interval == 1"
+      ]
+    },
+    {
+      "id": "goodhart_get_summary_total_equals_sum_with_all_statuses",
+      "description": "total_conflicts must equal the sum of authority_resolved_count + trust_resolved_count + human_reviewed_count + unresolved_count (which includes DETECTED + UNRESOLVABLE), verified with non-trivial counts",
+      "function": "get_summary",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Store with 2 DETECTED, 1 UNRESOLVABLE, 3 AUTHORITY_RESOLVED, 2 TRUST_RESOLVED, 1 HUMAN_REVIEWED = 9 total",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "summary.total_conflicts == 9",
+        "summary.unresolved_count == 3",
+        "summary.authority_resolved_count == 3",
+        "summary.trust_resolved_count == 2",
+        "summary.human_reviewed_count == 1",
+        "summary.total_conflicts == summary.unresolved_count + summary.authority_resolved_count + summary.trust_resolved_count + summary.human_reviewed_count"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nAdversarial hidden acceptance tests for the Conflict Resolver component.\n\nThese tests catch implementations that 'teach to the test' by hardcoding\nreturns or using shortcuts that pass visible tests without truly satisfying\nthe contract.\n\"\"\"\n\nimport pytest\nimport json\nimport uuid\nfrom unittest.mock import MagicMock, patch, call\nfrom datetime import datetime, timezone\nfrom dateutil.parser import isoparse\n\nfrom src.conflicts import *\n\n\n# ─── Helpers ───────────────────────────────────────────────────────────────────\n\ndef make_config(**overrides):\n    \"\"\"Create a valid ConflictResolverConfig with sensible defaults.\"\"\"\n    defaults = {\n        \"window_timeout_seconds\": 1.0,\n        \"authority_override_floor\": 0.5,\n        \"trust_delta_threshold\": 0.1,\n        \"checkpoint_interval\": 10,\n        \"conflict_log_path\": \"/tmp/test_conflict_log.jsonl\",\n        \"protected_tiers\": [\"critical\", \"pii\", \"pii_critical\", \"financial\"],\n    }\n    defaults.update(overrides)\n    return ConflictResolverConfig(**defaults)\n\n\ndef make_node_value(node_id, value, trust, authoritative=False, span_id=None):\n    \"\"\"Create a NodeValue for testing.\"\"\"\n    return NodeValue(\n        node_id=node_id,\n        value_serialized=value,\n        trust_score_snapshot=trust,\n        is_authoritative=authoritative,\n        span_id=span_id or f\"span-{node_id}\",\n    )\n\n\ndef make_conflict_record(\n    competing_values,\n    status=ResolutionStatus.DETECTED,\n    data_tier=\"standard\",\n    domain=\"test-domain\",\n    field=\"test-field\",\n    execution_id=None,\n    conflict_id=None,\n    resolution=None,\n    blocks_deploy=False,\n):\n    \"\"\"Create a ConflictRecord for testing.\"\"\"\n    return ConflictRecord(\n        conflict_id=conflict_id or str(uuid.uuid4()),\n        execution_id=execution_id or str(uuid.uuid4()),\n        domain=domain,\n        field=field,\n        data_tier=data_tier,\n        competing_values=competing_values,\n        detected_at=datetime.now(timezone.utc).isoformat(),\n        status=status,\n        resolution=resolution,\n        blocks_deploy=blocks_deploy,\n    )\n\n\ndef make_span_report(node_id, value, domain=\"test-domain\", field=\"test-field\",\n                     execution_id=\"exec-001\", span_id=None):\n    \"\"\"Create a SpanFieldReport for testing.\"\"\"\n    return SpanFieldReport(\n        span_id=span_id or f\"span-{node_id}-{uuid.uuid4().hex[:8]}\",\n        execution_id=execution_id,\n        node_id=node_id,\n        domain=domain,\n        field=field,\n        value_serialized=value,\n        reported_at=datetime.now(timezone.utc).isoformat(),\n    )\n\n\ndef make_mock_store(records=None):\n    \"\"\"Create a mock ConflictStore.\"\"\"\n    store = MagicMock(spec=ConflictStore)\n    stored = list(records or [])\n    store.append = MagicMock(side_effect=lambda r: stored.append(r))\n    store.load_all = MagicMock(return_value=stored)\n    store.verify_checksums = MagicMock(return_value=True)\n    return store, stored\n\n\ndef make_mock_trust_lookup(scores=None):\n    \"\"\"Create a mock TrustLookup. scores is a dict of node_id -> trust_score.\"\"\"\n    lookup = MagicMock(spec=TrustLookup)\n    scores = scores or {}\n    lookup.lookup_trust_score = MagicMock(\n        side_effect=lambda node_id: scores.get(node_id, 0.5)\n    )\n    return lookup\n\n\ndef make_mock_authority_lookup(authorities=None):\n    \"\"\"Create a mock AuthorityLookup. authorities is a set of authoritative node_ids.\"\"\"\n    lookup = MagicMock(spec=AuthorityLookup)\n    authorities = authorities or set()\n    lookup.is_authoritative = MagicMock(\n        side_effect=lambda node_id: node_id in authorities\n    )\n    return lookup\n\n\ndef make_mock_signal_emitter():\n    \"\"\"Create a mock SignalEmitter.\"\"\"\n    emitter = MagicMock(spec=SignalEmitter)\n    emitter.emit_signal = MagicMock()\n    return emitter\n\n\n# ─── resolve() tests ──────────────────────────────────────────────────────────\n\nclass TestGoodhartResolve:\n\n    def test_goodhart_resolve_authority_trust_just_above_floor(self):\n        \"\"\"Authority resolution should succeed when the authoritative node's trust is strictly above floor by a tiny epsilon.\"\"\"\n        config = make_config(authority_override_floor=0.5, trust_delta_threshold=0.1)\n        auth_node = make_node_value(\"auth-node\", '\"val_a\"', 0.501, authoritative=True)\n        other_node = make_node_value(\"other-node\", '\"val_b\"', 0.8, authoritative=False)\n        conflict = make_conflict_record(\n            competing_values=[auth_node, other_node],\n            data_tier=\"standard\",\n        )\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        # Construct resolver with dependencies\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.AUTHORITY_RESOLVED\n        assert result.resolution.strategy == ResolutionStrategy.AUTHORITY\n        assert result.resolution.winner_node_id == \"auth-node\"\n\n    def test_goodhart_resolve_authority_exactly_at_floor_rejects(self):\n        \"\"\"Authority step must be skipped when authoritative node trust equals exactly the floor (not strictly greater).\"\"\"\n        config = make_config(authority_override_floor=0.5, trust_delta_threshold=0.8)\n        auth_node = make_node_value(\"auth-node\", '\"val_a\"', 0.5, authoritative=True)\n        other_node = make_node_value(\"other-node\", '\"val_b\"', 0.49, authoritative=False)\n        conflict = make_conflict_record(\n            competing_values=[auth_node, other_node],\n            data_tier=\"standard\",\n        )\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        # Authority step should be skipped, so NOT AUTHORITY_RESOLVED\n        assert result.status != ResolutionStatus.AUTHORITY_RESOLVED\n        assert result.status in (ResolutionStatus.TRUST_RESOLVED, ResolutionStatus.UNRESOLVABLE)\n\n    def test_goodhart_resolve_trust_delta_just_above_threshold(self):\n        \"\"\"Trust arbitration succeeds when delta is just above the threshold.\"\"\"\n        config = make_config(authority_override_floor=0.5, trust_delta_threshold=0.1)\n        node_a = make_node_value(\"node-a\", '\"val_a\"', 0.8, authoritative=False)\n        node_b = make_node_value(\"node-b\", '\"val_b\"', 0.699, authoritative=False)\n        conflict = make_conflict_record(\n            competing_values=[node_a, node_b],\n            data_tier=\"standard\",\n        )\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        # Delta = 0.101, threshold = 0.1, so should be TRUST_RESOLVED\n        assert result.status == ResolutionStatus.TRUST_RESOLVED\n        assert result.resolution.strategy == ResolutionStrategy.TRUST_ARBITRATION\n        assert result.resolution.winner_node_id == \"node-a\"\n\n    def test_goodhart_resolve_trust_delta_just_below_threshold(self):\n        \"\"\"Trust arbitration fails when delta is just below the threshold, resulting in UNRESOLVABLE.\"\"\"\n        config = make_config(authority_override_floor=0.5, trust_delta_threshold=0.1)\n        node_a = make_node_value(\"node-a\", '\"val_a\"', 0.8, authoritative=False)\n        node_b = make_node_value(\"node-b\", '\"val_b\"', 0.701, authoritative=False)\n        conflict = make_conflict_record(\n            competing_values=[node_a, node_b],\n            data_tier=\"standard\",\n        )\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        # Delta = 0.099, threshold = 0.1, so should be UNRESOLVABLE\n        assert result.status == ResolutionStatus.UNRESOLVABLE\n        assert result.resolution.strategy == ResolutionStrategy.HUMAN\n\n    def test_goodhart_resolve_nway_5nodes_authority_one(self):\n        \"\"\"In a 5-way conflict with exactly one authoritative node above floor, authority resolution should apply.\"\"\"\n        config = make_config(authority_override_floor=0.3, trust_delta_threshold=0.1)\n        nodes = [\n            make_node_value(\"node-1\", '\"v1\"', 0.4, authoritative=True),\n            make_node_value(\"node-2\", '\"v2\"', 0.9, authoritative=False),\n            make_node_value(\"node-3\", '\"v3\"', 0.85, authoritative=False),\n            make_node_value(\"node-4\", '\"v4\"', 0.7, authoritative=False),\n            make_node_value(\"node-5\", '\"v5\"', 0.6, authoritative=False),\n        ]\n        conflict = make_conflict_record(competing_values=nodes)\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.AUTHORITY_RESOLVED\n        assert result.resolution.winner_node_id == \"node-1\"\n        assert len(conflict.competing_values) == 5\n\n    def test_goodhart_resolve_nway_trust_ignores_3rd_and_beyond(self):\n        \"\"\"Trust arbitration delta is computed only from top-2 trust scores; 3rd+ scores are irrelevant.\"\"\"\n        config = make_config(authority_override_floor=0.5, trust_delta_threshold=0.2)\n        nodes = [\n            make_node_value(\"node-top\", '\"v1\"', 0.9, authoritative=False),\n            make_node_value(\"node-2nd\", '\"v2\"', 0.5, authoritative=False),\n            make_node_value(\"node-3rd\", '\"v3\"', 0.5, authoritative=False),\n            make_node_value(\"node-4th\", '\"v4\"', 0.3, authoritative=False),\n        ]\n        conflict = make_conflict_record(competing_values=nodes)\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        # Delta between top-2 = 0.9 - 0.5 = 0.4 > 0.2 threshold\n        assert result.status == ResolutionStatus.TRUST_RESOLVED\n        assert result.resolution.winner_node_id == \"node-top\"\n\n    def test_goodhart_resolve_two_authoritative_nodes_skips_authority(self):\n        \"\"\"When two nodes are authoritative, authority step is skipped (requires exactly one).\"\"\"\n        config = make_config(authority_override_floor=0.3, trust_delta_threshold=0.1)\n        nodes = [\n            make_node_value(\"auth-1\", '\"v1\"', 0.9, authoritative=True),\n            make_node_value(\"auth-2\", '\"v2\"', 0.5, authoritative=True),\n            make_node_value(\"regular\", '\"v3\"', 0.3, authoritative=False),\n        ]\n        conflict = make_conflict_record(competing_values=nodes)\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        # Authority skipped, trust delta between 0.9 and 0.5 = 0.4 > 0.1\n        assert result.status == ResolutionStatus.TRUST_RESOLVED\n        assert result.resolution.strategy == ResolutionStrategy.TRUST_ARBITRATION\n\n    def test_goodhart_resolve_unresolvable_protected_tier_blocks(self):\n        \"\"\"UNRESOLVABLE conflict with data_tier in protected_tiers sets blocks_deploy=True.\"\"\"\n        config = make_config(\n            authority_override_floor=0.5,\n            trust_delta_threshold=0.5,\n            protected_tiers=[\"pii_critical\", \"financial\"],\n        )\n        nodes = [\n            make_node_value(\"n1\", '\"v1\"', 0.6, authoritative=False),\n            make_node_value(\"n2\", '\"v2\"', 0.55, authoritative=False),\n        ]\n        conflict = make_conflict_record(\n            competing_values=nodes,\n            data_tier=\"pii_critical\",\n        )\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.UNRESOLVABLE\n        assert result.blocks_deploy is True\n\n    def test_goodhart_resolve_unresolvable_signal_fields_complete(self):\n        \"\"\"ConflictSignal emitted for unresolvable conflict has all required fields populated correctly.\"\"\"\n        config = make_config(\n            authority_override_floor=0.5,\n            trust_delta_threshold=0.5,\n            protected_tiers=[\"critical\"],\n        )\n        nodes = [\n            make_node_value(\"n-alpha\", '\"val_alpha\"', 0.82, authoritative=False),\n            make_node_value(\"n-beta\", '\"val_beta\"', 0.79, authoritative=False),\n            make_node_value(\"n-gamma\", '\"val_gamma\"', 0.50, authoritative=False),\n        ]\n        conflict = make_conflict_record(\n            competing_values=nodes,\n            data_tier=\"critical\",\n            domain=\"signals-domain\",\n            field=\"signals-field\",\n        )\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.UNRESOLVABLE\n        emitter.emit_signal.assert_called_once()\n        signal = emitter.emit_signal.call_args[0][0] if emitter.emit_signal.call_args[0] else emitter.emit_signal.call_args[1].get(\"signal\")\n\n        assert signal.conflict_id == conflict.conflict_id\n        assert signal.execution_id == conflict.execution_id\n        assert set(signal.competing_node_ids) == {\"n-alpha\", \"n-beta\", \"n-gamma\"}\n        assert abs(signal.max_trust_score - 0.82) < 0.001\n        assert signal.blocks_deploy is True\n\n    def test_goodhart_resolve_rationale_contains_all_threshold_values(self):\n        \"\"\"Resolution rationale must include threshold values from config, not just node info.\"\"\"\n        config = make_config(authority_override_floor=0.35, trust_delta_threshold=0.1)\n        auth_node = make_node_value(\"auth-node-xyz\", '\"val_a\"', 0.7, authoritative=True)\n        other_node = make_node_value(\"other-node-abc\", '\"val_b\"', 0.4, authoritative=False)\n        conflict = make_conflict_record(competing_values=[auth_node, other_node])\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.AUTHORITY_RESOLVED\n        rationale = result.resolution.rationale\n        # Rationale must include the authoritative node ID\n        assert \"auth-node-xyz\" in rationale\n        # Rationale must include relevant threshold or trust values\n        assert \"0.35\" in rationale or \"authority_override_floor\" in rationale\n        assert \"0.7\" in rationale\n\n    def test_goodhart_resolve_all_zero_trust_scores(self):\n        \"\"\"All-zero trust scores produce delta=0 which is below any positive threshold: UNRESOLVABLE.\"\"\"\n        config = make_config(authority_override_floor=0.5, trust_delta_threshold=0.1)\n        nodes = [\n            make_node_value(\"n1\", '\"v1\"', 0.0, authoritative=False),\n            make_node_value(\"n2\", '\"v2\"', 0.0, authoritative=False),\n        ]\n        conflict = make_conflict_record(competing_values=nodes)\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.UNRESOLVABLE\n\n    def test_goodhart_resolve_equal_trust_scores_unresolvable(self):\n        \"\"\"Identical trust scores produce delta=0 which is below any positive threshold: UNRESOLVABLE.\"\"\"\n        config = make_config(authority_override_floor=0.5, trust_delta_threshold=0.05)\n        nodes = [\n            make_node_value(\"n1\", '\"v1\"', 0.75, authoritative=False),\n            make_node_value(\"n2\", '\"v2\"', 0.75, authoritative=False),\n        ]\n        conflict = make_conflict_record(competing_values=nodes)\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.UNRESOLVABLE\n\n    def test_goodhart_resolve_authority_below_floor_and_trust_delta_sufficient(self):\n        \"\"\"Auth node below floor should skip to Step 2, and if trust delta is sufficient, TRUST_RESOLVED (not directly UNRESOLVABLE).\"\"\"\n        config = make_config(authority_override_floor=0.5, trust_delta_threshold=0.1)\n        nodes = [\n            make_node_value(\"auth-low\", '\"v1\"', 0.3, authoritative=True),\n            make_node_value(\"high-trust\", '\"v2\"', 0.9, authoritative=False),\n        ]\n        conflict = make_conflict_record(competing_values=nodes)\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        # Delta = 0.6 > 0.1, should be trust resolved\n        assert result.status == ResolutionStatus.TRUST_RESOLVED\n        assert result.resolution.strategy == ResolutionStrategy.TRUST_ARBITRATION\n        assert result.resolution.winner_node_id == \"high-trust\"\n\n    def test_goodhart_resolve_no_signal_emitted_for_authority_resolved(self):\n        \"\"\"No ConflictSignal should be emitted for authority-resolved conflicts.\"\"\"\n        config = make_config(authority_override_floor=0.3, trust_delta_threshold=0.1)\n        nodes = [\n            make_node_value(\"auth-node\", '\"v1\"', 0.8, authoritative=True),\n            make_node_value(\"other\", '\"v2\"', 0.4, authoritative=False),\n        ]\n        conflict = make_conflict_record(competing_values=nodes)\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.AUTHORITY_RESOLVED\n        emitter.emit_signal.assert_not_called()\n\n    def test_goodhart_resolve_no_signal_emitted_for_trust_resolved(self):\n        \"\"\"No ConflictSignal should be emitted for trust-resolved conflicts.\"\"\"\n        config = make_config(authority_override_floor=0.5, trust_delta_threshold=0.1)\n        nodes = [\n            make_node_value(\"n1\", '\"v1\"', 0.9, authoritative=False),\n            make_node_value(\"n2\", '\"v2\"', 0.3, authoritative=False),\n        ]\n        conflict = make_conflict_record(competing_values=nodes)\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.TRUST_RESOLVED\n        emitter.emit_signal.assert_not_called()\n\n    def test_goodhart_resolve_resolved_at_is_utc_iso8601(self):\n        \"\"\"The resolved_at timestamp must be a valid UTC ISO-8601 string.\"\"\"\n        config = make_config(authority_override_floor=0.3, trust_delta_threshold=0.1)\n        nodes = [\n            make_node_value(\"auth\", '\"v1\"', 0.8, authoritative=True),\n            make_node_value(\"other\", '\"v2\"', 0.4, authoritative=False),\n        ]\n        conflict = make_conflict_record(competing_values=nodes)\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        ts = result.resolution.resolved_at\n        parsed = isoparse(ts)\n        # Must be UTC\n        assert parsed.tzinfo is not None or ts.endswith(\"Z\")\n        if parsed.tzinfo is not None:\n            assert parsed.utcoffset().total_seconds() == 0\n\n    def test_goodhart_resolve_blocks_deploy_false_for_non_unresolvable(self):\n        \"\"\"Authority/trust resolved conflicts should NOT have blocks_deploy=True even if data_tier is protected.\"\"\"\n        config = make_config(\n            authority_override_floor=0.3,\n            trust_delta_threshold=0.1,\n            protected_tiers=[\"critical\"],\n        )\n        nodes = [\n            make_node_value(\"auth\", '\"v1\"', 0.8, authoritative=True),\n            make_node_value(\"other\", '\"v2\"', 0.4, authoritative=False),\n        ]\n        conflict = make_conflict_record(\n            competing_values=nodes,\n            data_tier=\"critical\",\n        )\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.AUTHORITY_RESOLVED\n        assert result.blocks_deploy is False\n\n    def test_goodhart_resolve_winner_matches_highest_trust_novel_scores(self):\n        \"\"\"In trust arbitration with novel trust scores, the winner must be the highest-trust node.\"\"\"\n        config = make_config(authority_override_floor=0.5, trust_delta_threshold=0.1)\n        nodes = [\n            make_node_value(\"node-low\", '\"v1\"', 0.33, authoritative=False),\n            make_node_value(\"node-mid\", '\"v2\"', 0.67, authoritative=False),\n            make_node_value(\"node-high\", '\"v3\"', 0.99, authoritative=False),\n        ]\n        conflict = make_conflict_record(competing_values=nodes)\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        # Delta between top-2 = 0.99 - 0.67 = 0.32 > 0.1\n        assert result.status == ResolutionStatus.TRUST_RESOLVED\n        assert result.resolution.winner_node_id == \"node-high\"\n\n    def test_goodhart_resolve_error_already_resolved_human_reviewed(self):\n        \"\"\"A HUMAN_REVIEWED conflict must raise already_resolved if resolve() is called on it.\"\"\"\n        config = make_config()\n        nodes = [\n            make_node_value(\"n1\", '\"v1\"', 0.8),\n            make_node_value(\"n2\", '\"v2\"', 0.4),\n        ]\n        resolution = Resolution(\n            strategy=ResolutionStrategy.HUMAN,\n            winner_node_id=\"n1\",\n            resolved_at=datetime.now(timezone.utc).isoformat(),\n            rationale=\"Human decided\",\n            reviewed_by=\"admin\",\n        )\n        conflict = make_conflict_record(\n            competing_values=nodes,\n            status=ResolutionStatus.HUMAN_REVIEWED,\n            resolution=resolution,\n        )\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        with pytest.raises(Exception) as exc_info:\n            resolver.resolve(conflict)\n        # Should be an already_resolved error\n        error_str = str(exc_info.value).lower()\n        assert \"already\" in error_str or \"resolved\" in error_str or \"CONFLICT_ALREADY_RESOLVED\" in str(exc_info.value)\n\n    def test_goodhart_resolve_signal_trust_delta_accuracy(self):\n        \"\"\"ConflictSignal trust_delta must accurately reflect the difference between top-2 trust scores.\"\"\"\n        config = make_config(\n            authority_override_floor=0.5,\n            trust_delta_threshold=0.5,\n            protected_tiers=[\"critical\"],\n        )\n        nodes = [\n            make_node_value(\"n1\", '\"v1\"', 0.82, authoritative=False),\n            make_node_value(\"n2\", '\"v2\"', 0.79, authoritative=False),\n            make_node_value(\"n3\", '\"v3\"', 0.50, authoritative=False),\n        ]\n        conflict = make_conflict_record(\n            competing_values=nodes,\n            data_tier=\"critical\",\n        )\n\n        store, stored = make_mock_store()\n        emitter = make_mock_signal_emitter()\n\n        try:\n            resolver = ConflictResolver(config=config, store=store, signal_emitter=emitter)\n        except TypeError:\n            resolver = ConflictResolver(config, store, emitter)\n\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.UNRESOLVABLE\n        emitter.emit_signal.assert_called_once()\n        signal = emitter.emit_signal.call_args[0][0] if emitter.emit_signal.call_args[0] else emitter.emit_signal.call_args[1].get(\"signal\")\n\n        assert abs(signal.trust_delta - 0.03) < 0.001\n        assert abs(signal.max_trust_score - 0.82) < 0.001\n\n\n# ─── ingest() tests ───────────────────────────────────────────────────────────\n\nclass TestGoodhartIngest:\n\n    def test_goodhart_ingest_three_distinct_values_conflict(self):\n        \"\"\"Three different nodes with three distinct values should produce a conflict with 3 competing_values.\"\"\"\n        config = make_config(window_timeout_seconds=0.1)\n        store, stored = make_mock_store()\n        trust_lookup = make_mock_trust_lookup({\"n1\": 0.8, \"n2\": 0.6, \"n3\": 0.4})\n        authority_lookup = make_mock_authority_lookup(set())\n\n        try:\n            detector = ConflictDetector(\n                config=config,\n                store=store,\n                trust_lookup=trust_lookup,\n                authority_lookup=authority_lookup,\n            )\n        except (TypeError, NameError):\n            pytest.skip(\"ConflictDetector constructor signature differs from expected\")\n\n        import time\n\n        span1 = make_span_report(\"n1\", '\"val_1\"')\n        span2 = make_span_report(\"n2\", '\"val_2\"')\n        span3 = make_span_report(\"n3\", '\"val_3\"')\n\n        detector.ingest(span1)\n        detector.ingest(span2)\n        detector.ingest(span3)\n\n        time.sleep(0.15)\n\n        # Trigger window close with a new span in a different key\n        trigger = make_span_report(\"n4\", '\"trigger\"', domain=\"other-domain\")\n        conflicts = detector.ingest(trigger)\n\n        # If lazy timeout didn't trigger, try flush\n        if not conflicts:\n            conflicts = detector.flush()\n\n        assert len(conflicts) >= 1\n        # Find the conflict for our test domain\n        target = [c for c in conflicts if c.domain == \"test-domain\"]\n        assert len(target) == 1\n        assert len(target[0].competing_values) == 3\n        assert target[0].status == ResolutionStatus.DETECTED\n\n    def test_goodhart_ingest_same_node_different_spans_both_kept(self):\n        \"\"\"Same node_id but different span_ids should both be kept (dedup is by node_id+span_id pair).\"\"\"\n        config = make_config(window_timeout_seconds=0.1)\n        store, stored = make_mock_store()\n        trust_lookup = make_mock_trust_lookup({\"node-x\": 0.7})\n        authority_lookup = make_mock_authority_lookup(set())\n\n        try:\n            detector = ConflictDetector(\n                config=config,\n                store=store,\n                trust_lookup=trust_lookup,\n                authority_lookup=authority_lookup,\n            )\n        except (TypeError, NameError):\n            pytest.skip(\"ConflictDetector constructor signature differs from expected\")\n\n        span1 = make_span_report(\"node-x\", '\"val_1\"', span_id=\"span-aaa\")\n        span2 = make_span_report(\"node-x\", '\"val_2\"', span_id=\"span-bbb\")\n\n        detector.ingest(span1)\n        detector.ingest(span2)\n\n        import time\n        time.sleep(0.15)\n\n        conflicts = detector.flush()\n\n        target = [c for c in conflicts if c.domain == \"test-domain\"]\n        assert len(target) == 1\n        assert len(target[0].competing_values) == 2\n\n    def test_goodhart_ingest_different_nodes_same_span_id_both_kept(self):\n        \"\"\"Different node_ids with the same span_id should both be kept since dedup is by (node_id, span_id) pair.\"\"\"\n        config = make_config(window_timeout_seconds=0.1)\n        store, stored = make_mock_store()\n        trust_lookup = make_mock_trust_lookup({\"node-a\": 0.7, \"node-b\": 0.6})\n        authority_lookup = make_mock_authority_lookup(set())\n\n        try:\n            detector = ConflictDetector(\n                config=config,\n                store=store,\n                trust_lookup=trust_lookup,\n                authority_lookup=authority_lookup,\n            )\n        except (TypeError, NameError):\n            pytest.skip(\"ConflictDetector constructor signature differs from expected\")\n\n        span1 = make_span_report(\"node-a\", '\"val_1\"', span_id=\"shared-span-id\")\n        span2 = make_span_report(\"node-b\", '\"val_2\"', span_id=\"shared-span-id\")\n\n        detector.ingest(span1)\n        detector.ingest(span2)\n\n        conflicts = detector.flush()\n\n        target = [c for c in conflicts if c.domain == \"test-domain\"]\n        assert len(target) == 1\n        assert len(target[0].competing_values) == 2\n\n    def test_goodhart_ingest_distinct_values_required_not_just_distinct_nodes(self):\n        \"\"\"Multiple nodes with identical values should not produce a conflict.\"\"\"\n        config = make_config(window_timeout_seconds=0.1)\n        store, stored = make_mock_store()\n        trust_lookup = make_mock_trust_lookup({\"n1\": 0.8, \"n2\": 0.6, \"n3\": 0.4})\n        authority_lookup = make_mock_authority_lookup(set())\n\n        try:\n            detector = ConflictDetector(\n                config=config,\n                store=store,\n                trust_lookup=trust_lookup,\n                authority_lookup=authority_lookup,\n            )\n        except (TypeError, NameError):\n            pytest.skip(\"ConflictDetector constructor signature differs from expected\")\n\n        # Three nodes, all same value\n        span1 = make_span_report(\"n1\", '\"same_value\"')\n        span2 = make_span_report(\"n2\", '\"same_value\"')\n        span3 = make_span_report(\"n3\", '\"same_value\"')\n\n        detector.ingest(span1)\n        detector.ingest(span2)\n        detector.ingest(span3)\n\n        conflicts = detector.flush()\n\n        target = [c for c in conflicts if c.domain == \"test-domain\"]\n        assert len(target) == 0\n\n    def test_goodhart_ingest_window_key_includes_execution_id(self):\n        \"\"\"Spans with different execution_ids should be in separate windows.\"\"\"\n        config = make_config(window_timeout_seconds=0.1)\n        store, stored = make_mock_store()\n        trust_lookup = make_mock_trust_lookup({\"n1\": 0.8, \"n2\": 0.6})\n        authority_lookup = make_mock_authority_lookup(set())\n\n        try:\n            detector = ConflictDetector(\n                config=config,\n                store=store,\n                trust_lookup=trust_lookup,\n                authority_lookup=authority_lookup,\n            )\n        except (TypeError, NameError):\n            pytest.skip(\"ConflictDetector constructor signature differs from expected\")\n\n        span1 = make_span_report(\"n1\", '\"val_1\"', execution_id=\"exec-A\")\n        span2 = make_span_report(\"n2\", '\"val_2\"', execution_id=\"exec-B\")\n\n        detector.ingest(span1)\n        detector.ingest(span2)\n\n        conflicts = detector.flush()\n\n        # Each window has only 1 distinct span, so no conflicts\n        assert len(conflicts) == 0\n\n    def test_goodhart_ingest_conflict_detected_at_is_utc_iso8601(self):\n        \"\"\"detected_at on newly detected conflicts must be valid UTC ISO-8601.\"\"\"\n        config = make_config(window_timeout_seconds=0.1)\n        store, stored = make_mock_store()\n        trust_lookup = make_mock_trust_lookup({\"n1\": 0.8, \"n2\": 0.6})\n        authority_lookup = make_mock_authority_lookup(set())\n\n        try:\n            detector = ConflictDetector(\n                config=config,\n                store=store,\n                trust_lookup=trust_lookup,\n                authority_lookup=authority_lookup,\n            )\n        except (TypeError, NameError):\n            pytest.skip(\"ConflictDetector constructor signature differs from expected\")\n\n        span1 = make_span_report(\"n1\", '\"val_1\"')\n        span2 = make_span_report(\"n2\", '\"val_2\"')\n\n        detector.ingest(span1)\n        detector.ingest(span2)\n\n        conflicts = detector.flush()\n        assert len(conflicts) >= 1\n\n        ts = conflicts[0].detected_at\n        parsed = isoparse(ts)\n        assert parsed.tzinfo is not None or ts.endswith(\"Z\")\n        if parsed.tzinfo is not None:\n            assert parsed.utcoffset().total_seconds() == 0\n\n    def test_goodhart_ingest_execution_id_field_preserved(self):\n        \"\"\"Conflict record must preserve the exact execution_id, domain, field from the span reports.\"\"\"\n        config = make_config(window_timeout_seconds=0.1)\n        store, stored = make_mock_store()\n        trust_lookup = make_mock_trust_lookup({\"n1\": 0.8, \"n2\": 0.6})\n        authority_lookup = make_mock_authority_lookup(set())\n\n        try:\n            detector = ConflictDetector(\n                config=config,\n                store=store,\n                trust_lookup=trust_lookup,\n                authority_lookup=authority_lookup,\n            )\n        except (TypeError, NameError):\n            pytest.skip(\"ConflictDetector constructor signature differs from expected\")\n\n        span1 = make_span_report(\n            \"n1\", '\"val_1\"',\n            domain=\"exotic.domain.v2\",\n            field=\"nested.field.path\",\n            execution_id=\"exec-zzzz-9999\",\n        )\n        span2 = make_span_report(\n            \"n2\", '\"val_2\"',\n            domain=\"exotic.domain.v2\",\n            field=\"nested.field.path\",\n            execution_id=\"exec-zzzz-9999\",\n        )\n\n        detector.ingest(span1)\n        detector.ingest(span2)\n\n        conflicts = detector.flush()\n        assert len(conflicts) >= 1\n\n        c = conflicts[0]\n        assert c.execution_id == \"exec-zzzz-9999\"\n        assert c.domain == \"exotic.domain.v2\"\n        assert c.field == \"nested.field.path\"\n\n\n# ─── flush() tests ────────────────────────────────────────────────────────────\n\nclass TestGoodhartFlush:\n\n    def test_goodhart_flush_multiple_windows_mixed(self):\n        \"\"\"Flush with multiple open windows: only windows with 2+ distinct values produce conflicts.\"\"\"\n        config = make_config(window_timeout_seconds=10.0)\n        store, stored = make_mock_store()\n        trust_lookup = make_mock_trust_lookup({\n            \"n1\": 0.8, \"n2\": 0.6, \"n3\": 0.4, \"n4\": 0.5, \"n5\": 0.7\n        })\n        authority_lookup = make_mock_authority_lookup(set())\n\n        try:\n            detector = ConflictDetector(\n                config=config,\n                store=store,\n                trust_lookup=trust_lookup,\n                authority_lookup=authority_lookup,\n            )\n        except (TypeError, NameError):\n            pytest.skip(\"ConflictDetector constructor signature differs from expected\")\n\n        # Window 1: 2 distinct values (conflict)\n        detector.ingest(make_span_report(\"n1\", '\"v1\"', domain=\"dom-a\", field=\"f1\", execution_id=\"e1\"))\n        detector.ingest(make_span_report(\"n2\", '\"v2\"', domain=\"dom-a\", field=\"f1\", execution_id=\"e1\"))\n\n        # Window 2: 3 distinct values (conflict)\n        detector.ingest(make_span_report(\"n3\", '\"v3\"', domain=\"dom-b\", field=\"f2\", execution_id=\"e2\"))\n        detector.ingest(make_span_report(\"n4\", '\"v4\"', domain=\"dom-b\", field=\"f2\", execution_id=\"e2\"))\n        detector.ingest(make_span_report(\"n5\", '\"v5\"', domain=\"dom-b\", field=\"f2\", execution_id=\"e2\"))\n\n        # Window 3: 1 value only (no conflict)\n        detector.ingest(make_span_report(\"n1\", '\"v1\"', domain=\"dom-c\", field=\"f3\", execution_id=\"e3\"))\n\n        conflicts = detector.flush()\n\n        assert len(conflicts) == 2\n        assert all(c.status == ResolutionStatus.DETECTED for c in conflicts)\n        assert all(len(c.competing_values) >= 2 for c in conflicts)\n\n    def test_goodhart_flush_second_flush_empty(self):\n        \"\"\"Second flush after first flush should return empty list since buffer was emptied.\"\"\"\n        config = make_config(window_timeout_seconds=10.0)\n        store, stored = make_mock_store()\n        trust_lookup = make_mock_trust_lookup({\"n1\": 0.8, \"n2\": 0.6})\n        authority_lookup = make_mock_authority_lookup(set())\n\n        try:\n            detector = ConflictDetector(\n                config=config,\n                store=store,\n                trust_lookup=trust_lookup,\n                authority_lookup=authority_lookup,\n            )\n        except (TypeError, NameError):\n            pytest.skip(\"ConflictDetector constructor signature differs from expected\")\n\n        detector.ingest(make_span_report(\"n1\", '\"v1\"'))\n        detector.ingest(make_span_report(\"n2\", '\"v2\"'))\n\n        first_flush = detector.flush()\n        assert len(first_flush) >= 1\n\n        second_flush = detector.flush()\n        assert len(second_flush) == 0\n\n    def test_goodhart_ingest_conflict_id_unique_per_conflict(self):\n        \"\"\"Each detected conflict should have a unique conflict_id, even from the same flush.\"\"\"\n        config = make_config(window_timeout_seconds=10.0)\n        store, stored = make_mock_store()\n        trust_lookup = make_mock_trust_lookup({\n            \"n1\": 0.8, \"n2\": 0.6, \"n3\": 0.7, \"n4\": 0.5\n        })\n        authority_lookup = make_mock_authority_lookup(set())\n\n        try:\n            detector = ConflictDetector(\n                config=config,\n                store=store,\n                trust_lookup=trust_lookup,\n                authority_lookup=authority_lookup,\n            )\n        except (TypeError, NameError):\n            pytest.skip(\"ConflictDetector constructor signature differs from expected\")\n\n        detector.ingest(make_span_report(\"n1\", '\"v1\"', domain=\"dom-a\", execution_id=\"e1\"))\n        detector.ingest(make_span_report(\"n2\", '\"v2\"', domain=\"dom-a\", execution_id=\"e1\"))\n        detector.ingest(make_span_report(\"n3\", '\"v3\"', domain=\"dom-b\", execution_id=\"e2\"))\n        detector.ingest(make_span_report(\"n4\", '\"v4\"', domain=\"dom-b\", execution_id=\"e2\"))\n\n        conflicts = detector.flush()\n        assert len(conflicts) == 2\n        assert conflicts[0].conflict_id != conflicts[1].conflict_id\n\n\n# ─── submit_human_review() tests ──────────────────────────────────────────────\n\nclass TestGoodhartSubmitHumanReview:\n\n    def test_goodhart_submit_human_review_rationale_preserved(self):\n        \"\"\"The rationale provided to submit_human_review should be preserved in the returned record.\"\"\"\n        unresolvable = make_conflict_record(\n            competing_values=[\n                make_node_value(\"n1\", '\"v1\"', 0.5),\n                make_node_value(\"n2\", '\"v2\"', 0.5),\n            ],\n            status=ResolutionStatus.UNRESOLVABLE,\n            conflict_id=\"conflict-review-test\",\n            resolution=Resolution(\n                strategy=ResolutionStrategy.HUMAN,\n                winner_node_id=\"\",\n                resolved_at=datetime.now(timezone.utc).isoformat(),\n                rationale=\"Unresolvable\",\n                reviewed_by=\"\",\n            ),\n            blocks_deploy=True,\n        )\n\n        store, stored = make_mock_store([unresolvable])\n\n        try:\n            reviewer = ConflictResolver(\n                config=make_config(),\n                store=store,\n                signal_emitter=make_mock_signal_emitter(),\n            )\n        except TypeError:\n            reviewer = ConflictResolver(make_config(), store, make_mock_signal_emitter())\n\n        custom_rationale = \"After manual inspection, node n1 has the correct value based on source data.\"\n        result = reviewer.submit_human_review(\n            conflict_id=\"conflict-review-test\",\n            winner_node_id=\"n1\",\n            reviewed_by=\"admin@example.com\",\n            rationale=custom_rationale,\n        )\n\n        assert result.status == ResolutionStatus.HUMAN_REVIEWED\n        assert result.resolution.rationale == custom_rationale\n        assert result.resolution.reviewed_by == \"admin@example.com\"\n        assert result.resolution.winner_node_id == \"n1\"\n        assert result.resolution.strategy == ResolutionStrategy.HUMAN\n\n    def test_goodhart_submit_human_review_authority_resolved_rejects(self):\n        \"\"\"Attempting human review on an AUTHORITY_RESOLVED conflict must fail (terminal state).\"\"\"\n        resolved = make_conflict_record(\n            competing_values=[\n                make_node_value(\"n1\", '\"v1\"', 0.8, authoritative=True),\n                make_node_value(\"n2\", '\"v2\"', 0.4),\n            ],\n            status=ResolutionStatus.AUTHORITY_RESOLVED,\n            conflict_id=\"conflict-auth-resolved\",\n            resolution=Resolution(\n                strategy=ResolutionStrategy.AUTHORITY,\n                winner_node_id=\"n1\",\n                resolved_at=datetime.now(timezone.utc).isoformat(),\n                rationale=\"Authority resolved\",\n                reviewed_by=\"\",\n            ),\n        )\n\n        store, stored = make_mock_store([resolved])\n\n        try:\n            reviewer = ConflictResolver(\n                config=make_config(),\n                store=store,\n                signal_emitter=make_mock_signal_emitter(),\n            )\n        except TypeError:\n            reviewer = ConflictResolver(make_config(), store, make_mock_signal_emitter())\n\n        with pytest.raises(Exception) as exc_info:\n            reviewer.submit_human_review(\n                conflict_id=\"conflict-auth-resolved\",\n                winner_node_id=\"n1\",\n                reviewed_by=\"admin\",\n                rationale=\"Override\",\n            )\n        error_str = str(exc_info.value).lower()\n        assert \"status\" in error_str or \"invalid\" in error_str or \"already\" in error_str\n\n\n# ─── get_unresolved() tests ───────────────────────────────────────────────────\n\nclass TestGoodhartGetUnresolved:\n\n    def _make_records_for_filtering(self):\n        \"\"\"Create a set of records with various statuses for filtering tests.\"\"\"\n        records = []\n        for status, domain in [\n            (ResolutionStatus.DETECTED, \"dom-a\"),\n            (ResolutionStatus.UNRESOLVABLE, \"dom-a\"),\n            (ResolutionStatus.AUTHORITY_RESOLVED, \"dom-a\"),\n            (ResolutionStatus.TRUST_RESOLVED, \"dom-a\"),\n            (ResolutionStatus.HUMAN_REVIEWED, \"dom-a\"),\n            (ResolutionStatus.DETECTED, \"dom-b\"),\n        ]:\n            r = make_conflict_record(\n                competing_values=[\n                    make_node_value(\"n1\", '\"v1\"', 0.8),\n                    make_node_value(\"n2\", '\"v2\"', 0.4),\n                ],\n                status=status,\n                domain=domain,\n                conflict_id=f\"conflict-{status.value}-{domain}\",\n            )\n            records.append(r)\n        return records\n\n    def test_goodhart_get_unresolved_excludes_authority_resolved(self):\n        \"\"\"get_unresolved must not return AUTHORITY_RESOLVED conflicts.\"\"\"\n        records = self._make_records_for_filtering()\n        store, stored = make_mock_store(records)\n\n        try:\n            resolver = ConflictResolver(\n                config=make_config(),\n                store=store,\n                signal_emitter=make_mock_signal_emitter(),\n            )\n        except TypeError:\n            resolver = ConflictResolver(make_config(), store, make_mock_signal_emitter())\n\n        result = resolver.get_unresolved(domain=\"dom-a\")\n\n        for r in result:\n            assert r.status in (ResolutionStatus.DETECTED, ResolutionStatus.UNRESOLVABLE)\n            assert r.status != ResolutionStatus.AUTHORITY_RESOLVED\n\n    def test_goodhart_get_unresolved_excludes_trust_resolved(self):\n        \"\"\"get_unresolved must not return TRUST_RESOLVED conflicts.\"\"\"\n        records = self._make_records_for_filtering()\n        store, stored = make_mock_store(records)\n\n        try:\n            resolver = ConflictResolver(\n                config=make_config(),\n                store=store,\n                signal_emitter=make_mock_signal_emitter(),\n            )\n        except TypeError:\n            resolver = ConflictResolver(make_config(), store, make_mock_signal_emitter())\n\n        result = resolver.get_unresolved(domain=\"dom-a\")\n\n        for r in result:\n            assert r.status != ResolutionStatus.TRUST_RESOLVED\n\n    def test_goodhart_get_unresolved_excludes_human_reviewed(self):\n        \"\"\"get_unresolved must not return HUMAN_REVIEWED conflicts.\"\"\"\n        records = self._make_records_for_filtering()\n        store, stored = make_mock_store(records)\n\n        try:\n            resolver = ConflictResolver(\n                config=make_config(),\n                store=store,\n                signal_emitter=make_mock_signal_emitter(),\n            )\n        except TypeError:\n            resolver = ConflictResolver(make_config(), store, make_mock_signal_emitter())\n\n        result = resolver.get_unresolved(domain=\"dom-a\")\n\n        for r in result:\n            assert r.status != ResolutionStatus.HUMAN_REVIEWED\n\n    def test_goodhart_get_unresolved_domain_filter_exact_match(self):\n        \"\"\"Domain filtering must use exact match, not substring or prefix matching.\"\"\"\n        records = [\n            make_conflict_record(\n                competing_values=[\n                    make_node_value(\"n1\", '\"v1\"', 0.8),\n                    make_node_value(\"n2\", '\"v2\"', 0.4),\n                ],\n                status=ResolutionStatus.DETECTED,\n                domain=\"auth\",\n                conflict_id=\"c-auth\",\n            ),\n            make_conflict_record(\n                competing_values=[\n                    make_node_value(\"n1\", '\"v1\"', 0.8),\n                    make_node_value(\"n2\", '\"v2\"', 0.4),\n                ],\n                status=ResolutionStatus.DETECTED,\n                domain=\"authorization\",\n                conflict_id=\"c-authorization\",\n            ),\n        ]\n        store, stored = make_mock_store(records)\n\n        try:\n            resolver = ConflictResolver(\n                config=make_config(),\n                store=store,\n                signal_emitter=make_mock_signal_emitter(),\n            )\n        except TypeError:\n            resolver = ConflictResolver(make_config(), store, make_mock_signal_emitter())\n\n        result = resolver.get_unresolved(domain=\"auth\")\n\n        assert all(r.domain == \"auth\" for r in result)\n        assert not any(r.domain == \"authorization\" for r in result)\n\n    def test_goodhart_get_unresolved_ordering_with_same_timestamp(self):\n        \"\"\"get_unresolved with same timestamps should return a stable result without error.\"\"\"\n        ts = \"2024-01-01T00:00:00Z\"\n        records = [\n            make_conflict_record(\n                competing_values=[\n                    make_node_value(\"n1\", '\"v1\"', 0.8),\n                    make_node_value(\"n2\", '\"v2\"', 0.4),\n                ],\n                status=ResolutionStatus.DETECTED,\n                domain=\"dom-x\",\n                conflict_id=f\"c-{i}\",\n            )\n            for i in range(3)\n        ]\n        # Set same detected_at\n        for r in records:\n            r.detected_at = ts\n\n        store, stored = make_mock_store(records)\n\n        try:\n            resolver = ConflictResolver(\n                config=make_config(),\n                store=store,\n                signal_emitter=make_mock_signal_emitter(),\n            )\n        except TypeError:\n            resolver = ConflictResolver(make_config(), store, make_mock_signal_emitter())\n\n        result = resolver.get_unresolved(domain=\"dom-x\")\n        assert len(result) == 3\n        assert all(r.status == ResolutionStatus.DETECTED for r in result)\n\n\n# ─── has_blocking_conflicts() tests ───────────────────────────────────────────\n\nclass TestGoodhartHasBlocking:\n\n    def test_goodhart_has_blocking_human_reviewed_not_blocking(self):\n        \"\"\"After human review clears a blocking conflict, has_blocking_conflicts must return False.\"\"\"\n        reviewed = make_conflict_record(\n            competing_values=[\n                make_node_value(\"n1\", '\"v1\"', 0.5),\n                make_node_value(\"n2\", '\"v2\"', 0.5),\n            ],\n            status=ResolutionStatus.HUMAN_REVIEWED,\n            domain=\"deploy-dom\",\n            data_tier=\"critical\",\n            blocks_deploy=False,  # Human review clears this\n            conflict_id=\"c-reviewed\",\n        )\n\n        store, stored = make_mock_store([reviewed])\n\n        try:\n            resolver = ConflictResolver(\n                config=make_config(protected_tiers=[\"critical\"]),\n                store=store,\n                signal_emitter=make_mock_signal_emitter(),\n            )\n        except TypeError:\n            resolver = ConflictResolver(\n                make_config(protected_tiers=[\"critical\"]),\n                store,\n                make_mock_signal_emitter(),\n            )\n\n        result = resolver.has_blocking_conflicts(\"deploy-dom\")\n        assert result is False\n\n    def test_goodhart_has_blocking_detected_protected_blocks(self):\n        \"\"\"A DETECTED conflict in a protected tier should block deployment.\"\"\"\n        detected = make_conflict_record(\n            competing_values=[\n                make_node_value(\"n1\", '\"v1\"', 0.5),\n                make_node_value(\"n2\", '\"v2\"', 0.5),\n            ],\n            status=ResolutionStatus.DETECTED,\n            domain=\"blocking-dom\",\n            data_tier=\"critical\",\n            blocks_deploy=True,\n            conflict_id=\"c-detected-blocking\",\n        )\n\n        store, stored = make_mock_store([detected])\n\n        try:\n            resolver = ConflictResolver(\n                config=make_config(protected_tiers=[\"critical\"]),\n                store=store,\n                signal_emitter=make_mock_signal_emitter(),\n            )\n        except TypeError:\n            resolver = ConflictResolver(\n                make_config(protected_tiers=[\"critical\"]),\n                store,\n                make_mock_signal_emitter(),\n            )\n\n        result = resolver.has_blocking_conflicts(\"blocking-dom\")\n        assert result is True\n\n\n# ─── get_summary() tests ──────────────────────────────────────────────────────\n\nclass TestGoodhartGetSummary:\n\n    def test_goodhart_get_summary_deploy_blocking_excludes_resolved(self):\n        \"\"\"deploy_blocking_count must not count resolved conflicts even if they have blocks_deploy=True.\"\"\"\n        records = [\n            make_conflict_record(\n                competing_values=[\n                    make_node_value(\"n1\", '\"v1\"', 0.5),\n                    make_node_value(\"n2\", '\"v2\"', 0.5),\n                ],\n                status=ResolutionStatus.UNRESOLVABLE,\n                domain=\"dom-a\",\n                blocks_deploy=True,\n                conflict_id=\"c-unresolvable-blocking\",\n            ),\n            make_conflict_record(\n                competing_values=[\n                    make_node_value(\"n1\", '\"v1\"', 0.5),\n                    make_node_value(\"n2\", '\"v2\"', 0.5),\n                ],\n                status=ResolutionStatus.AUTHORITY_RESOLVED,\n                domain=\"dom-a\",\n                blocks_deploy=True,  # This should NOT count\n                conflict_id=\"c-resolved-blocking\",\n            ),\n        ]\n\n        store, stored = make_mock_store(records)\n\n        try:\n            resolver = ConflictResolver(\n                config=make_config(),\n                store=store,\n                signal_emitter=make_mock_signal_emitter(),\n            )\n        except TypeError:\n            resolver = ConflictResolver(make_config(), store, make_mock_signal_emitter())\n\n        summary = resolver.get_summary()\n        assert summary.deploy_blocking_count == 1\n\n    def test_goodhart_get_summary_domains_affected_only_unresolved(self):\n        \"\"\"domains_affected should only include domains with DETECTED or UNRESOLVABLE conflicts.\"\"\"\n        records = [\n            make_conflict_record(\n                competing_values=[\n                    make_node_value(\"n1\", '\"v1\"', 0.5),\n                    make_node_value(\"n2\", '\"v2\"', 0.5),\n                ],\n                status=ResolutionStatus.AUTHORITY_RESOLVED,\n                domain=\"dom-resolved-only\",\n                conflict_id=\"c-resolved\",\n            ),\n            make_conflict_record(\n                competing_values=[\n                    make_node_value(\"n1\", '\"v1\"', 0.5),\n                    make_node_value(\"n2\", '\"v2\"', 0.5),\n                ],\n                status=ResolutionStatus.DETECTED,\n                domain=\"dom-with-unresolved\",\n                conflict_id=\"c-detected\",\n            ),\n        ]\n\n        store, stored = make_mock_store(records)\n\n        try:\n            resolver = ConflictResolver(\n                config=make_config(),\n                store=store,\n                signal_emitter=make_mock_signal_emitter(),\n            )\n        except TypeError:\n            resolver = ConflictResolver(make_config(), store, make_mock_signal_emitter())\n\n        summary = resolver.get_summary()\n        assert \"dom-with-unresolved\" in summary.domains_affected\n        assert \"dom-resolved-only\" not in summary.domains_affected\n\n    def test_goodhart_get_summary_unresolved_count_includes_both(self):\n        \"\"\"unresolved_count must include both DETECTED and UNRESOLVABLE.\"\"\"\n        records = [\n            make_conflict_record(\n                competing_values=[\n                    make_node_value(\"n1\", '\"v1\"', 0.5),\n                    make_node_value(\"n2\", '\"v2\"', 0.5),\n                ],\n                status=ResolutionStatus.DETECTED,\n                domain=\"d\",\n                conflict_id=f\"c-det-{i}\",\n            )\n            for i in range(2)\n        ] + [\n            make_conflict_record(\n                competing_values=[\n                    make_node_value(\"n1\", '\"v1\"', 0.5),\n                    make_node_value(\"n2\", '\"v2\"', 0.5),\n                ],\n                status=ResolutionStatus.UNRESOLVABLE,\n                domain=\"d\",\n                conflict_id=f\"c-unr-{i}\",\n            )\n            for i in range(3)\n        ]\n\n        store, stored = make_mock_store(records)\n\n        try:\n            resolver = ConflictResolver(\n                config=make_config(),\n                store=store,\n                signal_emitter=make_mock_signal_emitter(),\n            )\n        except TypeError:\n            resolver = ConflictResolver(make_config(), store, make_mock_signal_emitter())\n\n        summary = resolver.get_summary()\n        assert summary.unresolved_count == 5\n\n    def test_goodhart_get_summary_total_equals_sum_with_all_statuses(self):\n        \"\"\"total_conflicts must equal the sum of all status counts, verified with non-trivial mix.\"\"\"\n        records = []\n        status_counts = {\n            ResolutionStatus.DETECTED: 2,\n            ResolutionStatus.UNRESOLVABLE: 1,\n            ResolutionStatus.AUTHORITY_RESOLVED: 3,\n            ResolutionStatus.TRUST_RESOLVED: 2,\n            ResolutionStatus.HUMAN_REVIEWED: 1,\n        }\n        idx = 0\n        for status, count in status_counts.items():\n            for _ in range(count):\n                records.append(make_conflict_record(\n                    competing_values=[\n                        make_node_value(\"n1\", '\"v1\"', 0.5),\n                        make_node_value(\"n2\", '\"v2\"', 0.5),\n                    ],\n                    status=status,\n                    domain=f\"d-{idx % 3}\",\n                    conflict_id=f\"c-{idx}\",\n                ))\n                idx += 1\n\n        store, stored = make_mock_store(records)\n\n        try:\n            resolver = ConflictResolver(\n                config=make_config(),\n                store=store,\n                signal_emitter=make_mock_signal_emitter(),\n            )\n        except TypeError:\n            resolver = ConflictResolver(make_config(), store, make_mock_signal_emitter())\n\n        summary = resolver.get_summary()\n\n        assert summary.total_conflicts == 9\n        assert summary.unresolved_count == 3  # 2 DETECTED + 1 UNRESOLVABLE\n        assert summary.authority_resolved_count == 3\n        assert summary.trust_resolved_count == 2\n        assert summary.human_reviewed_count == 1\n        total_sum = (\n            summary.unresolved_count\n            + summary.authority_resolved_count\n            + summary.trust_resolved_count\n            + summary.human_reviewed_count\n        )\n        assert summary.total_conflicts == total_sum\n\n\n# ─── load_config() tests ──────────────────────────────────────────────────────\n\nclass TestGoodhartLoadConfig:\n\n    def test_goodhart_load_config_authority_floor_at_1_0(self, tmp_path):\n        \"\"\"authority_override_floor at exactly 1.0 should be valid.\"\"\"\n        config_file = tmp_path / \"config.yaml\"\n        config_file.write_text(\n            \"window_timeout_seconds: 1.0\\n\"\n            \"authority_override_floor: 1.0\\n\"\n            \"trust_delta_threshold: 0.5\\n\"\n            \"checkpoint_interval: 10\\n\"\n            \"conflict_log_path: /tmp/log.jsonl\\n\"\n            \"protected_tiers:\\n  - critical\\n\"\n        )\n\n        config = load_config(str(config_file))\n        assert config.authority_override_floor == 1.0\n\n    def test_goodhart_load_config_authority_floor_at_0_0(self, tmp_path):\n        \"\"\"authority_override_floor at exactly 0.0 should be valid.\"\"\"\n        config_file = tmp_path / \"config.yaml\"\n        config_file.write_text(\n            \"window_timeout_seconds: 1.0\\n\"\n            \"authority_override_floor: 0.0\\n\"\n            \"trust_delta_threshold: 0.5\\n\"\n            \"checkpoint_interval: 10\\n\"\n            \"conflict_log_path: /tmp/log.jsonl\\n\"\n            \"protected_tiers:\\n  - critical\\n\"\n        )\n\n        config = load_config(str(config_file))\n        assert config.authority_override_floor == 0.0\n\n    def test_goodhart_load_config_threshold_slightly_above_1(self, tmp_path):\n        \"\"\"Threshold value of 1.001 should be rejected as invalid.\"\"\"\n        config_file = tmp_path / \"config.yaml\"\n        config_file.write_text(\n            \"window_timeout_seconds: 1.0\\n\"\n            \"authority_override_floor: 0.5\\n\"\n            \"trust_delta_threshold: 1.001\\n\"\n            \"checkpoint_interval: 10\\n\"\n            \"conflict_log_path: /tmp/log.jsonl\\n\"\n            \"protected_tiers:\\n  - critical\\n\"\n        )\n\n        with pytest.raises(Exception) as exc_info:\n            load_config(str(config_file))\n        error_str = str(exc_info.value).lower()\n        assert \"config\" in error_str or \"valid\" in error_str or \"threshold\" in error_str\n\n    def test_goodhart_load_config_negative_threshold(self, tmp_path):\n        \"\"\"Negative threshold value should be rejected as invalid.\"\"\"\n        config_file = tmp_path / \"config.yaml\"\n        config_file.write_text(\n            \"window_timeout_seconds: 1.0\\n\"\n            \"authority_override_floor: -0.01\\n\"\n            \"trust_delta_threshold: 0.5\\n\"\n            \"checkpoint_interval: 10\\n\"\n            \"conflict_log_path: /tmp/log.jsonl\\n\"\n            \"protected_tiers:\\n  - critical\\n\"\n        )\n\n        with pytest.raises(Exception):\n            load_config(str(config_file))\n\n    def test_goodhart_load_config_window_timeout_at_0_1(self, tmp_path):\n        \"\"\"window_timeout_seconds at exactly 0.1 should be valid (minimum allowed).\"\"\"\n        config_file = tmp_path / \"config.yaml\"\n        config_file.write_text(\n            \"window_timeout_seconds: 0.1\\n\"\n            \"authority_override_floor: 0.5\\n\"\n            \"trust_delta_threshold: 0.5\\n\"\n            \"checkpoint_interval: 10\\n\"\n            \"conflict_log_path: /tmp/log.jsonl\\n\"\n            \"protected_tiers:\\n  - critical\\n\"\n        )\n\n        config = load_config(str(config_file))\n        assert config.window_timeout_seconds == pytest.approx(0.1)\n\n    def test_goodhart_load_config_window_timeout_0_09_rejected(self, tmp_path):\n        \"\"\"window_timeout_seconds at 0.09 should be rejected (below 0.1 minimum).\"\"\"\n        config_file = tmp_path / \"config.yaml\"\n        config_file.write_text(\n            \"window_timeout_seconds: 0.09\\n\"\n            \"authority_override_floor: 0.5\\n\"\n            \"trust_delta_threshold: 0.5\\n\"\n            \"checkpoint_interval: 10\\n\"\n            \"conflict_log_path: /tmp/log.jsonl\\n\"\n            \"protected_tiers:\\n  - critical\\n\"\n        )\n\n        with pytest.raises(Exception):\n            load_config(str(config_file))\n\n    def test_goodhart_load_config_checkpoint_interval_exactly_1(self, tmp_path):\n        \"\"\"checkpoint_interval of exactly 1 should be valid.\"\"\"\n        config_file = tmp_path / \"config.yaml\"\n        config_file.write_text(\n            \"window_timeout_seconds: 1.0\\n\"\n            \"authority_override_floor: 0.5\\n\"\n            \"trust_delta_threshold: 0.5\\n\"\n            \"checkpoint_interval: 1\\n\"\n            \"conflict_log_path: /tmp/log.jsonl\\n\"\n            \"protected_tiers:\\n  - critical\\n\"\n        )\n\n        config = load_config(str(config_file))\n        assert config.checkpoint_interval == 1\n"
+}

@@ -1,0 +1,631 @@
+{
+  "problem": "The Pact/Baton stack has no trust enforcement layer. Pact builds components against contracts and Baton orchestrates them into circuits, but nothing continuously verifies that nodes access only the data they declared, that their self-reported behavior matches observed I/O, or that proposed changes have a quantified blast radius. Without Arbiter, a node can silently read PII it never declared, self-report clean audits while leaking data through undeclared fields, or deploy changes that cascade through high-sensitivity data domains with no human gate. The result is an unauditable, ungated trust model where the only enforcement is the honor system.",
+  "appetite": "big",
+  "solution_breadboard": {
+    "places": [
+      {
+        "name": "CLI Entry",
+        "description": "Click-based CLI surface for all arbiter commands (init, register, trust, authority, blast-radius, soak, report, canary, watch, findings, conflicts)"
+      },
+      {
+        "name": "HTTP API",
+        "description": "Port 7700 JSON API serving Pact phase 8.5 and Baton slot validation — /register, /blast-radius, /trust, /authority, /canary, /report, /findings endpoints"
+      },
+      {
+        "name": "OTLP Subscriber",
+        "description": "gRPC server on port 4317 receiving OTLP spans from Baton adapter layer; enriches spans with arbiter.* attributes before forwarding"
+      },
+      {
+        "name": "Access Graph Store",
+        "description": "Ingested access_graph.json containing node dependency edges, per-node data_access declarations, and authority claims"
+      },
+      {
+        "name": "Trust Ledger",
+        "description": "Append-only JSONL file with SHA256 hash chain (every N=100 entries). Each entry: ts, node, event, weight, score_before, score_after, plus event-specific fields"
+      },
+      {
+        "name": "Authority Map",
+        "description": "Domain-to-node exclusive mapping derived from access_graph.json authority declarations. One authoritative node per domain, enforced at registration"
+      },
+      {
+        "name": "Classification Registry",
+        "description": "classifications.yaml mapping field_pattern (glob/regex) to tier (PUBLIC/PII/FINANCIAL/AUTH/COMPLIANCE), authoritative_node, and canary_pattern"
+      },
+      {
+        "name": "Trust Engine",
+        "description": "Computes trust_score = base_weight * age_factor * consistency_factor * taint_factor * review_factor * decay_factor. Reads ledger, writes new ledger entries. Floor 0.1 for non-tainted, 0.0 for tainted"
+      },
+      {
+        "name": "Consistency Analyzer",
+        "description": "Compares adapter-observed span I/O (ground truth) against node self-reported audit events (claims). Produces findings: CONSISTENT or INCONSISTENT with unexplained field details"
+      },
+      {
+        "name": "Access Auditor",
+        "description": "Walks OpenAPI response schemas at adapter slot time, maps fields to classification registry, produces structural access profile. Flags DECLARATION_GAP or BLOCK_SLOT"
+      },
+      {
+        "name": "Taint Detector",
+        "description": "Manages canary corpus per run_id. Injects synthetic fingerprinted records via adapter layer. Scans span outputs for canary fingerprints in unauthorized nodes"
+      },
+      {
+        "name": "Blast Radius Calculator",
+        "description": "BFS/DFS traversal of access graph edges from changed node. Classifies result as AUTO_MERGE / SOAK / HUMAN_GATE / HUMAN_GATE+legal_flag based on tier rules"
+      },
+      {
+        "name": "Soak Duration Computer",
+        "description": "Computes soak_duration = base_duration(tier) * trust_multiplier(score) * volume_confidence_factor(rate). Trust multiplier = 2.0 - score. Volume factor = max(1.0, sqrt(target/observed_rate))"
+      },
+      {
+        "name": "Conflict Resolver",
+        "description": "Three-step protocol: (1) authority check with override floor, (2) trust arbitration with delta threshold, (3) human escalation. Emits to Stigmergy on unresolvable"
+      },
+      {
+        "name": "Report Generator",
+        "description": "Assembles feedback report with sections: TRUST SUMMARY, CONSISTENCY, ACCESS, CONFLICTS, TAINT, BLAST RADIUS, OVERALL verdict (PROCEED/HOLD/BLOCK)"
+      },
+      {
+        "name": "Stigmergy Emitter",
+        "description": "Fire-and-forget Signal emission: source=arbiter, typed findings (consistency_violation, taint_escape, access_violation, conflict_unresolvable, trust_degradation)"
+      },
+      {
+        "name": "Human Gate",
+        "description": "Webhook notification (fire-and-forget POST) when gate triggers. Actual approval flows back through reset-taint CLI/API. block_on_gate config controls deploy blocking"
+      },
+      {
+        "name": "Config Loader",
+        "description": "Loads and validates arbiter.yaml via Pydantic model. All configurable values: registry paths, trust parameters, soak durations, OTLP ports, API port, human gate webhook"
+      }
+    ],
+    "affordances": [
+      {
+        "name": "arbiter init",
+        "description": "Creates registry directory, empty trust ledger, default arbiter.yaml"
+      },
+      {
+        "name": "arbiter register",
+        "description": "Ingests access_graph.json, validates authority exclusivity, populates authority map and access graph store"
+      },
+      {
+        "name": "arbiter trust show",
+        "description": "Displays current trust score, tier label, authority domains, and recent ledger history for a node"
+      },
+      {
+        "name": "arbiter trust reset-taint",
+        "description": "Clears taint lock for a node after human review; requires --review id"
+      },
+      {
+        "name": "arbiter authority show",
+        "description": "Displays full domain-to-node authority map"
+      },
+      {
+        "name": "arbiter blast-radius",
+        "description": "Computes and displays blast radius classification for a node version change"
+      },
+      {
+        "name": "arbiter soak compute",
+        "description": "Computes and displays soak duration for a node at a given data tier"
+      },
+      {
+        "name": "arbiter report",
+        "description": "Generates deterministic feedback report for a run_id"
+      },
+      {
+        "name": "arbiter canary inject",
+        "description": "Seeds canary corpus for specified tiers via adapter layer"
+      },
+      {
+        "name": "arbiter canary results",
+        "description": "Displays taint escape report for a run_id"
+      },
+      {
+        "name": "arbiter watch",
+        "description": "Starts OTLP gRPC receiver + HTTP API server in single process"
+      },
+      {
+        "name": "arbiter findings",
+        "description": "Lists consistency findings for a node"
+      },
+      {
+        "name": "arbiter conflicts",
+        "description": "Lists unresolved conflicts"
+      },
+      {
+        "name": "POST /register",
+        "description": "HTTP ingestion of access_graph.json"
+      },
+      {
+        "name": "POST /blast-radius",
+        "description": "HTTP blast radius computation"
+      },
+      {
+        "name": "GET /trust/<node_id>",
+        "description": "HTTP trust score, tier, last 20 ledger events"
+      },
+      {
+        "name": "POST /trust/reset-taint",
+        "description": "HTTP taint lock clearance with review_id"
+      },
+      {
+        "name": "GET /authority",
+        "description": "HTTP full authority map"
+      },
+      {
+        "name": "POST /canary/inject",
+        "description": "HTTP canary corpus seeding"
+      },
+      {
+        "name": "GET /canary/results/<run_id>",
+        "description": "HTTP taint escape report"
+      },
+      {
+        "name": "GET /report/<run_id>",
+        "description": "HTTP feedback report"
+      },
+      {
+        "name": "POST /findings",
+        "description": "HTTP endpoint receiving OTLP span JSON from Baton adapter"
+      },
+      {
+        "name": "receive OTLP spans",
+        "description": "gRPC endpoint accepting spans from Baton adapter layer"
+      },
+      {
+        "name": "enrich spans",
+        "description": "Adds arbiter.* attributes to OTLP spans before forwarding"
+      },
+      {
+        "name": "compute trust score",
+        "description": "Calculates trust_score from ledger entries using six-factor formula"
+      },
+      {
+        "name": "write ledger entry",
+        "description": "Appends trust event to JSONL ledger with hash chain integrity"
+      },
+      {
+        "name": "detect conflict",
+        "description": "Identifies two nodes producing different values for same field/domain in same circuit execution"
+      },
+      {
+        "name": "resolve conflict",
+        "description": "Executes three-step protocol: authority check, trust arbitration, human escalation"
+      },
+      {
+        "name": "compare span vs audit",
+        "description": "Diffs adapter-observed I/O against node self-reported audit events"
+      },
+      {
+        "name": "walk OpenAPI schema",
+        "description": "Maps response schema fields to classification registry tiers at slot time"
+      },
+      {
+        "name": "scan for canary fingerprint",
+        "description": "Checks span outputs for canary patterns in unauthorized node contexts"
+      },
+      {
+        "name": "traverse blast radius",
+        "description": "BFS/DFS over access graph edges from changed node to classify impact"
+      },
+      {
+        "name": "fire human gate webhook",
+        "description": "POSTs finding to configured webhook URL; does not block on response"
+      },
+      {
+        "name": "emit Stigmergy signal",
+        "description": "Fire-and-forget Signal emission to Stigmergy; failure does not affect Arbiter"
+      },
+      {
+        "name": "apply trust decay",
+        "description": "Writes decay event to ledger when idle cycles exceed zero; exponential decay with decay_lambda"
+      }
+    ],
+    "connections": [
+      {
+        "from_place": "CLI Entry",
+        "to_place": "Access Graph Store",
+        "affordance": "arbiter register",
+        "description": "Ingests access_graph.json, validates authority exclusivity, stores graph and authority map"
+      },
+      {
+        "from_place": "CLI Entry",
+        "to_place": "Trust Ledger",
+        "affordance": "arbiter init",
+        "description": "Creates empty ledger and registry directory"
+      },
+      {
+        "from_place": "CLI Entry",
+        "to_place": "Trust Engine",
+        "affordance": "arbiter trust show",
+        "description": "Queries trust engine for current node score and history"
+      },
+      {
+        "from_place": "CLI Entry",
+        "to_place": "Trust Engine",
+        "affordance": "arbiter trust reset-taint",
+        "description": "Clears taint lock via trust engine after review validation"
+      },
+      {
+        "from_place": "CLI Entry",
+        "to_place": "Blast Radius Calculator",
+        "affordance": "arbiter blast-radius",
+        "description": "Triggers blast radius computation for a node version"
+      },
+      {
+        "from_place": "CLI Entry",
+        "to_place": "Soak Duration Computer",
+        "affordance": "arbiter soak compute",
+        "description": "Computes soak duration for node and tier"
+      },
+      {
+        "from_place": "CLI Entry",
+        "to_place": "Report Generator",
+        "affordance": "arbiter report",
+        "description": "Generates feedback report for a run"
+      },
+      {
+        "from_place": "CLI Entry",
+        "to_place": "Taint Detector",
+        "affordance": "arbiter canary inject",
+        "description": "Seeds canary corpus via adapter layer"
+      },
+      {
+        "from_place": "CLI Entry",
+        "to_place": "Taint Detector",
+        "affordance": "arbiter canary results",
+        "description": "Retrieves taint escape report for a run"
+      },
+      {
+        "from_place": "CLI Entry",
+        "to_place": "OTLP Subscriber",
+        "affordance": "arbiter watch",
+        "description": "Starts gRPC receiver and HTTP API in single process"
+      },
+      {
+        "from_place": "CLI Entry",
+        "to_place": "Consistency Analyzer",
+        "affordance": "arbiter findings",
+        "description": "Lists consistency findings for a node"
+      },
+      {
+        "from_place": "CLI Entry",
+        "to_place": "Conflict Resolver",
+        "affordance": "arbiter conflicts",
+        "description": "Lists unresolved conflicts"
+      },
+      {
+        "from_place": "HTTP API",
+        "to_place": "Access Graph Store",
+        "affordance": "POST /register",
+        "description": "HTTP path for access graph ingestion"
+      },
+      {
+        "from_place": "HTTP API",
+        "to_place": "Blast Radius Calculator",
+        "affordance": "POST /blast-radius",
+        "description": "HTTP path for blast radius computation"
+      },
+      {
+        "from_place": "HTTP API",
+        "to_place": "Trust Engine",
+        "affordance": "GET /trust/<node_id>",
+        "description": "HTTP path for trust score query"
+      },
+      {
+        "from_place": "HTTP API",
+        "to_place": "Trust Engine",
+        "affordance": "POST /trust/reset-taint",
+        "description": "HTTP path for taint clearance"
+      },
+      {
+        "from_place": "HTTP API",
+        "to_place": "Authority Map",
+        "affordance": "GET /authority",
+        "description": "HTTP path for authority map query"
+      },
+      {
+        "from_place": "HTTP API",
+        "to_place": "Taint Detector",
+        "affordance": "POST /canary/inject",
+        "description": "HTTP path for canary seeding"
+      },
+      {
+        "from_place": "HTTP API",
+        "to_place": "Taint Detector",
+        "affordance": "GET /canary/results/<run_id>",
+        "description": "HTTP path for taint escape report"
+      },
+      {
+        "from_place": "HTTP API",
+        "to_place": "Report Generator",
+        "affordance": "GET /report/<run_id>",
+        "description": "HTTP path for feedback report"
+      },
+      {
+        "from_place": "HTTP API",
+        "to_place": "Consistency Analyzer",
+        "affordance": "POST /findings",
+        "description": "Receives OTLP span JSON from Baton adapter for consistency analysis"
+      },
+      {
+        "from_place": "OTLP Subscriber",
+        "to_place": "Consistency Analyzer",
+        "affordance": "receive OTLP spans",
+        "description": "Forwards received spans to consistency analyzer for comparison against audit events"
+      },
+      {
+        "from_place": "OTLP Subscriber",
+        "to_place": "Access Auditor",
+        "affordance": "receive OTLP spans",
+        "description": "Forwards received spans to access auditor for tier verification"
+      },
+      {
+        "from_place": "OTLP Subscriber",
+        "to_place": "Taint Detector",
+        "affordance": "scan for canary fingerprint",
+        "description": "Span outputs scanned for canary patterns in unauthorized contexts"
+      },
+      {
+        "from_place": "OTLP Subscriber",
+        "to_place": "Conflict Resolver",
+        "affordance": "detect conflict",
+        "description": "Detects conflicting values from multiple nodes for same field/domain"
+      },
+      {
+        "from_place": "Consistency Analyzer",
+        "to_place": "Trust Engine",
+        "affordance": "compare span vs audit",
+        "description": "Consistency outcomes feed trust score update cycle"
+      },
+      {
+        "from_place": "Consistency Analyzer",
+        "to_place": "Trust Ledger",
+        "affordance": "write ledger entry",
+        "description": "Consistency findings written as ledger events"
+      },
+      {
+        "from_place": "Access Auditor",
+        "to_place": "Classification Registry",
+        "affordance": "walk OpenAPI schema",
+        "description": "Maps response fields to classification tiers"
+      },
+      {
+        "from_place": "Access Auditor",
+        "to_place": "Trust Engine",
+        "affordance": "compute trust score",
+        "description": "Access violations feed trust score updates"
+      },
+      {
+        "from_place": "Taint Detector",
+        "to_place": "Trust Engine",
+        "affordance": "compute trust score",
+        "description": "Taint escape sets taint_factor to 0.0, score to 0.0"
+      },
+      {
+        "from_place": "Taint Detector",
+        "to_place": "Trust Ledger",
+        "affordance": "write ledger entry",
+        "description": "Taint escape recorded in ledger"
+      },
+      {
+        "from_place": "Trust Engine",
+        "to_place": "Trust Ledger",
+        "affordance": "write ledger entry",
+        "description": "All score changes recorded as append-only ledger entries"
+      },
+      {
+        "from_place": "Trust Engine",
+        "to_place": "Trust Ledger",
+        "affordance": "apply trust decay",
+        "description": "Decay events written to ledger when idle cycles detected"
+      },
+      {
+        "from_place": "Conflict Resolver",
+        "to_place": "Authority Map",
+        "affordance": "resolve conflict",
+        "description": "Step 1: checks authority map for domain ownership"
+      },
+      {
+        "from_place": "Conflict Resolver",
+        "to_place": "Trust Engine",
+        "affordance": "resolve conflict",
+        "description": "Step 2: compares trust scores with delta threshold"
+      },
+      {
+        "from_place": "Conflict Resolver",
+        "to_place": "Human Gate",
+        "affordance": "resolve conflict",
+        "description": "Step 3: escalates unresolvable conflicts to human review"
+      },
+      {
+        "from_place": "Conflict Resolver",
+        "to_place": "Stigmergy Emitter",
+        "affordance": "emit Stigmergy signal",
+        "description": "Unresolvable conflicts emitted as high-weight signals"
+      },
+      {
+        "from_place": "Blast Radius Calculator",
+        "to_place": "Access Graph Store",
+        "affordance": "traverse blast radius",
+        "description": "BFS/DFS over access graph edges from changed node"
+      },
+      {
+        "from_place": "Blast Radius Calculator",
+        "to_place": "Classification Registry",
+        "affordance": "traverse blast radius",
+        "description": "Classifies reached nodes by data tier for blast tier determination"
+      },
+      {
+        "from_place": "Blast Radius Calculator",
+        "to_place": "Soak Duration Computer",
+        "affordance": "arbiter soak compute",
+        "description": "SOAK-tier results include computed soak duration"
+      },
+      {
+        "from_place": "Blast Radius Calculator",
+        "to_place": "Human Gate",
+        "affordance": "fire human gate webhook",
+        "description": "HUMAN_GATE results trigger webhook notification"
+      },
+      {
+        "from_place": "Soak Duration Computer",
+        "to_place": "Trust Engine",
+        "affordance": "compute trust score",
+        "description": "Reads current trust score for trust_multiplier calculation"
+      },
+      {
+        "from_place": "Report Generator",
+        "to_place": "Trust Engine",
+        "affordance": "compute trust score",
+        "description": "Reads trust scores for TRUST SUMMARY section"
+      },
+      {
+        "from_place": "Report Generator",
+        "to_place": "Consistency Analyzer",
+        "affordance": "arbiter findings",
+        "description": "Reads consistency findings for CONSISTENCY section"
+      },
+      {
+        "from_place": "Report Generator",
+        "to_place": "Access Auditor",
+        "affordance": "arbiter findings",
+        "description": "Reads access findings for ACCESS section"
+      },
+      {
+        "from_place": "Report Generator",
+        "to_place": "Conflict Resolver",
+        "affordance": "arbiter conflicts",
+        "description": "Reads conflict status for CONFLICTS section"
+      },
+      {
+        "from_place": "Report Generator",
+        "to_place": "Taint Detector",
+        "affordance": "arbiter canary results",
+        "description": "Reads taint results for TAINT section"
+      },
+      {
+        "from_place": "Report Generator",
+        "to_place": "Blast Radius Calculator",
+        "affordance": "arbiter blast-radius",
+        "description": "Reads blast radius for BLAST RADIUS section"
+      },
+      {
+        "from_place": "Human Gate",
+        "to_place": "Stigmergy Emitter",
+        "affordance": "emit Stigmergy signal",
+        "description": "Gate triggers also emitted as Stigmergy signals"
+      },
+      {
+        "from_place": "Config Loader",
+        "to_place": "Trust Engine",
+        "affordance": "arbiter init",
+        "description": "Provides trust floor, decay_lambda, authority_override_floor, conflict_trust_delta_threshold"
+      },
+      {
+        "from_place": "Config Loader",
+        "to_place": "Soak Duration Computer",
+        "affordance": "arbiter init",
+        "description": "Provides base_durations and target_requests"
+      },
+      {
+        "from_place": "Config Loader",
+        "to_place": "OTLP Subscriber",
+        "affordance": "arbiter init",
+        "description": "Provides listen_port and http_port"
+      },
+      {
+        "from_place": "Config Loader",
+        "to_place": "HTTP API",
+        "affordance": "arbiter init",
+        "description": "Provides api.port"
+      },
+      {
+        "from_place": "Config Loader",
+        "to_place": "Human Gate",
+        "affordance": "arbiter init",
+        "description": "Provides webhook_url and block_on_gate"
+      },
+      {
+        "from_place": "OTLP Subscriber",
+        "to_place": "OTLP Subscriber",
+        "affordance": "enrich spans",
+        "description": "Adds arbiter.access.declared, arbiter.trust.score, arbiter.consistency, etc. before forwarding spans downstream"
+      }
+    ]
+  },
+  "solution_region_map": null,
+  "rabbit_holes": [
+    {
+      "description": "Trust ledger replay performance at scale: trust_score must be reproducible by replaying the full ledger (FA-A-006), but replaying ~100K entries on every score query could make the system unusable. The 3-second cold start target (AS011) constrains this further.",
+      "status": "patched",
+      "mitigation": "Cache computed trust scores in memory after replay on startup. During operation, maintain running scores updated incrementally on each new ledger write. Full replay only needed on cold start or audit. Accept 3s target for ≤100K entries; snapshot mechanism is explicitly out of scope for v1."
+    },
+    {
+      "description": "Hash chain integrity verification cost: SHA256 checksum every 100 entries means verifying ledger integrity requires reading and hashing the entire chain. Could become expensive and slow down startup or audit operations.",
+      "status": "patched",
+      "mitigation": "Verify hash chain only on cold start (arbiter watch) and on explicit audit command, not on every write. During normal operation, just append and compute the next link. Keep checksum interval configurable so it can be tuned."
+    },
+    {
+      "description": "OTLP span schema coupling: Arbiter depends on Baton's adapter layer emitting spans with specific structure (node identity, I/O fields, circuit execution ID). If Baton's span format changes, consistency analysis and conflict detection break silently.",
+      "status": "patched",
+      "mitigation": "Define a Pydantic model for the expected span attributes Arbiter requires. Validate incoming spans against this model and emit a clear SPAN_SCHEMA_MISMATCH finding rather than silently producing wrong results. Version the expected schema in arbiter.yaml."
+    },
+    {
+      "description": "Canary fingerprint false positives: canary patterns must be 'impossible in real data' but structurally valid for their tier. If field patterns are too broad (e.g., email-shaped canaries for PII), production data could accidentally match canary patterns, causing spurious taint escape findings.",
+      "status": "patched",
+      "mitigation": "Use a dedicated UUID-based namespace in canary fingerprints (e.g., emails at @canary-{uuid}.arbiter.invalid) that can never appear in real data. Canary patterns stored in classification registry must include the run_id for exact matching. Test canary patterns against a sample of real production data before injection."
+    },
+    {
+      "description": "Conflict detection timing: conflicts are detected when two nodes produce different values for the same field in the same circuit execution. But OTLP spans arrive asynchronously — Arbiter needs to correlate spans from the same execution, which requires buffering and windowing logic that could get complex.",
+      "status": "patched",
+      "mitigation": "Require Baton adapter spans to include a circuit_execution_id attribute. Buffer spans per execution_id with a configurable timeout window (default 30s). After window closes, run conflict detection on the buffered set. Keep the windowing logic simple — time-based expiry, no complex event processing."
+    },
+    {
+      "description": "Authority exclusivity enforcement across restarts: the authority map must enforce one node per domain, but if the map is rebuilt from access_graph.json on each registration, concurrent or rapid re-registrations could create race conditions.",
+      "status": "patched",
+      "mitigation": "Persist the authority map as a separate file in the registry directory. On registration, acquire a file lock, check for conflicts, write, and release. The authority map is the source of truth, not re-derived from the access graph on each read."
+    },
+    {
+      "description": "OpenAPI schema availability: access auditing walks OpenAPI response schemas at adapter slot time. But not all nodes may have OpenAPI specs, or specs may be incomplete/outdated. Missing schemas would leave access auditing blind.",
+      "status": "patched",
+      "mitigation": "If a node lacks an OpenAPI schema, emit an ACCESS_SCHEMA_MISSING finding with WARN severity. Do not block slot — absence of schema is a degraded-trust signal, not a hard failure. Feed the missing-schema event into the trust ledger as a negative consistency signal."
+    },
+    {
+      "description": "Stigmergy unavailability cascading: FA-A-023 says Stigmergy unavailability must not affect Arbiter, but if the Stigmergy client library blocks or has long timeouts on connection failure, it could stall span processing.",
+      "status": "patched",
+      "mitigation": "Wrap all Stigmergy emissions in a fire-and-forget pattern with a short timeout (1s). Use a background thread with a bounded queue for emission. If the queue is full, drop signals and log. Never block the main processing path on Stigmergy."
+    },
+    {
+      "description": "Trust score formula factor interactions: the six-factor multiplication (base_weight * age_factor * consistency_factor * taint_factor * review_factor * decay_factor) could produce unexpected behaviors. For example, a node with perfect consistency but many idle periods could have trust driven to floor purely by decay, making the system punish reliable-but-infrequent nodes.",
+      "status": "needs_review",
+      "mitigation": "Cap decay_factor with a minimum (e.g., 0.5) so idle decay alone cannot drive trust below 0.5 * other_factors. Document the interaction clearly. The decay_lambda and idle period thresholds in config allow operators to tune. Add a trust simulation CLI command in the future to let operators preview score trajectories."
+    },
+    {
+      "description": "Synchronous gRPC OTLP server throughput: the spec requires synchronous processing (no asyncio), but high-volume Baton circuits could produce thousands of spans per second. grpcio's thread pool may not keep up, causing span drops or backpressure.",
+      "status": "patched",
+      "mitigation": "Configure grpcio thread pool size in arbiter.yaml (default: 10 workers). Use an internal bounded queue between the gRPC handlers and the analysis pipeline. If the queue is full, respond with RESOURCE_EXHAUSTED and let Baton's OTLP exporter retry. Monitor queue depth as an Arbiter health metric."
+    },
+    {
+      "description": "Blast radius BFS/DFS on large access graphs: the spec says 'keep efficient for large circuits' but provides no bound on graph size. A deeply connected graph could make blast radius computation expensive, blocking API responses.",
+      "status": "patched",
+      "mitigation": "Set a configurable maximum traversal depth (default: 20 hops) and maximum visited nodes (default: 1000). If either limit is hit, return the partial result with a TRAVERSAL_LIMIT_REACHED flag and classify as HUMAN_GATE (conservative). Log the truncation."
+    },
+    {
+      "description": "Concurrent CLI and HTTP API writes to trust ledger: 'arbiter watch' runs both the gRPC subscriber and HTTP API in one process, but CLI commands like 'arbiter trust reset-taint' could be run in a separate process simultaneously, creating concurrent append writers to the same JSONL file.",
+      "status": "patched",
+      "mitigation": "Use file-level locking (fcntl/msvcrt) for all ledger appends. Each write acquires an exclusive lock, appends, flushes, and releases. The lock granularity is per-entry (not per-batch) to minimize contention. Document that only one arbiter watch process should run per registry directory."
+    }
+  ],
+  "no_gos": [
+    "Authority transfer / node decommissioning — v1 accepts this as a known limitation; no unregister or transfer command",
+    "Async/await patterns — threading via grpcio is fine but no asyncio event loops",
+    "Ledger snapshot/checkpoint mechanism for ledgers beyond ~100K entries — future iteration",
+    "Real-time dashboard or UI — Arbiter is CLI + HTTP API + OTLP sidecar only",
+    "Direct data store writes for canary injection — canaries flow only through the adapter layer",
+    "Arbiter as critical path — if the sidecar is down Baton circuits continue without enforcement",
+    "Custom storage backends for the trust ledger — JSONL on local disk only for v1",
+    "Multi-instance / distributed Arbiter — single sidecar process per Baton instance",
+    "Trust score simulation or what-if tooling — future iteration",
+    "Automatic taint clearance — taint always requires explicit human review via reset-taint"
+  ],
+  "fit_check": null,
+  "status": "shaped"
+}

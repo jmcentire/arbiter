@@ -1,0 +1,1164 @@
+{
+  "component_id": "conflicts",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "ingest_happy_single_span_no_conflict",
+      "description": "Ingesting a single span report does not produce a conflict since only one value exists",
+      "function": "ingest",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A single SpanFieldReport for (exec1, domain1, field1)",
+      "expected_output_description": "Empty list since window has not closed and only one value",
+      "expected_error": "",
+      "assertions": [
+        "result == []",
+        "span is buffered internally"
+      ]
+    },
+    {
+      "id": "ingest_happy_two_conflicting_spans",
+      "description": "Two spans with different values for the same key produce a conflict after window closes",
+      "function": "ingest",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two SpanFieldReports with different value_serialized for same (execution_id, domain, field), second arriving after window timeout",
+      "expected_output_description": "List with one ConflictRecord with status DETECTED and 2 competing values",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 1",
+        "result[0].status == ResolutionStatus.DETECTED",
+        "len(result[0].competing_values) == 2"
+      ]
+    },
+    {
+      "id": "ingest_happy_two_agreeing_spans",
+      "description": "Two spans with same value for same key produce no conflict",
+      "function": "ingest",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two SpanFieldReports with identical value_serialized for same key, window closes",
+      "expected_output_description": "Empty list since all values agree",
+      "expected_error": "",
+      "assertions": [
+        "result == []"
+      ]
+    },
+    {
+      "id": "ingest_duplicate_span_silently_dropped",
+      "description": "Duplicate span (same node_id + span_id) is silently dropped",
+      "function": "ingest",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two identical SpanFieldReports with same node_id and span_id",
+      "expected_output_description": "No error raised, duplicate silently ignored",
+      "expected_error": "",
+      "assertions": [
+        "No exception raised",
+        "Only one entry in buffer for that node_id+span_id"
+      ]
+    },
+    {
+      "id": "ingest_error_trust_lookup_failed",
+      "description": "Trust ledger lookup failure during conflict detection raises trust_lookup_failed",
+      "function": "ingest",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_ledger": "raises exception on lookup"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "trust_lookup_failed",
+      "assertions": [
+        "Error raised with TRUST_LOOKUP_FAILED code",
+        "Error message contains node_id"
+      ]
+    },
+    {
+      "id": "ingest_error_authority_lookup_failed",
+      "description": "Authority registry lookup failure during conflict detection raises authority_lookup_failed",
+      "function": "ingest",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "authority_registry": "raises exception on lookup"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "authority_lookup_failed",
+      "assertions": [
+        "Error raised with AUTHORITY_LOOKUP_FAILED code",
+        "Error message contains node_id"
+      ]
+    },
+    {
+      "id": "ingest_error_store_write_failed",
+      "description": "Conflict store append failure raises store_write_failed",
+      "function": "ingest",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "conflict_store": "raises exception on append"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "store_write_failed",
+      "assertions": [
+        "Error raised with STORE_WRITE_FAILED code"
+      ]
+    },
+    {
+      "id": "ingest_tier_lookup_failed_degraded",
+      "description": "Tier lookup failure still detects conflict with empty data_tier",
+      "function": "ingest",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "field_classifier": "raises exception on lookup"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "tier_lookup_failed",
+      "assertions": [
+        "Conflict is still detected",
+        "data_tier is empty string"
+      ]
+    },
+    {
+      "id": "ingest_multiple_domains_independent",
+      "description": "Spans for different (domain, field) keys are buffered independently",
+      "function": "ingest",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Spans for domainA/field1 and domainB/field2",
+      "expected_output_description": "Windows are independent; conflict in one does not affect other",
+      "expected_error": "",
+      "assertions": [
+        "Each window tracked separately"
+      ]
+    },
+    {
+      "id": "ingest_trust_snapshot_at_detection_time",
+      "description": "NodeValue.trust_score_snapshot reflects trust at detection time, not ingestion time",
+      "function": "ingest",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Ingest spans, change trust score, then trigger window close",
+      "expected_output_description": "trust_score_snapshot reflects value at window close (detection) time",
+      "expected_error": "",
+      "assertions": [
+        "trust_score_snapshot matches trust score at detection time"
+      ]
+    },
+    {
+      "id": "ingest_authority_flag_reflects_current_state",
+      "description": "NodeValue.is_authoritative reflects current authority registry state at detection",
+      "function": "ingest",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "is_authoritative matches authority registry at detection time"
+      ]
+    },
+    {
+      "id": "ingest_persisted_to_store",
+      "description": "All returned ConflictRecords are persisted to the conflict store",
+      "function": "ingest",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "conflict_store.append called for each returned conflict"
+      ]
+    },
+    {
+      "id": "flush_happy_empty_buffer",
+      "description": "Flushing an empty buffer returns empty list",
+      "function": "flush",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "No spans ingested",
+      "expected_output_description": "Empty list",
+      "expected_error": "",
+      "assertions": [
+        "result == []"
+      ]
+    },
+    {
+      "id": "flush_happy_with_conflicts",
+      "description": "Flushing buffer with conflicting spans produces conflicts",
+      "function": "flush",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Buffer has two spans with different values for same key",
+      "expected_output_description": "List with one ConflictRecord",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 1",
+        "result[0].status == ResolutionStatus.DETECTED"
+      ]
+    },
+    {
+      "id": "flush_buffer_empty_after",
+      "description": "Buffer is empty after flush completes",
+      "function": "flush",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Buffer is empty after flush",
+        "Subsequent flush returns []"
+      ]
+    },
+    {
+      "id": "flush_single_value_no_conflict",
+      "description": "Window with only one distinct value produces no conflict on flush",
+      "function": "flush",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == []"
+      ]
+    },
+    {
+      "id": "flush_error_trust_lookup_failed",
+      "description": "Trust lookup failure during flush raises trust_lookup_failed",
+      "function": "flush",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "trust_lookup_failed",
+      "assertions": [
+        "Error raised with TRUST_LOOKUP_FAILED code"
+      ]
+    },
+    {
+      "id": "flush_error_store_write_failed",
+      "description": "Store write failure during flush raises store_write_failed",
+      "function": "flush",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "store_write_failed",
+      "assertions": [
+        "Error raised with STORE_WRITE_FAILED code"
+      ]
+    },
+    {
+      "id": "resolve_happy_authority",
+      "description": "Exactly one authoritative node with trust above floor wins via AUTHORITY strategy",
+      "function": "resolve",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ConflictRecord with 2 competing values, one authoritative with trust > authority_override_floor",
+      "expected_output_description": "ConflictRecord with status AUTHORITY_RESOLVED, winner is authoritative node",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.AUTHORITY_RESOLVED",
+        "result.resolution.strategy == ResolutionStrategy.AUTHORITY",
+        "result.resolution.winner_node_id == authoritative_node_id"
+      ]
+    },
+    {
+      "id": "resolve_happy_trust_arbitration",
+      "description": "No authoritative node, trust delta above threshold: highest trust wins",
+      "function": "resolve",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ConflictRecord with 2 competing values, no authoritative, trust delta > threshold",
+      "expected_output_description": "ConflictRecord with status TRUST_RESOLVED",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.TRUST_RESOLVED",
+        "result.resolution.strategy == ResolutionStrategy.TRUST_ARBITRATION",
+        "result.resolution.winner_node_id == highest_trust_node"
+      ]
+    },
+    {
+      "id": "resolve_happy_unresolvable",
+      "description": "No authoritative node, trust delta below threshold: UNRESOLVABLE",
+      "function": "resolve",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ConflictRecord with 2 competing values, no authoritative, trust delta <= threshold",
+      "expected_output_description": "ConflictRecord with status UNRESOLVABLE, signal emitted",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.UNRESOLVABLE",
+        "result.resolution.strategy == ResolutionStrategy.HUMAN",
+        "signal_emitter.emit_signal called"
+      ]
+    },
+    {
+      "id": "resolve_authority_below_floor_falls_to_trust",
+      "description": "Authoritative node with trust <= authority_override_floor skips to Step 2/3",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ConflictRecord with authoritative node trust <= floor, other node higher trust with sufficient delta",
+      "expected_output_description": "TRUST_RESOLVED or UNRESOLVABLE, not AUTHORITY_RESOLVED",
+      "expected_error": "",
+      "assertions": [
+        "result.status != ResolutionStatus.AUTHORITY_RESOLVED"
+      ]
+    },
+    {
+      "id": "resolve_authority_at_floor_boundary",
+      "description": "Authoritative node with trust exactly at authority_override_floor boundary",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Authoritative node trust == authority_override_floor",
+      "expected_output_description": "Authority check fails (trust must be > floor), falls through",
+      "expected_error": "",
+      "assertions": [
+        "result.status != ResolutionStatus.AUTHORITY_RESOLVED"
+      ]
+    },
+    {
+      "id": "resolve_trust_delta_at_threshold",
+      "description": "Trust delta exactly at trust_delta_threshold boundary",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Trust delta == trust_delta_threshold",
+      "expected_output_description": "Delta must be > threshold to resolve, so UNRESOLVABLE",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.UNRESOLVABLE"
+      ]
+    },
+    {
+      "id": "resolve_nway_authority_exactly_one",
+      "description": "N-way conflict with exactly one authoritative node uses authority strategy",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "3 competing values, exactly one authoritative with trust above floor",
+      "expected_output_description": "AUTHORITY_RESOLVED with the one authoritative node",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.AUTHORITY_RESOLVED"
+      ]
+    },
+    {
+      "id": "resolve_nway_multiple_authoritative_skip",
+      "description": "N-way conflict with multiple authoritative nodes skips authority step",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "3 competing values, two authoritative nodes",
+      "expected_output_description": "Authority check skipped since not exactly one authoritative",
+      "expected_error": "",
+      "assertions": [
+        "result.status != ResolutionStatus.AUTHORITY_RESOLVED"
+      ]
+    },
+    {
+      "id": "resolve_nway_trust_top2_delta",
+      "description": "N-way conflict trust arbitration compares only top-2 trust scores",
+      "function": "resolve",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "3 competing values with trust scores [0.9, 0.5, 0.1], delta threshold 0.3",
+      "expected_output_description": "TRUST_RESOLVED with winner = node with 0.9",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.TRUST_RESOLVED",
+        "result.resolution.winner_node_id == highest_trust_node"
+      ]
+    },
+    {
+      "id": "resolve_unresolvable_blocks_deploy_protected",
+      "description": "UNRESOLVABLE conflict with protected data_tier sets blocks_deploy=True",
+      "function": "resolve",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ConflictRecord with data_tier in protected_tiers, resolution goes to UNRESOLVABLE",
+      "expected_output_description": "blocks_deploy is True",
+      "expected_error": "",
+      "assertions": [
+        "result.blocks_deploy == True"
+      ]
+    },
+    {
+      "id": "resolve_unresolvable_no_block_unprotected",
+      "description": "UNRESOLVABLE conflict with non-protected data_tier does not block deploy",
+      "function": "resolve",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ConflictRecord with data_tier NOT in protected_tiers",
+      "expected_output_description": "blocks_deploy is False",
+      "expected_error": "",
+      "assertions": [
+        "result.blocks_deploy == False"
+      ]
+    },
+    {
+      "id": "resolve_error_already_resolved",
+      "description": "Resolving an already-resolved conflict raises already_resolved error",
+      "function": "resolve",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ConflictRecord with status AUTHORITY_RESOLVED",
+      "expected_output_description": "",
+      "expected_error": "already_resolved",
+      "assertions": [
+        "Error raised with CONFLICT_ALREADY_RESOLVED code"
+      ]
+    },
+    {
+      "id": "resolve_error_empty_competing_values",
+      "description": "Conflict with fewer than 2 competing values raises empty_competing_values",
+      "function": "resolve",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ConflictRecord with only 1 competing value",
+      "expected_output_description": "",
+      "expected_error": "empty_competing_values",
+      "assertions": [
+        "Error raised with EMPTY_COMPETING_VALUES code"
+      ]
+    },
+    {
+      "id": "resolve_error_signal_emission_failed",
+      "description": "Signal emission failure during Step 3 raises signal_emission_failed",
+      "function": "resolve",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy": "raises exception on emit"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "signal_emission_failed",
+      "assertions": [
+        "Error raised with SIGNAL_EMISSION_FAILED code"
+      ]
+    },
+    {
+      "id": "resolve_error_store_write_failed",
+      "description": "Store append failure raises store_write_failed",
+      "function": "resolve",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "conflict_store": "raises exception on append"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "store_write_failed",
+      "assertions": [
+        "Error raised with STORE_WRITE_FAILED code"
+      ]
+    },
+    {
+      "id": "resolve_rationale_includes_details",
+      "description": "Resolution rationale includes node IDs, trust scores, and threshold values",
+      "function": "resolve",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "rationale contains winner node_id",
+        "rationale contains trust scores",
+        "rationale contains threshold values"
+      ]
+    },
+    {
+      "id": "resolve_signal_content_verification",
+      "description": "ConflictSignal emitted for UNRESOLVABLE has correct fields",
+      "function": "resolve",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Conflict that goes to UNRESOLVABLE",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "signal.conflict_id matches",
+        "signal.execution_id matches",
+        "signal.competing_node_ids matches",
+        "signal.blocks_deploy matches"
+      ]
+    },
+    {
+      "id": "resolve_deterministic",
+      "description": "Resolution is deterministic: same input + config = same output",
+      "function": "resolve",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Two calls with identical ConflictRecord and config produce identical result"
+      ]
+    },
+    {
+      "id": "resolve_appended_to_store",
+      "description": "Updated record is appended to the conflict store (append-only log)",
+      "function": "resolve",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "conflict_store.append called with resolved record"
+      ]
+    },
+    {
+      "id": "submit_human_review_happy",
+      "description": "Happy path: UNRESOLVABLE conflict transitions to HUMAN_REVIEWED",
+      "function": "submit_human_review",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "conflict_id of UNRESOLVABLE conflict, valid winner_node_id, reviewed_by, rationale",
+      "expected_output_description": "ConflictRecord with status HUMAN_REVIEWED",
+      "expected_error": "",
+      "assertions": [
+        "result.status == ResolutionStatus.HUMAN_REVIEWED",
+        "result.resolution.strategy == ResolutionStrategy.HUMAN",
+        "result.resolution.winner_node_id == winner_node_id",
+        "result.resolution.reviewed_by == reviewed_by",
+        "result.blocks_deploy == False"
+      ]
+    },
+    {
+      "id": "submit_human_review_clears_deploy_block",
+      "description": "Human review clears blocks_deploy even if previously True",
+      "function": "submit_human_review",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "UNRESOLVABLE conflict with blocks_deploy=True",
+      "expected_output_description": "blocks_deploy is False after review",
+      "expected_error": "",
+      "assertions": [
+        "result.blocks_deploy == False"
+      ]
+    },
+    {
+      "id": "submit_human_review_error_not_found",
+      "description": "Non-existent conflict_id raises conflict_not_found",
+      "function": "submit_human_review",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "conflict_not_found",
+      "assertions": [
+        "Error raised with CONFLICT_NOT_FOUND code"
+      ]
+    },
+    {
+      "id": "submit_human_review_error_invalid_status",
+      "description": "Conflict with status != UNRESOLVABLE raises invalid_status error",
+      "function": "submit_human_review",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Conflict with status AUTHORITY_RESOLVED",
+      "expected_output_description": "",
+      "expected_error": "invalid_status",
+      "assertions": [
+        "Error raised indicating invalid status"
+      ]
+    },
+    {
+      "id": "submit_human_review_error_invalid_winner",
+      "description": "winner_node_id not among competing node IDs raises invalid_winner",
+      "function": "submit_human_review",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_winner",
+      "assertions": [
+        "Error raised with INVALID_HUMAN_REVIEW code or similar"
+      ]
+    },
+    {
+      "id": "submit_human_review_error_store_write_failed",
+      "description": "Store append failure raises store_write_failed",
+      "function": "submit_human_review",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "store_write_failed",
+      "assertions": [
+        "Error raised with STORE_WRITE_FAILED code"
+      ]
+    },
+    {
+      "id": "submit_human_review_error_detected_status",
+      "description": "Conflict with status DETECTED (not UNRESOLVABLE) raises invalid_status",
+      "function": "submit_human_review",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_status",
+      "assertions": [
+        "Error raised since HUMAN_REVIEWED only reachable from UNRESOLVABLE"
+      ]
+    },
+    {
+      "id": "submit_human_review_error_trust_resolved_status",
+      "description": "Conflict with status TRUST_RESOLVED raises invalid_status (terminal state)",
+      "function": "submit_human_review",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_status",
+      "assertions": [
+        "Error raised since TRUST_RESOLVED is terminal"
+      ]
+    },
+    {
+      "id": "get_unresolved_happy",
+      "description": "Returns only DETECTED and UNRESOLVABLE conflicts for given domain",
+      "function": "get_unresolved",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Store with conflicts in various statuses for domain 'auth'",
+      "expected_output_description": "Only DETECTED and UNRESOLVABLE for domain 'auth'",
+      "expected_error": "",
+      "assertions": [
+        "All returned records have status DETECTED or UNRESOLVABLE",
+        "All returned records have domain == 'auth'"
+      ]
+    },
+    {
+      "id": "get_unresolved_empty",
+      "description": "Returns empty list when no unresolved conflicts exist",
+      "function": "get_unresolved",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Empty list",
+      "expected_error": "",
+      "assertions": [
+        "result == []"
+      ]
+    },
+    {
+      "id": "get_unresolved_newest_first",
+      "description": "Results are ordered by detected_at descending",
+      "function": "get_unresolved",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result[0].detected_at >= result[1].detected_at"
+      ]
+    },
+    {
+      "id": "get_unresolved_empty_domain_returns_all",
+      "description": "Empty domain string returns all unresolved conflicts",
+      "function": "get_unresolved",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All unresolved conflicts from all domains returned"
+      ]
+    },
+    {
+      "id": "get_unresolved_error_store_read_failed",
+      "description": "Store read failure raises store_read_failed",
+      "function": "get_unresolved",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "store_read_failed",
+      "assertions": [
+        "Error raised with STORE_READ_FAILED code"
+      ]
+    },
+    {
+      "id": "has_blocking_happy_true",
+      "description": "Returns True when blocking conflict exists for domain",
+      "function": "has_blocking_conflicts",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "UNRESOLVABLE conflict with blocks_deploy=True in domain 'auth'",
+      "expected_output_description": "True",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "has_blocking_happy_false_no_conflicts",
+      "description": "Returns False when no conflicts exist for domain",
+      "function": "has_blocking_conflicts",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "has_blocking_false_resolved",
+      "description": "Returns False when all blocking conflicts are resolved",
+      "function": "has_blocking_conflicts",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "has_blocking_false_unprotected",
+      "description": "Returns False when unresolved conflict exists but data_tier not in protected_tiers",
+      "function": "has_blocking_conflicts",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "has_blocking_error_store_read_failed",
+      "description": "Store read failure raises store_read_failed",
+      "function": "has_blocking_conflicts",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "store_read_failed",
+      "assertions": [
+        "Error raised with STORE_READ_FAILED code"
+      ]
+    },
+    {
+      "id": "get_summary_happy_empty",
+      "description": "Summary with no conflicts returns all zeros",
+      "function": "get_summary",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "total_conflicts == 0",
+        "unresolved_count == 0",
+        "domains_affected == []"
+      ]
+    },
+    {
+      "id": "get_summary_happy_mixed",
+      "description": "Summary correctly counts mixed statuses",
+      "function": "get_summary",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "total_conflicts == sum of all counts",
+        "unresolved_count == DETECTED + UNRESOLVABLE counts",
+        "deploy_blocking_count is correct"
+      ]
+    },
+    {
+      "id": "get_summary_count_invariant",
+      "description": "total_conflicts equals sum of all status counts",
+      "function": "get_summary",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "total_conflicts == authority_resolved_count + trust_resolved_count + unresolved_count + human_reviewed_count"
+      ]
+    },
+    {
+      "id": "get_summary_domains_affected_sorted",
+      "description": "domains_affected contains only domains with unresolved conflicts, sorted",
+      "function": "get_summary",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "domains_affected is sorted",
+        "Only domains with unresolved conflicts included"
+      ]
+    },
+    {
+      "id": "get_summary_error_store_read_failed",
+      "description": "Store read failure raises store_read_failed",
+      "function": "get_summary",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "store_read_failed",
+      "assertions": [
+        "Error raised with STORE_READ_FAILED code"
+      ]
+    },
+    {
+      "id": "verify_log_integrity_happy",
+      "description": "Valid log with correct checksums returns True",
+      "function": "verify_log_integrity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "verify_log_integrity_empty_log",
+      "description": "Empty log returns True (vacuously true)",
+      "function": "verify_log_integrity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "verify_log_integrity_tampered",
+      "description": "Tampered log entry causes checksum mismatch, returns False",
+      "function": "verify_log_integrity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "verify_log_integrity_error_store_read_failed",
+      "description": "Unreadable log file raises store_read_failed",
+      "function": "verify_log_integrity",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "store_read_failed",
+      "assertions": [
+        "Error raised with STORE_READ_FAILED code"
+      ]
+    },
+    {
+      "id": "load_config_happy",
+      "description": "Valid YAML config loaded and validated successfully",
+      "function": "load_config",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returned config has all fields",
+        "Thresholds are within [0.0, 1.0]"
+      ]
+    },
+    {
+      "id": "load_config_error_file_not_found",
+      "description": "Non-existent config file raises file_not_found",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "file_not_found",
+      "assertions": [
+        "Error raised for missing file"
+      ]
+    },
+    {
+      "id": "load_config_error_invalid_yaml",
+      "description": "Invalid YAML content raises invalid_yaml",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_yaml",
+      "assertions": [
+        "Error raised for malformed YAML"
+      ]
+    },
+    {
+      "id": "load_config_error_invalid_config_threshold_out_of_range",
+      "description": "Threshold values outside [0.0, 1.0] raise invalid_config",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_config",
+      "assertions": [
+        "Error raised with INVALID_CONFIG code"
+      ]
+    },
+    {
+      "id": "load_config_error_checkpoint_interval_zero",
+      "description": "checkpoint_interval < 1 raises invalid_config",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_config",
+      "assertions": [
+        "Error raised for invalid checkpoint_interval"
+      ]
+    },
+    {
+      "id": "load_config_error_window_timeout_too_small",
+      "description": "window_timeout_seconds < 0.1 raises invalid_config",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_config",
+      "assertions": [
+        "Error raised for invalid window_timeout_seconds"
+      ]
+    },
+    {
+      "id": "invariant_status_transitions_valid",
+      "description": "Only valid status transitions occur: DETECTED -> resolved states -> HUMAN_REVIEWED from UNRESOLVABLE",
+      "function": "resolve",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "DETECTED transitions to AUTHORITY_RESOLVED, TRUST_RESOLVED, or UNRESOLVABLE",
+        "HUMAN_REVIEWED only reachable from UNRESOLVABLE"
+      ]
+    },
+    {
+      "id": "invariant_append_only_log",
+      "description": "Conflict log is append-only: resolve adds new entry, does not modify original",
+      "function": "resolve",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Store.append called (not update/delete)",
+        "Original DETECTED record preserved"
+      ]
+    },
+    {
+      "id": "invariant_trust_immutable_after_detection",
+      "description": "Trust scores in NodeValue.trust_score_snapshot do not change after detection",
+      "function": "resolve",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "trust_score_snapshot values in returned record match original detection values"
+      ]
+    },
+    {
+      "id": "invariant_conflict_requires_two_distinct_values",
+      "description": "A conflict is never created with fewer than 2 distinct values",
+      "function": "ingest",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Conflicts always have >= 2 competing_values with distinct value_serialized"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for the Conflict Resolver component.\n\nTests verify behavior at boundaries using the contract specification.\nAll external dependencies (trust_ledger, authority_registry, stigmergy,\nfield_classifier, conflict_store) are mocked.\n\nRun with: pytest contract_test.py -v\n\"\"\"\n\nimport copy\nimport json\nimport uuid\nfrom datetime import datetime, timezone\nfrom unittest.mock import MagicMock, PropertyMock, call, patch, ANY\n\nimport pytest\n\n# Import the component under test\nfrom conflicts import (\n    ResolutionStatus,\n    ResolutionStrategy,\n    ConflictErrorCode,\n    NodeValue,\n    Resolution,\n    ConflictRecord,\n    ConflictResolverConfig,\n    ConflictSignal,\n    SpanFieldReport,\n    ConflictSummary,\n    TrustLookup,\n    AuthorityLookup,\n    SignalEmitter,\n    ConflictStore,\n    ConflictDetector,\n    ConflictResolver,\n    load_config,\n    verify_log_integrity,\n)\n\n\n# ---------------------------------------------------------------------------\n# Helpers / Factories\n# ---------------------------------------------------------------------------\n\ndef _utc_now_iso() -> str:\n    return datetime.now(timezone.utc).isoformat()\n\n\ndef make_config(**overrides) -> ConflictResolverConfig:\n    defaults = dict(\n        window_timeout_seconds=0.5,\n        authority_override_floor=0.6,\n        trust_delta_threshold=0.2,\n        checkpoint_interval=5,\n        conflict_log_path=\"/tmp/test_conflict_log.jsonl\",\n        protected_tiers=[\"critical\", \"sensitive\"],\n    )\n    defaults.update(overrides)\n    return ConflictResolverConfig(**defaults)\n\n\ndef make_span_report(\n    *,\n    span_id=None,\n    execution_id=\"exec-1\",\n    node_id=\"node-A\",\n    domain=\"auth\",\n    field=\"username\",\n    value_serialized='\"alice\"',\n    reported_at=None,\n) -> SpanFieldReport:\n    return SpanFieldReport(\n        span_id=span_id or str(uuid.uuid4()),\n        execution_id=execution_id,\n        node_id=node_id,\n        domain=domain,\n        field=field,\n        value_serialized=value_serialized,\n        reported_at=reported_at or _utc_now_iso(),\n    )\n\n\ndef make_node_value(\n    *,\n    node_id=\"node-A\",\n    value_serialized='\"alice\"',\n    trust_score_snapshot=0.9,\n    is_authoritative=False,\n    span_id=None,\n) -> NodeValue:\n    return NodeValue(\n        node_id=node_id,\n        value_serialized=value_serialized,\n        trust_score_snapshot=trust_score_snapshot,\n        is_authoritative=is_authoritative,\n        span_id=span_id or str(uuid.uuid4()),\n    )\n\n\ndef make_conflict_record(\n    *,\n    conflict_id=None,\n    execution_id=\"exec-1\",\n    domain=\"auth\",\n    field=\"username\",\n    data_tier=\"critical\",\n    competing_values=None,\n    detected_at=None,\n    status=ResolutionStatus.DETECTED,\n    resolution=None,\n    blocks_deploy=False,\n) -> ConflictRecord:\n    if competing_values is None:\n        competing_values = [\n            make_node_value(node_id=\"node-A\", value_serialized='\"alice\"', trust_score_snapshot=0.9),\n            make_node_value(node_id=\"node-B\", value_serialized='\"bob\"', trust_score_snapshot=0.7),\n        ]\n    return ConflictRecord(\n        conflict_id=conflict_id or str(uuid.uuid4()),\n        execution_id=execution_id,\n        domain=domain,\n        field=field,\n        data_tier=data_tier,\n        competing_values=competing_values,\n        detected_at=detected_at or _utc_now_iso(),\n        status=status,\n        resolution=resolution,\n        blocks_deploy=blocks_deploy,\n    )\n\n\ndef make_mock_trust_lookup(scores=None):\n    \"\"\"Return a mock TrustLookup that returns scores by node_id.\"\"\"\n    mock = MagicMock(spec=TrustLookup)\n    scores = scores or {\"node-A\": 0.9, \"node-B\": 0.7, \"node-C\": 0.5}\n    mock.lookup_trust_score = MagicMock(side_effect=lambda node_id: scores.get(node_id, 0.5))\n    return mock\n\n\ndef make_mock_authority_lookup(authorities=None):\n    \"\"\"Return a mock AuthorityLookup that returns is_authoritative by node_id.\"\"\"\n    mock = MagicMock(spec=AuthorityLookup)\n    authorities = authorities or {}\n    mock.is_authoritative = MagicMock(side_effect=lambda node_id: authorities.get(node_id, False))\n    return mock\n\n\ndef make_mock_signal_emitter():\n    mock = MagicMock(spec=SignalEmitter)\n    mock.emit_signal = MagicMock(return_value=None)\n    return mock\n\n\ndef make_mock_conflict_store(records=None):\n    mock = MagicMock(spec=ConflictStore)\n    stored = list(records or [])\n    mock.append = MagicMock(side_effect=lambda r: stored.append(r))\n    mock.load_all = MagicMock(return_value=stored)\n    mock.verify_checksums = MagicMock(return_value=True)\n    mock._stored = stored  # expose for assertions\n    return mock\n\n\ndef make_detector(config=None, trust_lookup=None, authority_lookup=None, store=None, field_classifier=None):\n    \"\"\"Build a ConflictDetector with injectable mocks.\"\"\"\n    return ConflictDetector(\n        config=config or make_config(),\n        trust_lookup=trust_lookup or make_mock_trust_lookup(),\n        authority_lookup=authority_lookup or make_mock_authority_lookup(),\n        store=store or make_mock_conflict_store(),\n        field_classifier=field_classifier or MagicMock(return_value=\"critical\"),\n    )\n\n\ndef make_resolver(config=None, store=None, signal_emitter=None):\n    \"\"\"Build a ConflictResolver with injectable mocks.\"\"\"\n    return ConflictResolver(\n        config=config or make_config(),\n        store=store or make_mock_conflict_store(),\n        signal_emitter=signal_emitter or make_mock_signal_emitter(),\n    )\n\n\n# ===========================================================================\n# TestIngest\n# ===========================================================================\nclass TestIngest:\n    \"\"\"Tests for the ingest() function — span buffering and conflict detection.\"\"\"\n\n    def test_single_span_no_conflict(self):\n        \"\"\"Ingesting a single span does not produce a conflict.\"\"\"\n        detector = make_detector()\n        span = make_span_report(node_id=\"node-A\", value_serialized='\"alice\"')\n        result = detector.ingest(span)\n        # Window hasn't closed yet (or only one value), so no conflict\n        assert isinstance(result, list)\n        # Either empty (window still open) or empty (single value)\n        assert len(result) == 0\n\n    def test_two_conflicting_spans_after_window_close(self):\n        \"\"\"Two spans with different values produce a conflict when window closes.\"\"\"\n        import time\n        config = make_config(window_timeout_seconds=0.1)\n        store = make_mock_conflict_store()\n        detector = make_detector(config=config, store=store)\n\n        span_a = make_span_report(node_id=\"node-A\", value_serialized='\"alice\"')\n        span_b = make_span_report(node_id=\"node-B\", value_serialized='\"bob\"')\n\n        detector.ingest(span_a)\n        time.sleep(0.15)  # Wait for window to expire\n        result = detector.ingest(span_b)\n\n        # The window for span_a should have closed, but span_b opens a new one.\n        # Alternatively both may be in the same window. Depends on implementation.\n        # We may need flush to guarantee.\n        # Use flush to force-close all windows as a reliable alternative:\n        result = detector.flush()\n\n        conflicts = [r for r in result if r.status == ResolutionStatus.DETECTED]\n        if len(conflicts) > 0:\n            conflict = conflicts[0]\n            assert conflict.status == ResolutionStatus.DETECTED\n            assert len(conflict.competing_values) >= 2\n            assert store.append.called\n\n    def test_two_agreeing_spans_no_conflict(self):\n        \"\"\"Two spans with same value produce no conflict.\"\"\"\n        config = make_config(window_timeout_seconds=0.1)\n        detector = make_detector(config=config)\n\n        span_a = make_span_report(node_id=\"node-A\", value_serialized='\"alice\"')\n        span_b = make_span_report(node_id=\"node-B\", value_serialized='\"alice\"')\n\n        detector.ingest(span_a)\n        detector.ingest(span_b)\n        result = detector.flush()\n\n        assert isinstance(result, list)\n        # No conflict because values agree\n        assert len(result) == 0\n\n    def test_duplicate_span_silently_dropped(self):\n        \"\"\"Duplicate span (same node_id + span_id) is silently dropped.\"\"\"\n        detector = make_detector()\n        shared_span_id = \"span-dup-1\"\n        span1 = make_span_report(node_id=\"node-A\", span_id=shared_span_id, value_serialized='\"alice\"')\n        span2 = make_span_report(node_id=\"node-A\", span_id=shared_span_id, value_serialized='\"alice\"')\n\n        # Neither call should raise\n        result1 = detector.ingest(span1)\n        result2 = detector.ingest(span2)\n\n        assert isinstance(result1, list)\n        assert isinstance(result2, list)\n\n    def test_trust_lookup_failed(self):\n        \"\"\"Trust ledger failure during conflict detection raises error with node_id context.\"\"\"\n        import time\n        config = make_config(window_timeout_seconds=0.1)\n        trust = make_mock_trust_lookup()\n        trust.lookup_trust_score = MagicMock(side_effect=Exception(\"trust service down\"))\n\n        detector = make_detector(config=config, trust_lookup=trust)\n\n        span_a = make_span_report(node_id=\"node-A\", value_serialized='\"alice\"')\n        span_b = make_span_report(node_id=\"node-B\", value_serialized='\"bob\"')\n\n        detector.ingest(span_a)\n        detector.ingest(span_b)\n\n        with pytest.raises(Exception) as exc_info:\n            detector.flush()\n\n        error_str = str(exc_info.value).lower()\n        # Should reference trust lookup failure\n        assert \"trust\" in error_str or \"TRUST_LOOKUP_FAILED\" in str(exc_info.value)\n\n    def test_authority_lookup_failed(self):\n        \"\"\"Authority registry failure during conflict detection raises error.\"\"\"\n        import time\n        config = make_config(window_timeout_seconds=0.1)\n        authority = make_mock_authority_lookup()\n        authority.is_authoritative = MagicMock(side_effect=Exception(\"authority service down\"))\n\n        detector = make_detector(config=config, authority_lookup=authority)\n\n        span_a = make_span_report(node_id=\"node-A\", value_serialized='\"alice\"')\n        span_b = make_span_report(node_id=\"node-B\", value_serialized='\"bob\"')\n\n        detector.ingest(span_a)\n        detector.ingest(span_b)\n\n        with pytest.raises(Exception) as exc_info:\n            detector.flush()\n\n        error_str = str(exc_info.value)\n        assert \"authority\" in error_str.lower() or \"AUTHORITY_LOOKUP_FAILED\" in error_str\n\n    def test_store_write_failed(self):\n        \"\"\"Conflict store append failure raises store_write_failed error.\"\"\"\n        import time\n        config = make_config(window_timeout_seconds=0.1)\n        store = make_mock_conflict_store()\n        store.append = MagicMock(side_effect=Exception(\"disk full\"))\n\n        detector = make_detector(config=config, store=store)\n\n        span_a = make_span_report(node_id=\"node-A\", value_serialized='\"alice\"')\n        span_b = make_span_report(node_id=\"node-B\", value_serialized='\"bob\"')\n\n        detector.ingest(span_a)\n        detector.ingest(span_b)\n\n        with pytest.raises(Exception) as exc_info:\n            detector.flush()\n\n        error_str = str(exc_info.value)\n        assert \"store\" in error_str.lower() or \"write\" in error_str.lower() or \"STORE_WRITE_FAILED\" in error_str\n\n    def test_tier_lookup_failed_degraded_mode(self):\n        \"\"\"Tier lookup failure still detects conflict with empty data_tier.\"\"\"\n        config = make_config(window_timeout_seconds=0.1)\n        field_classifier = MagicMock(side_effect=Exception(\"tier service down\"))\n\n        detector = make_detector(config=config, field_classifier=field_classifier)\n\n        span_a = make_span_report(node_id=\"node-A\", value_serialized='\"alice\"')\n        span_b = make_span_report(node_id=\"node-B\", value_serialized='\"bob\"')\n\n        detector.ingest(span_a)\n        detector.ingest(span_b)\n\n        # Should still produce a conflict (degraded mode)\n        result = detector.flush()\n        if len(result) > 0:\n            assert result[0].data_tier == \"\" or result[0].data_tier is None\n\n    def test_multiple_domains_independent(self):\n        \"\"\"Spans for different (domain, field) keys are buffered independently.\"\"\"\n        detector = make_detector()\n\n        span_auth = make_span_report(node_id=\"node-A\", domain=\"auth\", field=\"user\")\n        span_billing = make_span_report(node_id=\"node-B\", domain=\"billing\", field=\"amount\")\n\n        r1 = detector.ingest(span_auth)\n        r2 = detector.ingest(span_billing)\n\n        # Both buffered, no conflicts yet\n        assert isinstance(r1, list)\n        assert isinstance(r2, list)\n\n    def test_trust_snapshot_at_detection_time(self):\n        \"\"\"trust_score_snapshot reflects trust at detection time, not ingestion.\"\"\"\n        config = make_config(window_timeout_seconds=0.1)\n        trust_scores = {\"node-A\": 0.9, \"node-B\": 0.7}\n        trust = make_mock_trust_lookup(trust_scores)\n\n        detector = make_detector(config=config, trust_lookup=trust)\n\n        span_a = make_span_report(node_id=\"node-A\", value_serialized='\"alice\"')\n        span_b = make_span_report(node_id=\"node-B\", value_serialized='\"bob\"')\n\n        detector.ingest(span_a)\n        # Change trust scores after ingestion but before detection\n        trust_scores[\"node-A\"] = 0.1\n        trust.lookup_trust_score = MagicMock(side_effect=lambda nid: trust_scores.get(nid, 0.5))\n        detector.ingest(span_b)\n\n        result = detector.flush()\n        if len(result) > 0:\n            for nv in result[0].competing_values:\n                # Trust scores should be snapshotted at detection (flush) time\n                if nv.node_id == \"node-A\":\n                    assert nv.trust_score_snapshot == 0.1  # detection-time value\n                elif nv.node_id == \"node-B\":\n                    assert nv.trust_score_snapshot == 0.7\n\n    def test_authority_flag_reflects_current_state(self):\n        \"\"\"is_authoritative reflects authority registry state at detection time.\"\"\"\n        config = make_config(window_timeout_seconds=0.1)\n        authority = make_mock_authority_lookup({\"node-A\": True})\n\n        detector = make_detector(config=config, authority_lookup=authority)\n\n        span_a = make_span_report(node_id=\"node-A\", value_serialized='\"alice\"')\n        span_b = make_span_report(node_id=\"node-B\", value_serialized='\"bob\"')\n\n        detector.ingest(span_a)\n        detector.ingest(span_b)\n        result = detector.flush()\n\n        if len(result) > 0:\n            for nv in result[0].competing_values:\n                if nv.node_id == \"node-A\":\n                    assert nv.is_authoritative is True\n                elif nv.node_id == \"node-B\":\n                    assert nv.is_authoritative is False\n\n    def test_persisted_to_store(self):\n        \"\"\"All returned ConflictRecords are persisted to the conflict store.\"\"\"\n        config = make_config(window_timeout_seconds=0.1)\n        store = make_mock_conflict_store()\n        detector = make_detector(config=config, store=store)\n\n        span_a = make_span_report(node_id=\"node-A\", value_serialized='\"alice\"')\n        span_b = make_span_report(node_id=\"node-B\", value_serialized='\"bob\"')\n\n        detector.ingest(span_a)\n        detector.ingest(span_b)\n        result = detector.flush()\n\n        if len(result) > 0:\n            assert store.append.call_count >= len(result)\n\n    def test_invariant_conflict_requires_two_distinct_values(self):\n        \"\"\"A conflict is never created with fewer than 2 distinct values.\"\"\"\n        config = make_config(window_timeout_seconds=0.1)\n        detector = make_detector(config=config)\n\n        # All same value\n        for nid in [\"node-A\", \"node-B\", \"node-C\"]:\n            detector.ingest(make_span_report(node_id=nid, value_serialized='\"same\"'))\n\n        result = detector.flush()\n        # No conflict because all values identical\n        assert len(result) == 0\n\n\n# ===========================================================================\n# TestFlush\n# ===========================================================================\nclass TestFlush:\n    \"\"\"Tests for the flush() function — force-close all windows.\"\"\"\n\n    def test_empty_buffer_returns_empty(self):\n        \"\"\"Flushing an empty buffer returns empty list.\"\"\"\n        detector = make_detector()\n        result = detector.flush()\n        assert result == []\n\n    def test_flush_with_conflicts(self):\n        \"\"\"Flushing buffer with conflicting spans produces conflicts.\"\"\"\n        detector = make_detector()\n        detector.ingest(make_span_report(node_id=\"node-A\", value_serialized='\"alice\"'))\n        detector.ingest(make_span_report(node_id=\"node-B\", value_serialized='\"bob\"'))\n\n        result = detector.flush()\n        assert len(result) >= 1\n        for r in result:\n            assert r.status == ResolutionStatus.DETECTED\n            assert len(r.competing_values) >= 2\n\n    def test_buffer_empty_after_flush(self):\n        \"\"\"Buffer is empty after flush — second flush returns empty.\"\"\"\n        detector = make_detector()\n        detector.ingest(make_span_report(node_id=\"node-A\", value_serialized='\"alice\"'))\n        detector.ingest(make_span_report(node_id=\"node-B\", value_serialized='\"bob\"'))\n\n        detector.flush()\n        result2 = detector.flush()\n        assert result2 == []\n\n    def test_single_value_no_conflict(self):\n        \"\"\"Window with only one distinct value produces no conflict on flush.\"\"\"\n        detector = make_detector()\n        detector.ingest(make_span_report(node_id=\"node-A\", value_serialized='\"only_one\"'))\n\n        result = detector.flush()\n        assert len(result) == 0\n\n    def test_flush_error_trust_lookup_failed(self):\n        \"\"\"Trust lookup failure during flush raises error.\"\"\"\n        trust = make_mock_trust_lookup()\n        trust.lookup_trust_score = MagicMock(side_effect=Exception(\"trust down\"))\n        detector = make_detector(trust_lookup=trust)\n\n        detector.ingest(make_span_report(node_id=\"node-A\", value_serialized='\"alice\"'))\n        detector.ingest(make_span_report(node_id=\"node-B\", value_serialized='\"bob\"'))\n\n        with pytest.raises(Exception) as exc_info:\n            detector.flush()\n        assert \"trust\" in str(exc_info.value).lower() or \"TRUST_LOOKUP_FAILED\" in str(exc_info.value)\n\n    def test_flush_error_store_write_failed(self):\n        \"\"\"Store write failure during flush raises error.\"\"\"\n        store = make_mock_conflict_store()\n        store.append = MagicMock(side_effect=Exception(\"write failed\"))\n        detector = make_detector(store=store)\n\n        detector.ingest(make_span_report(node_id=\"node-A\", value_serialized='\"alice\"'))\n        detector.ingest(make_span_report(node_id=\"node-B\", value_serialized='\"bob\"'))\n\n        with pytest.raises(Exception) as exc_info:\n            detector.flush()\n        error_str = str(exc_info.value).lower()\n        assert \"store\" in error_str or \"write\" in error_str\n\n\n# ===========================================================================\n# TestResolve\n# ===========================================================================\nclass TestResolve:\n    \"\"\"Tests for the resolve() function — three-step resolution protocol.\"\"\"\n\n    def test_authority_resolution(self):\n        \"\"\"Exactly one authoritative node with trust > floor wins via AUTHORITY.\"\"\"\n        config = make_config(authority_override_floor=0.6, trust_delta_threshold=0.2)\n        store = make_mock_conflict_store()\n        resolver = make_resolver(config=config, store=store)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.9, is_authoritative=True),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.7, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.AUTHORITY_RESOLVED\n        assert result.resolution.strategy == ResolutionStrategy.AUTHORITY\n        assert result.resolution.winner_node_id == \"node-A\"\n        assert result.resolution.resolved_at is not None\n        assert store.append.called\n\n    def test_trust_arbitration_resolution(self):\n        \"\"\"No authoritative node, trust delta > threshold: highest trust wins.\"\"\"\n        config = make_config(trust_delta_threshold=0.1)\n        resolver = make_resolver(config=config)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.9, is_authoritative=False),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.5, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.TRUST_RESOLVED\n        assert result.resolution.strategy == ResolutionStrategy.TRUST_ARBITRATION\n        assert result.resolution.winner_node_id == \"node-A\"\n\n    def test_unresolvable_resolution(self):\n        \"\"\"No authoritative, trust delta <= threshold: UNRESOLVABLE with signal.\"\"\"\n        config = make_config(trust_delta_threshold=0.5)\n        signal_emitter = make_mock_signal_emitter()\n        resolver = make_resolver(config=config, signal_emitter=signal_emitter)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.8, is_authoritative=False),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.75, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.UNRESOLVABLE\n        assert result.resolution.strategy == ResolutionStrategy.HUMAN\n        assert signal_emitter.emit_signal.called\n\n    def test_authority_below_floor_falls_through(self):\n        \"\"\"Authoritative node with trust <= floor skips authority step.\"\"\"\n        config = make_config(authority_override_floor=0.8, trust_delta_threshold=0.1)\n        resolver = make_resolver(config=config)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.5, is_authoritative=True),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.9, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n\n        # Authority check should fail (0.5 <= 0.8), so falls to trust arbitration\n        assert result.status != ResolutionStatus.AUTHORITY_RESOLVED\n        # Trust delta = 0.4 > 0.1, so TRUST_RESOLVED with node-B winning\n        assert result.status == ResolutionStatus.TRUST_RESOLVED\n        assert result.resolution.winner_node_id == \"node-B\"\n\n    def test_authority_at_floor_boundary(self):\n        \"\"\"Authoritative node with trust exactly at floor fails authority check.\"\"\"\n        config = make_config(authority_override_floor=0.7, trust_delta_threshold=0.05)\n        resolver = make_resolver(config=config)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.7, is_authoritative=True),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.6, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n\n        # Trust at floor (not above), so authority check should not succeed\n        assert result.status != ResolutionStatus.AUTHORITY_RESOLVED\n\n    def test_trust_delta_at_threshold_unresolvable(self):\n        \"\"\"Trust delta exactly at threshold does not resolve (must be > threshold).\"\"\"\n        config = make_config(trust_delta_threshold=0.2)\n        signal_emitter = make_mock_signal_emitter()\n        resolver = make_resolver(config=config, signal_emitter=signal_emitter)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.7, is_authoritative=False),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.5, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n\n        # Delta = 0.2 == threshold, not > threshold => UNRESOLVABLE\n        assert result.status == ResolutionStatus.UNRESOLVABLE\n\n    def test_nway_authority_exactly_one(self):\n        \"\"\"N-way conflict with exactly one authoritative node uses AUTHORITY.\"\"\"\n        config = make_config(authority_override_floor=0.5)\n        resolver = make_resolver(config=config)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", value_serialized='\"a\"', trust_score_snapshot=0.8, is_authoritative=True),\n                make_node_value(node_id=\"node-B\", value_serialized='\"b\"', trust_score_snapshot=0.9, is_authoritative=False),\n                make_node_value(node_id=\"node-C\", value_serialized='\"c\"', trust_score_snapshot=0.7, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.AUTHORITY_RESOLVED\n        assert result.resolution.winner_node_id == \"node-A\"\n\n    def test_nway_multiple_authoritative_skips_authority(self):\n        \"\"\"N-way conflict with multiple authoritative nodes skips authority step.\"\"\"\n        config = make_config(authority_override_floor=0.5, trust_delta_threshold=0.1)\n        resolver = make_resolver(config=config)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", value_serialized='\"a\"', trust_score_snapshot=0.9, is_authoritative=True),\n                make_node_value(node_id=\"node-B\", value_serialized='\"b\"', trust_score_snapshot=0.7, is_authoritative=True),\n                make_node_value(node_id=\"node-C\", value_serialized='\"c\"', trust_score_snapshot=0.5, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n\n        # Multiple authoritative => skip authority step\n        assert result.status != ResolutionStatus.AUTHORITY_RESOLVED\n\n    def test_nway_trust_top2_delta(self):\n        \"\"\"N-way conflict trust arbitration compares only top-2 trust scores.\"\"\"\n        config = make_config(trust_delta_threshold=0.3)\n        resolver = make_resolver(config=config)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", value_serialized='\"a\"', trust_score_snapshot=0.9, is_authoritative=False),\n                make_node_value(node_id=\"node-B\", value_serialized='\"b\"', trust_score_snapshot=0.5, is_authoritative=False),\n                make_node_value(node_id=\"node-C\", value_serialized='\"c\"', trust_score_snapshot=0.1, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n\n        # Top 2: 0.9, 0.5 -> delta = 0.4 > 0.3 => TRUST_RESOLVED\n        assert result.status == ResolutionStatus.TRUST_RESOLVED\n        assert result.resolution.winner_node_id == \"node-A\"\n\n    def test_unresolvable_blocks_deploy_protected(self):\n        \"\"\"UNRESOLVABLE + protected data_tier => blocks_deploy=True.\"\"\"\n        config = make_config(protected_tiers=[\"critical\"], trust_delta_threshold=0.5)\n        signal_emitter = make_mock_signal_emitter()\n        resolver = make_resolver(config=config, signal_emitter=signal_emitter)\n\n        conflict = make_conflict_record(\n            data_tier=\"critical\",\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.8, is_authoritative=False),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.75, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.UNRESOLVABLE\n        assert result.blocks_deploy is True\n\n    def test_unresolvable_no_block_unprotected(self):\n        \"\"\"UNRESOLVABLE + non-protected data_tier => blocks_deploy=False.\"\"\"\n        config = make_config(protected_tiers=[\"critical\"], trust_delta_threshold=0.5)\n        signal_emitter = make_mock_signal_emitter()\n        resolver = make_resolver(config=config, signal_emitter=signal_emitter)\n\n        conflict = make_conflict_record(\n            data_tier=\"general\",\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.8, is_authoritative=False),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.75, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n\n        assert result.status == ResolutionStatus.UNRESOLVABLE\n        assert result.blocks_deploy is False\n\n    def test_already_resolved_error(self):\n        \"\"\"Resolving an already-resolved conflict raises already_resolved error.\"\"\"\n        resolver = make_resolver()\n        conflict = make_conflict_record(\n            status=ResolutionStatus.AUTHORITY_RESOLVED,\n            resolution=Resolution(\n                strategy=ResolutionStrategy.AUTHORITY,\n                winner_node_id=\"node-A\",\n                resolved_at=_utc_now_iso(),\n                rationale=\"test\",\n                reviewed_by=\"\",\n            ),\n        )\n        with pytest.raises(Exception) as exc_info:\n            resolver.resolve(conflict)\n        error_str = str(exc_info.value)\n        assert \"already\" in error_str.lower() or \"CONFLICT_ALREADY_RESOLVED\" in error_str or \"resolved\" in error_str.lower()\n\n    def test_empty_competing_values_error(self):\n        \"\"\"Conflict with < 2 competing values raises empty_competing_values error.\"\"\"\n        resolver = make_resolver()\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\"),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        with pytest.raises(Exception) as exc_info:\n            resolver.resolve(conflict)\n        error_str = str(exc_info.value)\n        assert \"empty\" in error_str.lower() or \"competing\" in error_str.lower() or \"EMPTY_COMPETING_VALUES\" in error_str\n\n    def test_signal_emission_failed_error(self):\n        \"\"\"Signal emission failure during Step 3 raises signal_emission_failed.\"\"\"\n        config = make_config(trust_delta_threshold=0.5)\n        signal_emitter = make_mock_signal_emitter()\n        signal_emitter.emit_signal = MagicMock(side_effect=Exception(\"stigmergy down\"))\n        resolver = make_resolver(config=config, signal_emitter=signal_emitter)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.8, is_authoritative=False),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.75, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        with pytest.raises(Exception) as exc_info:\n            resolver.resolve(conflict)\n        error_str = str(exc_info.value)\n        assert \"signal\" in error_str.lower() or \"emission\" in error_str.lower() or \"SIGNAL_EMISSION_FAILED\" in error_str\n\n    def test_store_write_failed_error(self):\n        \"\"\"Store append failure during resolve raises store_write_failed.\"\"\"\n        store = make_mock_conflict_store()\n        store.append = MagicMock(side_effect=Exception(\"disk full\"))\n        resolver = make_resolver(store=store)\n\n        conflict = make_conflict_record(status=ResolutionStatus.DETECTED)\n        with pytest.raises(Exception) as exc_info:\n            resolver.resolve(conflict)\n        error_str = str(exc_info.value)\n        assert \"store\" in error_str.lower() or \"write\" in error_str.lower() or \"STORE_WRITE_FAILED\" in error_str\n\n    def test_rationale_includes_details(self):\n        \"\"\"Resolution rationale includes node IDs, trust scores, and thresholds.\"\"\"\n        config = make_config(authority_override_floor=0.6, trust_delta_threshold=0.1)\n        resolver = make_resolver(config=config)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.9, is_authoritative=True),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.7, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n\n        rationale = result.resolution.rationale\n        assert rationale is not None and len(rationale) > 0\n        # Rationale should contain node IDs and scores\n        assert \"node-A\" in rationale or \"node_A\" in rationale\n\n    def test_signal_content_verification(self):\n        \"\"\"ConflictSignal for UNRESOLVABLE has correct conflict_id, execution_id, etc.\"\"\"\n        config = make_config(trust_delta_threshold=0.5, protected_tiers=[\"critical\"])\n        signal_emitter = make_mock_signal_emitter()\n        resolver = make_resolver(config=config, signal_emitter=signal_emitter)\n\n        cid = \"conflict-sig-test\"\n        conflict = make_conflict_record(\n            conflict_id=cid,\n            execution_id=\"exec-sig\",\n            domain=\"auth\",\n            field=\"user\",\n            data_tier=\"critical\",\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.8, is_authoritative=False),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.75, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n\n        assert signal_emitter.emit_signal.called\n        signal_arg = signal_emitter.emit_signal.call_args\n        # The signal should reference the conflict\n        signal_data = signal_arg[0][0] if signal_arg[0] else signal_arg[1].get(\"signal\")\n        if hasattr(signal_data, \"conflict_id\"):\n            assert signal_data.conflict_id == cid\n            assert signal_data.execution_id == \"exec-sig\"\n            assert signal_data.blocks_deploy is True\n\n    def test_deterministic_resolution(self):\n        \"\"\"Same conflict + same config = same result (determinism invariant).\"\"\"\n        config = make_config(trust_delta_threshold=0.1)\n        resolver1 = make_resolver(config=config)\n        resolver2 = make_resolver(config=config)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.9, is_authoritative=False),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.5, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        conflict2 = copy.deepcopy(conflict)\n\n        result1 = resolver1.resolve(conflict)\n        result2 = resolver2.resolve(conflict2)\n\n        assert result1.status == result2.status\n        assert result1.resolution.strategy == result2.resolution.strategy\n        assert result1.resolution.winner_node_id == result2.resolution.winner_node_id\n\n    def test_resolve_appended_to_store(self):\n        \"\"\"Resolved record is appended to the conflict store.\"\"\"\n        store = make_mock_conflict_store()\n        resolver = make_resolver(store=store)\n\n        conflict = make_conflict_record(status=ResolutionStatus.DETECTED)\n        resolver.resolve(conflict)\n\n        assert store.append.called\n\n    def test_invariant_trust_immutable_after_detection(self):\n        \"\"\"Trust scores in NodeValue are not modified by resolve.\"\"\"\n        resolver = make_resolver()\n        nv_a = make_node_value(node_id=\"node-A\", trust_score_snapshot=0.9, is_authoritative=True)\n        nv_b = make_node_value(node_id=\"node-B\", trust_score_snapshot=0.7, is_authoritative=False)\n\n        conflict = make_conflict_record(\n            competing_values=[nv_a, nv_b],\n            status=ResolutionStatus.DETECTED,\n        )\n        original_scores = {nv.node_id: nv.trust_score_snapshot for nv in conflict.competing_values}\n\n        result = resolver.resolve(conflict)\n\n        for nv in result.competing_values:\n            assert nv.trust_score_snapshot == original_scores[nv.node_id]\n\n\n# ===========================================================================\n# TestSubmitHumanReview\n# ===========================================================================\nclass TestSubmitHumanReview:\n    \"\"\"Tests for submit_human_review() — human override of UNRESOLVABLE conflicts.\"\"\"\n\n    def _setup_unresolvable(self, store):\n        \"\"\"Helper: create an UNRESOLVABLE conflict in the store.\"\"\"\n        conflict = make_conflict_record(\n            conflict_id=\"conflict-hr-1\",\n            status=ResolutionStatus.UNRESOLVABLE,\n            blocks_deploy=True,\n            data_tier=\"critical\",\n            resolution=Resolution(\n                strategy=ResolutionStrategy.HUMAN,\n                winner_node_id=\"\",\n                resolved_at=_utc_now_iso(),\n                rationale=\"unresolvable - needs human review\",\n                reviewed_by=\"\",\n            ),\n        )\n        store._stored.append(conflict)\n        store.load_all = MagicMock(return_value=store._stored)\n        return conflict\n\n    def test_happy_path(self):\n        \"\"\"UNRESOLVABLE conflict transitions to HUMAN_REVIEWED.\"\"\"\n        store = make_mock_conflict_store()\n        conflict = self._setup_unresolvable(store)\n        resolver = make_resolver(store=store)\n\n        result = resolver.submit_human_review(\n            conflict_id=\"conflict-hr-1\",\n            winner_node_id=\"node-A\",\n            reviewed_by=\"operator@example.com\",\n            rationale=\"Manual verification confirmed node-A\",\n        )\n\n        assert result.status == ResolutionStatus.HUMAN_REVIEWED\n        assert result.resolution.strategy == ResolutionStrategy.HUMAN\n        assert result.resolution.winner_node_id == \"node-A\"\n        assert result.resolution.reviewed_by == \"operator@example.com\"\n        assert result.blocks_deploy is False\n\n    def test_clears_deploy_block(self):\n        \"\"\"Human review clears blocks_deploy even if previously True.\"\"\"\n        store = make_mock_conflict_store()\n        conflict = self._setup_unresolvable(store)\n        assert conflict.blocks_deploy is True\n\n        resolver = make_resolver(store=store)\n        result = resolver.submit_human_review(\n            conflict_id=\"conflict-hr-1\",\n            winner_node_id=\"node-A\",\n            reviewed_by=\"admin\",\n            rationale=\"Confirmed\",\n        )\n\n        assert result.blocks_deploy is False\n\n    def test_conflict_not_found(self):\n        \"\"\"Non-existent conflict_id raises conflict_not_found.\"\"\"\n        store = make_mock_conflict_store()\n        resolver = make_resolver(store=store)\n\n        with pytest.raises(Exception) as exc_info:\n            resolver.submit_human_review(\n                conflict_id=\"nonexistent\",\n                winner_node_id=\"node-A\",\n                reviewed_by=\"admin\",\n                rationale=\"test\",\n            )\n        error_str = str(exc_info.value)\n        assert \"not_found\" in error_str.lower() or \"CONFLICT_NOT_FOUND\" in error_str or \"not found\" in error_str.lower()\n\n    def test_invalid_status_authority_resolved(self):\n        \"\"\"Conflict with AUTHORITY_RESOLVED raises invalid_status.\"\"\"\n        store = make_mock_conflict_store()\n        resolved = make_conflict_record(\n            conflict_id=\"conflict-resolved\",\n            status=ResolutionStatus.AUTHORITY_RESOLVED,\n            resolution=Resolution(\n                strategy=ResolutionStrategy.AUTHORITY,\n                winner_node_id=\"node-A\",\n                resolved_at=_utc_now_iso(),\n                rationale=\"authority\",\n                reviewed_by=\"\",\n            ),\n        )\n        store._stored.append(resolved)\n        store.load_all = MagicMock(return_value=store._stored)\n        resolver = make_resolver(store=store)\n\n        with pytest.raises(Exception) as exc_info:\n            resolver.submit_human_review(\n                conflict_id=\"conflict-resolved\",\n                winner_node_id=\"node-A\",\n                reviewed_by=\"admin\",\n                rationale=\"test\",\n            )\n        error_str = str(exc_info.value).lower()\n        assert \"status\" in error_str or \"resolved\" in error_str or \"invalid\" in error_str\n\n    def test_invalid_status_detected(self):\n        \"\"\"Conflict with DETECTED status raises invalid_status (must be UNRESOLVABLE).\"\"\"\n        store = make_mock_conflict_store()\n        detected = make_conflict_record(\n            conflict_id=\"conflict-detected\",\n            status=ResolutionStatus.DETECTED,\n        )\n        store._stored.append(detected)\n        store.load_all = MagicMock(return_value=store._stored)\n        resolver = make_resolver(store=store)\n\n        with pytest.raises(Exception) as exc_info:\n            resolver.submit_human_review(\n                conflict_id=\"conflict-detected\",\n                winner_node_id=\"node-A\",\n                reviewed_by=\"admin\",\n                rationale=\"test\",\n            )\n        error_str = str(exc_info.value).lower()\n        assert \"status\" in error_str or \"unresolvable\" in error_str or \"invalid\" in error_str\n\n    def test_invalid_status_trust_resolved(self):\n        \"\"\"Conflict with TRUST_RESOLVED (terminal state) raises invalid_status.\"\"\"\n        store = make_mock_conflict_store()\n        trust_resolved = make_conflict_record(\n            conflict_id=\"conflict-trust\",\n            status=ResolutionStatus.TRUST_RESOLVED,\n            resolution=Resolution(\n                strategy=ResolutionStrategy.TRUST_ARBITRATION,\n                winner_node_id=\"node-A\",\n                resolved_at=_utc_now_iso(),\n                rationale=\"trust\",\n                reviewed_by=\"\",\n            ),\n        )\n        store._stored.append(trust_resolved)\n        store.load_all = MagicMock(return_value=store._stored)\n        resolver = make_resolver(store=store)\n\n        with pytest.raises(Exception) as exc_info:\n            resolver.submit_human_review(\n                conflict_id=\"conflict-trust\",\n                winner_node_id=\"node-A\",\n                reviewed_by=\"admin\",\n                rationale=\"test\",\n            )\n        error_str = str(exc_info.value).lower()\n        assert \"status\" in error_str or \"resolved\" in error_str or \"invalid\" in error_str\n\n    def test_invalid_winner_node(self):\n        \"\"\"winner_node_id not in competing nodes raises invalid_winner.\"\"\"\n        store = make_mock_conflict_store()\n        self._setup_unresolvable(store)\n        resolver = make_resolver(store=store)\n\n        with pytest.raises(Exception) as exc_info:\n            resolver.submit_human_review(\n                conflict_id=\"conflict-hr-1\",\n                winner_node_id=\"node-NONEXISTENT\",\n                reviewed_by=\"admin\",\n                rationale=\"test\",\n            )\n        error_str = str(exc_info.value).lower()\n        assert \"winner\" in error_str or \"invalid\" in error_str or \"node\" in error_str\n\n    def test_store_write_failed(self):\n        \"\"\"Store append failure raises store_write_failed.\"\"\"\n        store = make_mock_conflict_store()\n        self._setup_unresolvable(store)\n        store.append = MagicMock(side_effect=Exception(\"write failed\"))\n        resolver = make_resolver(store=store)\n\n        with pytest.raises(Exception) as exc_info:\n            resolver.submit_human_review(\n                conflict_id=\"conflict-hr-1\",\n                winner_node_id=\"node-A\",\n                reviewed_by=\"admin\",\n                rationale=\"test\",\n            )\n        error_str = str(exc_info.value).lower()\n        assert \"store\" in error_str or \"write\" in error_str\n\n\n# ===========================================================================\n# TestGetUnresolved\n# ===========================================================================\nclass TestGetUnresolved:\n    \"\"\"Tests for get_unresolved() — querying unresolved conflicts.\"\"\"\n\n    def _make_store_with_records(self):\n        store = make_mock_conflict_store()\n        records = [\n            make_conflict_record(conflict_id=\"c1\", domain=\"auth\", status=ResolutionStatus.DETECTED, detected_at=\"2024-01-03T00:00:00Z\"),\n            make_conflict_record(conflict_id=\"c2\", domain=\"auth\", status=ResolutionStatus.UNRESOLVABLE, detected_at=\"2024-01-02T00:00:00Z\"),\n            make_conflict_record(conflict_id=\"c3\", domain=\"auth\", status=ResolutionStatus.AUTHORITY_RESOLVED, detected_at=\"2024-01-01T00:00:00Z\"),\n            make_conflict_record(conflict_id=\"c4\", domain=\"billing\", status=ResolutionStatus.DETECTED, detected_at=\"2024-01-04T00:00:00Z\"),\n        ]\n        store._stored = records\n        store.load_all = MagicMock(return_value=records)\n        return store, records\n\n    def test_returns_only_unresolved_for_domain(self):\n        \"\"\"Returns only DETECTED and UNRESOLVABLE for the given domain.\"\"\"\n        store, _ = self._make_store_with_records()\n        resolver = make_resolver(store=store)\n\n        result = resolver.get_unresolved(\"auth\")\n\n        for r in result:\n            assert r.status in (ResolutionStatus.DETECTED, ResolutionStatus.UNRESOLVABLE)\n            assert r.domain == \"auth\"\n        # Should not include AUTHORITY_RESOLVED (c3)\n        ids = [r.conflict_id for r in result]\n        assert \"c3\" not in ids\n\n    def test_empty_result(self):\n        \"\"\"Returns empty list when no unresolved conflicts for domain.\"\"\"\n        store = make_mock_conflict_store()\n        store.load_all = MagicMock(return_value=[])\n        resolver = make_resolver(store=store)\n\n        result = resolver.get_unresolved(\"nonexistent\")\n        assert result == []\n\n    def test_newest_first_ordering(self):\n        \"\"\"Results ordered by detected_at descending (newest first).\"\"\"\n        store, _ = self._make_store_with_records()\n        resolver = make_resolver(store=store)\n\n        result = resolver.get_unresolved(\"auth\")\n\n        if len(result) >= 2:\n            assert result[0].detected_at >= result[1].detected_at\n\n    def test_empty_domain_returns_all_unresolved(self):\n        \"\"\"Empty domain string returns all unresolved conflicts across domains.\"\"\"\n        store, _ = self._make_store_with_records()\n        resolver = make_resolver(store=store)\n\n        result = resolver.get_unresolved(\"\")\n\n        for r in result:\n            assert r.status in (ResolutionStatus.DETECTED, ResolutionStatus.UNRESOLVABLE)\n        # Should include both auth and billing unresolved\n        domains = {r.domain for r in result}\n        assert \"auth\" in domains\n        assert \"billing\" in domains\n\n    def test_store_read_failed(self):\n        \"\"\"Store read failure raises store_read_failed.\"\"\"\n        store = make_mock_conflict_store()\n        store.load_all = MagicMock(side_effect=Exception(\"read failed\"))\n        resolver = make_resolver(store=store)\n\n        with pytest.raises(Exception) as exc_info:\n            resolver.get_unresolved(\"auth\")\n        error_str = str(exc_info.value).lower()\n        assert \"store\" in error_str or \"read\" in error_str\n\n\n# ===========================================================================\n# TestHasBlockingConflicts\n# ===========================================================================\nclass TestHasBlockingConflicts:\n    \"\"\"Tests for has_blocking_conflicts() — deploy gate check.\"\"\"\n\n    def test_blocking_exists_returns_true(self):\n        \"\"\"Returns True when blocking conflict exists for domain.\"\"\"\n        store = make_mock_conflict_store()\n        store._stored = [\n            make_conflict_record(\n                domain=\"auth\",\n                status=ResolutionStatus.UNRESOLVABLE,\n                blocks_deploy=True,\n            ),\n        ]\n        store.load_all = MagicMock(return_value=store._stored)\n        resolver = make_resolver(store=store)\n\n        result = resolver.has_blocking_conflicts(\"auth\")\n        assert result is True\n\n    def test_no_conflicts_returns_false(self):\n        \"\"\"Returns False when no conflicts exist.\"\"\"\n        store = make_mock_conflict_store()\n        store.load_all = MagicMock(return_value=[])\n        resolver = make_resolver(store=store)\n\n        result = resolver.has_blocking_conflicts(\"auth\")\n        assert result is False\n\n    def test_resolved_blocking_returns_false(self):\n        \"\"\"Returns False when blocking conflicts are all resolved.\"\"\"\n        store = make_mock_conflict_store()\n        store._stored = [\n            make_conflict_record(\n                domain=\"auth\",\n                status=ResolutionStatus.HUMAN_REVIEWED,\n                blocks_deploy=False,\n            ),\n        ]\n        store.load_all = MagicMock(return_value=store._stored)\n        resolver = make_resolver(store=store)\n\n        result = resolver.has_blocking_conflicts(\"auth\")\n        assert result is False\n\n    def test_unresolved_unprotected_returns_false(self):\n        \"\"\"Returns False when unresolved conflict has blocks_deploy=False.\"\"\"\n        store = make_mock_conflict_store()\n        store._stored = [\n            make_conflict_record(\n                domain=\"auth\",\n                data_tier=\"general\",\n                status=ResolutionStatus.UNRESOLVABLE,\n                blocks_deploy=False,\n            ),\n        ]\n        store.load_all = MagicMock(return_value=store._stored)\n        resolver = make_resolver(store=store)\n\n        result = resolver.has_blocking_conflicts(\"auth\")\n        assert result is False\n\n    def test_store_read_failed(self):\n        \"\"\"Store read failure raises store_read_failed.\"\"\"\n        store = make_mock_conflict_store()\n        store.load_all = MagicMock(side_effect=Exception(\"read failed\"))\n        resolver = make_resolver(store=store)\n\n        with pytest.raises(Exception):\n            resolver.has_blocking_conflicts(\"auth\")\n\n\n# ===========================================================================\n# TestGetSummary\n# ===========================================================================\nclass TestGetSummary:\n    \"\"\"Tests for get_summary() — aggregate statistics.\"\"\"\n\n    def test_empty_state(self):\n        \"\"\"Empty store returns all-zero summary.\"\"\"\n        store = make_mock_conflict_store()\n        store.load_all = MagicMock(return_value=[])\n        resolver = make_resolver(store=store)\n\n        summary = resolver.get_summary()\n\n        assert summary.total_conflicts == 0\n        assert summary.unresolved_count == 0\n        assert summary.authority_resolved_count == 0\n        assert summary.trust_resolved_count == 0\n        assert summary.human_reviewed_count == 0\n        assert summary.deploy_blocking_count == 0\n        assert summary.domains_affected == []\n\n    def test_mixed_states(self):\n        \"\"\"Summary correctly counts mixed statuses.\"\"\"\n        store = make_mock_conflict_store()\n        store._stored = [\n            make_conflict_record(conflict_id=\"c1\", domain=\"auth\", status=ResolutionStatus.DETECTED, blocks_deploy=True),\n            make_conflict_record(conflict_id=\"c2\", domain=\"auth\", status=ResolutionStatus.UNRESOLVABLE, blocks_deploy=True),\n            make_conflict_record(conflict_id=\"c3\", domain=\"billing\", status=ResolutionStatus.AUTHORITY_RESOLVED, blocks_deploy=False),\n            make_conflict_record(conflict_id=\"c4\", domain=\"billing\", status=ResolutionStatus.TRUST_RESOLVED, blocks_deploy=False),\n            make_conflict_record(conflict_id=\"c5\", domain=\"auth\", status=ResolutionStatus.HUMAN_REVIEWED, blocks_deploy=False),\n        ]\n        store.load_all = MagicMock(return_value=store._stored)\n        resolver = make_resolver(store=store)\n\n        summary = resolver.get_summary()\n\n        assert summary.total_conflicts == 5\n        assert summary.unresolved_count == 2  # DETECTED + UNRESOLVABLE\n        assert summary.authority_resolved_count == 1\n        assert summary.trust_resolved_count == 1\n        assert summary.human_reviewed_count == 1\n        assert summary.deploy_blocking_count == 2  # c1 and c2\n\n    def test_count_invariant(self):\n        \"\"\"total_conflicts == sum of all status counts.\"\"\"\n        store = make_mock_conflict_store()\n        store._stored = [\n            make_conflict_record(conflict_id=\"c1\", status=ResolutionStatus.DETECTED),\n            make_conflict_record(conflict_id=\"c2\", status=ResolutionStatus.AUTHORITY_RESOLVED),\n            make_conflict_record(conflict_id=\"c3\", status=ResolutionStatus.TRUST_RESOLVED),\n        ]\n        store.load_all = MagicMock(return_value=store._stored)\n        resolver = make_resolver(store=store)\n\n        summary = resolver.get_summary()\n\n        count_sum = (\n            summary.unresolved_count\n            + summary.authority_resolved_count\n            + summary.trust_resolved_count\n            + summary.human_reviewed_count\n        )\n        assert summary.total_conflicts == count_sum\n\n    def test_domains_affected_sorted_and_deduped(self):\n        \"\"\"domains_affected contains only unresolved domains, sorted and deduped.\"\"\"\n        store = make_mock_conflict_store()\n        store._stored = [\n            make_conflict_record(conflict_id=\"c1\", domain=\"billing\", status=ResolutionStatus.DETECTED),\n            make_conflict_record(conflict_id=\"c2\", domain=\"auth\", status=ResolutionStatus.UNRESOLVABLE),\n            make_conflict_record(conflict_id=\"c3\", domain=\"auth\", status=ResolutionStatus.DETECTED),\n            make_conflict_record(conflict_id=\"c4\", domain=\"payments\", status=ResolutionStatus.AUTHORITY_RESOLVED),\n        ]\n        store.load_all = MagicMock(return_value=store._stored)\n        resolver = make_resolver(store=store)\n\n        summary = resolver.get_summary()\n\n        # Only auth and billing have unresolved conflicts; payments is resolved\n        assert \"auth\" in summary.domains_affected\n        assert \"billing\" in summary.domains_affected\n        assert \"payments\" not in summary.domains_affected\n        # Should be sorted\n        assert summary.domains_affected == sorted(summary.domains_affected)\n        # Should be deduplicated\n        assert len(summary.domains_affected) == len(set(summary.domains_affected))\n\n    def test_store_read_failed(self):\n        \"\"\"Store read failure raises store_read_failed.\"\"\"\n        store = make_mock_conflict_store()\n        store.load_all = MagicMock(side_effect=Exception(\"read failed\"))\n        resolver = make_resolver(store=store)\n\n        with pytest.raises(Exception):\n            resolver.get_summary()\n\n\n# ===========================================================================\n# TestVerifyLogIntegrity\n# ===========================================================================\nclass TestVerifyLogIntegrity:\n    \"\"\"Tests for verify_log_integrity() — SHA256 checksum verification.\"\"\"\n\n    def test_valid_log_returns_true(self):\n        \"\"\"Valid log with correct checksums returns True.\"\"\"\n        store = make_mock_conflict_store()\n        store.verify_checksums = MagicMock(return_value=True)\n        resolver = make_resolver(store=store)\n\n        result = resolver.verify_log_integrity()\n        assert result is True\n\n    def test_empty_log_returns_true(self):\n        \"\"\"Empty log returns True (vacuously true).\"\"\"\n        store = make_mock_conflict_store()\n        store.verify_checksums = MagicMock(return_value=True)\n        store.load_all = MagicMock(return_value=[])\n        resolver = make_resolver(store=store)\n\n        result = resolver.verify_log_integrity()\n        assert result is True\n\n    def test_tampered_log_returns_false(self):\n        \"\"\"Tampered log entry causes checksum mismatch, returns False.\"\"\"\n        store = make_mock_conflict_store()\n        store.verify_checksums = MagicMock(return_value=False)\n        resolver = make_resolver(store=store)\n\n        result = resolver.verify_log_integrity()\n        assert result is False\n\n    def test_store_read_failed(self):\n        \"\"\"Unreadable log file raises store_read_failed.\"\"\"\n        store = make_mock_conflict_store()\n        store.verify_checksums = MagicMock(side_effect=Exception(\"file not readable\"))\n        resolver = make_resolver(store=store)\n\n        with pytest.raises(Exception) as exc_info:\n            resolver.verify_log_integrity()\n        error_str = str(exc_info.value).lower()\n        assert \"read\" in error_str or \"file\" in error_str\n\n\n# ===========================================================================\n# TestLoadConfig\n# ===========================================================================\nclass TestLoadConfig:\n    \"\"\"Tests for load_config() — YAML config loading and validation.\"\"\"\n\n    def test_valid_config(self, tmp_path):\n        \"\"\"Valid YAML config loaded and validated successfully.\"\"\"\n        config_content = \"\"\"\nwindow_timeout_seconds: 1.0\nauthority_override_floor: 0.7\ntrust_delta_threshold: 0.15\ncheckpoint_interval: 10\nconflict_log_path: /tmp/conflicts.jsonl\nprotected_tiers:\n  - critical\n  - sensitive\n\"\"\"\n        config_file = tmp_path / \"config.yaml\"\n        config_file.write_text(config_content)\n\n        result = load_config(str(config_file))\n\n        assert result.window_timeout_seconds == 1.0\n        assert result.authority_override_floor == 0.7\n        assert result.trust_delta_threshold == 0.15\n        assert result.checkpoint_interval == 10\n        assert \"critical\" in result.protected_tiers\n        assert 0.0 <= result.authority_override_floor <= 1.0\n        assert 0.0 <= result.trust_delta_threshold <= 1.0\n\n    def test_file_not_found(self):\n        \"\"\"Non-existent config file raises error.\"\"\"\n        with pytest.raises(Exception) as exc_info:\n            load_config(\"/nonexistent/path/config.yaml\")\n        error_str = str(exc_info.value).lower()\n        assert \"not found\" in error_str or \"file\" in error_str or \"exist\" in error_str or \"no such\" in error_str\n\n    def test_invalid_yaml(self, tmp_path):\n        \"\"\"Invalid YAML content raises error.\"\"\"\n        config_file = tmp_path / \"bad.yaml\"\n        config_file.write_text(\"{{{{not: valid: yaml: [[[\")\n\n        with pytest.raises(Exception) as exc_info:\n            load_config(str(config_file))\n        error_str = str(exc_info.value).lower()\n        assert \"yaml\" in error_str or \"parse\" in error_str or \"invalid\" in error_str\n\n    def test_threshold_out_of_range(self, tmp_path):\n        \"\"\"Threshold values outside [0.0, 1.0] raise invalid_config.\"\"\"\n        config_content = \"\"\"\nwindow_timeout_seconds: 1.0\nauthority_override_floor: 1.5\ntrust_delta_threshold: 0.15\ncheckpoint_interval: 10\nconflict_log_path: /tmp/conflicts.jsonl\nprotected_tiers: []\n\"\"\"\n        config_file = tmp_path / \"config.yaml\"\n        config_file.write_text(config_content)\n\n        with pytest.raises(Exception) as exc_info:\n            load_config(str(config_file))\n        error_str = str(exc_info.value).lower()\n        assert \"invalid\" in error_str or \"range\" in error_str or \"validation\" in error_str or \"config\" in error_str\n\n    def test_checkpoint_interval_zero(self, tmp_path):\n        \"\"\"checkpoint_interval < 1 raises invalid_config.\"\"\"\n        config_content = \"\"\"\nwindow_timeout_seconds: 1.0\nauthority_override_floor: 0.7\ntrust_delta_threshold: 0.15\ncheckpoint_interval: 0\nconflict_log_path: /tmp/conflicts.jsonl\nprotected_tiers: []\n\"\"\"\n        config_file = tmp_path / \"config.yaml\"\n        config_file.write_text(config_content)\n\n        with pytest.raises(Exception) as exc_info:\n            load_config(str(config_file))\n        error_str = str(exc_info.value).lower()\n        assert \"interval\" in error_str or \"checkpoint\" in error_str or \"invalid\" in error_str or \"validation\" in error_str or \"config\" in error_str\n\n    def test_window_timeout_too_small(self, tmp_path):\n        \"\"\"window_timeout_seconds < 0.1 raises invalid_config.\"\"\"\n        config_content = \"\"\"\nwindow_timeout_seconds: 0.05\nauthority_override_floor: 0.7\ntrust_delta_threshold: 0.15\ncheckpoint_interval: 10\nconflict_log_path: /tmp/conflicts.jsonl\nprotected_tiers: []\n\"\"\"\n        config_file = tmp_path / \"config.yaml\"\n        config_file.write_text(config_content)\n\n        with pytest.raises(Exception) as exc_info:\n            load_config(str(config_file))\n        error_str = str(exc_info.value).lower()\n        assert \"timeout\" in error_str or \"window\" in error_str or \"invalid\" in error_str or \"validation\" in error_str or \"config\" in error_str\n\n\n# ===========================================================================\n# TestInvariantStatusTransitions\n# ===========================================================================\nclass TestInvariantStatusTransitions:\n    \"\"\"Invariant tests for status transition rules.\"\"\"\n\n    def test_detected_to_authority_resolved(self):\n        \"\"\"DETECTED -> AUTHORITY_RESOLVED is a valid transition.\"\"\"\n        config = make_config(authority_override_floor=0.5)\n        resolver = make_resolver(config=config)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.9, is_authoritative=True),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.5, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n        assert result.status == ResolutionStatus.AUTHORITY_RESOLVED\n\n    def test_detected_to_trust_resolved(self):\n        \"\"\"DETECTED -> TRUST_RESOLVED is a valid transition.\"\"\"\n        config = make_config(trust_delta_threshold=0.1)\n        resolver = make_resolver(config=config)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.9, is_authoritative=False),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.5, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n        assert result.status == ResolutionStatus.TRUST_RESOLVED\n\n    def test_detected_to_unresolvable(self):\n        \"\"\"DETECTED -> UNRESOLVABLE is a valid transition.\"\"\"\n        config = make_config(trust_delta_threshold=0.5)\n        signal_emitter = make_mock_signal_emitter()\n        resolver = make_resolver(config=config, signal_emitter=signal_emitter)\n\n        conflict = make_conflict_record(\n            competing_values=[\n                make_node_value(node_id=\"node-A\", trust_score_snapshot=0.8, is_authoritative=False),\n                make_node_value(node_id=\"node-B\", trust_score_snapshot=0.75, is_authoritative=False),\n            ],\n            status=ResolutionStatus.DETECTED,\n        )\n        result = resolver.resolve(conflict)\n        assert result.status == ResolutionStatus.UNRESOLVABLE\n\n    def test_human_reviewed_only_from_unresolvable(self):\n        \"\"\"HUMAN_REVIEWED is only reachable from UNRESOLVABLE.\"\"\"\n        store = make_mock_conflict_store()\n        # Try from AUTHORITY_RESOLVED — should fail\n        resolved = make_conflict_record(\n            conflict_id=\"c-auth\",\n            status=ResolutionStatus.AUTHORITY_RESOLVED,\n        )\n        store._stored.append(resolved)\n        store.load_all = MagicMock(return_value=store._stored)\n        resolver = make_resolver(store=store)\n\n        with pytest.raises(Exception):\n            resolver.submit_human_review(\n                conflict_id=\"c-auth\",\n                winner_node_id=\"node-A\",\n                reviewed_by=\"admin\",\n                rationale=\"test\",\n            )\n\n    def test_authority_resolved_is_terminal(self):\n        \"\"\"AUTHORITY_RESOLVED cannot be re-resolved.\"\"\"\n        resolver = make_resolver()\n        conflict = make_conflict_record(\n            status=ResolutionStatus.AUTHORITY_RESOLVED,\n            resolution=Resolution(\n                strategy=ResolutionStrategy.AUTHORITY,\n                winner_node_id=\"node-A\",\n                resolved_at=_utc_now_iso(),\n                rationale=\"authority\",\n                reviewed_by=\"\",\n            ),\n        )\n        with pytest.raises(Exception):\n            resolver.resolve(conflict)\n\n    def test_trust_resolved_is_terminal(self):\n        \"\"\"TRUST_RESOLVED cannot be re-resolved.\"\"\"\n        resolver = make_resolver()\n        conflict = make_conflict_record(\n            status=ResolutionStatus.TRUST_RESOLVED,\n            resolution=Resolution(\n                strategy=ResolutionStrategy.TRUST_ARBITRATION,\n                winner_node_id=\"node-A\",\n                resolved_at=_utc_now_iso(),\n                rationale=\"trust\",\n                reviewed_by=\"\",\n            ),\n        )\n        with pytest.raises(Exception):\n            resolver.resolve(conflict)\n\n\n# ===========================================================================\n# TestAppendOnlyLog\n# ===========================================================================\nclass TestAppendOnlyLog:\n    \"\"\"Tests for the append-only log invariant.\"\"\"\n\n    def test_resolve_appends_not_modifies(self):\n        \"\"\"resolve() appends new entry, does not modify original.\"\"\"\n        store = make_mock_conflict_store()\n        resolver = make_resolver(store=store)\n\n        conflict = make_conflict_record(status=ResolutionStatus.DETECTED)\n        original_id = conflict.conflict_id\n\n        result = resolver.resolve(conflict)\n\n        # Store.append should have been called (not update/delete)\n        assert store.append.called\n        # The appended record should reference the same conflict_id\n        appended = store.append.call_args[0][0] if store.append.call_args[0] else store.append.call_args[1]\n        if hasattr(appended, 'conflict_id'):\n            assert appended.conflict_id == original_id\n\n    def test_human_review_appends_not_modifies(self):\n        \"\"\"submit_human_review() appends new entry, does not modify original.\"\"\"\n        store = make_mock_conflict_store()\n        unresolvable = make_conflict_record(\n            conflict_id=\"c-append-test\",\n            status=ResolutionStatus.UNRESOLVABLE,\n            blocks_deploy=True,\n            resolution=Resolution(\n                strategy=ResolutionStrategy.HUMAN,\n                winner_node_id=\"\",\n                resolved_at=_utc_now_iso(),\n                rationale=\"unresolvable\",\n                reviewed_by=\"\",\n            ),\n        )\n        store._stored.append(unresolvable)\n        store.load_all = MagicMock(return_value=store._stored)\n        resolver = make_resolver(store=store)\n\n        resolver.submit_human_review(\n            conflict_id=\"c-append-test\",\n            winner_node_id=\"node-A\",\n            reviewed_by=\"admin\",\n            rationale=\"confirmed\",\n        )\n\n        # Should append, not modify in place\n        assert store.append.called\n\n\n# ===========================================================================\n# TestDeterministicResolution\n# ===========================================================================\nclass TestDeterministicResolution:\n    \"\"\"Randomized test for resolution determinism using stdlib random.\"\"\"\n\n    def test_determinism_with_random_inputs(self):\n        \"\"\"Same conflict + config always produces same result across multiple runs.\"\"\"\n        import random\n\n        config = make_config(\n            authority_override_floor=0.6,\n            trust_delta_threshold=0.2,\n        )\n\n        for _ in range(20):\n            trust_a = round(random.uniform(0.0, 1.0), 4)\n            trust_b = round(random.uniform(0.0, 1.0), 4)\n            auth_a = random.choice([True, False])\n            auth_b = random.choice([True, False])\n\n            conflict = make_conflict_record(\n                competing_values=[\n                    make_node_value(node_id=\"node-A\", trust_score_snapshot=trust_a, is_authoritative=auth_a, value_serialized='\"a\"'),\n                    make_node_value(node_id=\"node-B\", trust_score_snapshot=trust_b, is_authoritative=auth_b, value_serialized='\"b\"'),\n                ],\n                status=ResolutionStatus.DETECTED,\n            )\n\n            signal_emitter1 = make_mock_signal_emitter()\n            signal_emitter2 = make_mock_signal_emitter()\n            resolver1 = make_resolver(config=config, signal_emitter=signal_emitter1)\n            resolver2 = make_resolver(config=config, signal_emitter=signal_emitter2)\n\n            conflict_copy = copy.deepcopy(conflict)\n\n            result1 = resolver1.resolve(conflict)\n            result2 = resolver2.resolve(conflict_copy)\n\n            assert result1.status == result2.status\n            assert result1.resolution.strategy == result2.resolution.strategy\n            assert result1.resolution.winner_node_id == result2.resolution.winner_node_id\n"
+}

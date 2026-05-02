@@ -1,0 +1,559 @@
+{
+  "component_id": "consistency",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "goodhart_analyze_span_node_id_propagated",
+      "description": "The finding's node_id, span_id, and trace_id must be copied from the observation (or claim) inputs, not hardcoded to any particular test value",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation and claim with unusual but valid IDs: node_id='alpha.bravo.charlie', span_id='ab'*8, trace_id='cd'*16",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.node_id == 'alpha.bravo.charlie'",
+        "result.span_id == 'ab' * 8",
+        "result.trace_id == 'cd' * 16"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_large_field_sets",
+      "description": "Set difference computation must work correctly for large field sets, not just small hand-picked examples",
+      "function": "analyze_span",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation with 100 fields (field.0 through field.99), claim with 80 fields (field.50 through field.129). 50 unexplained (field.0-49), 30 overclaimed (field.100-129).",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.unexplained_fields) == 50",
+        "len(result.overclaimed_fields) == 30",
+        "result.outcome.name == 'INCONSISTENT'"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_subset_claim_overclaim_only",
+      "description": "When claimed_fields is a strict superset of observed_fields, unexplained should be empty and overclaimed should be non-empty, with outcome INCONSISTENT",
+      "function": "analyze_span",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation has {'a.b', 'c.d'}, claim has {'a.b', 'c.d', 'e.f', 'g.h'} — claim is superset",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.unexplained_fields) == 0",
+        "len(result.overclaimed_fields) == 2",
+        "result.outcome.name == 'INCONSISTENT'"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_subset_observation_unexplained_only",
+      "description": "When observed_fields is a strict superset of claimed_fields, overclaimed should be empty and unexplained should be non-empty, with outcome INCONSISTENT",
+      "function": "analyze_span",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation has {'x.a', 'x.b', 'x.c', 'x.d', 'x.e'}, claim has {'x.d', 'x.e'} — observation is superset with 3 unexplained",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.overclaimed_fields) == 0",
+        "len(result.unexplained_fields) == 3",
+        "result.outcome.name == 'INCONSISTENT'"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_missing_claim_fields_in_finding",
+      "description": "When observation is present but claim is None, the finding must carry the observation's fields as observed_fields, empty claimed_fields, and observed_fields as unexplained_fields",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation with observed_fields={'request.body', 'response.token', 'user.id'}, claim=None",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.observed_fields == frozenset({'request.body', 'response.token', 'user.id'})",
+        "result.claimed_fields == frozenset()",
+        "result.unexplained_fields == frozenset({'request.body', 'response.token', 'user.id'})",
+        "result.overclaimed_fields == frozenset()"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_missing_observation_fields_in_finding",
+      "description": "When claim is present but observation is None, the finding must carry the claim's fields as claimed_fields, empty observed_fields, and claimed_fields as overclaimed_fields",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Claim with claimed_fields={'auth.jwt', 'db.query'}, observation=None",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.claimed_fields == frozenset({'auth.jwt', 'db.query'})",
+        "result.observed_fields == frozenset()",
+        "result.overclaimed_fields == frozenset({'auth.jwt', 'db.query'})",
+        "result.unexplained_fields == frozenset()"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_severity_missing_observation",
+      "description": "MISSING_OBSERVATION outcome severity must be deterministic — the contract implies it should not be NONE or HIGH (those are reserved for CONSISTENT and MISSING_CLAIM respectively)",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Claim present with several fields, observation=None",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.severity.name in ('LOW', 'MEDIUM')",
+        "result.outcome.name == 'MISSING_OBSERVATION'"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_severity_deterministic_by_unexplained_count",
+      "description": "Severity for INCONSISTENT outcomes must scale deterministically with the number of unexplained fields — a single unexplained field should produce lower severity than many",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two analyze_span calls: one with 1 unexplained field, another with 10 unexplained fields. Both have non-empty unexplained.",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result_one_unexplained.severity.name in ('LOW', 'MEDIUM')",
+        "result_many_unexplained.severity.name == 'HIGH'"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_overclaim_only_severity_low",
+      "description": "When the only difference is overclaimed fields (no unexplained), severity should be LOW since overclaiming is a minor issue compared to unexplained fields",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation with {'a.b'}, claim with {'a.b', 'c.d'} — one overclaimed field, zero unexplained",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.outcome.name == 'INCONSISTENT'",
+        "result.severity.name == 'LOW'"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_details_nonempty_on_inconsistent",
+      "description": "The details field should contain meaningful diagnostic information when the outcome is not CONSISTENT",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation and claim with differing fields producing INCONSISTENT outcome",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.details) > 0",
+        "result.outcome.name == 'INCONSISTENT'"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_deeply_nested_fields",
+      "description": "Dot-notation field names with deep nesting (3+ levels) must be treated as valid and participate correctly in set differences",
+      "function": "analyze_span",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Both observation and claim have fields like 'a.b.c.d.e.f', 'response.body.data.items.0.id' — deeply nested but identical",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.outcome.name == 'CONSISTENT'",
+        "result.severity.name == 'NONE'"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_single_field_consistent",
+      "description": "A single-field observation matching a single-field claim must be CONSISTENT, testing that the logic works for minimal non-empty sets",
+      "function": "analyze_span",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation with observed_fields={'only.field'}, claim with claimed_fields={'only.field'}",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.outcome.name == 'CONSISTENT'",
+        "result.severity.name == 'NONE'",
+        "len(result.unexplained_fields) == 0",
+        "len(result.overclaimed_fields) == 0"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_disjoint_fields",
+      "description": "When observation and claim have completely disjoint field sets, all observed are unexplained and all claimed are overclaimed",
+      "function": "analyze_span",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation with {'obs.a', 'obs.b'}, claim with {'claim.x', 'claim.y', 'claim.z'} — completely disjoint",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.unexplained_fields == frozenset({'obs.a', 'obs.b'})",
+        "result.overclaimed_fields == frozenset({'claim.x', 'claim.y', 'claim.z'})",
+        "result.outcome.name == 'INCONSISTENT'"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_error_includes_context",
+      "description": "Error messages from ConsistencyAnalysisError must include identifying context (node_id, span_id) so errors can be traced back to the problematic input",
+      "function": "analyze_span",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation with node_id='unique.node.xyz' and claim with node_id='different.node.abc' (mismatch)",
+      "expected_output_description": "",
+      "expected_error": "ConsistencyAnalysisError",
+      "assertions": [
+        "'unique.node.xyz' in str(error) or hasattr(error, 'node_id') and error.node_id != ''"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_batch_mixed_outcomes",
+      "description": "A batch containing pairs that produce different outcomes (CONSISTENT, INCONSISTENT, MISSING_CLAIM, MISSING_OBSERVATION) must return correctly typed findings for each",
+      "function": "analyze_batch",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Batch of 4 pairs: matching fields, differing fields, observation-only, claim-only",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(results) == 4",
+        "results[0].outcome.name == 'CONSISTENT'",
+        "results[1].outcome.name == 'INCONSISTENT'",
+        "results[2].outcome.name == 'MISSING_CLAIM'",
+        "results[3].outcome.name == 'MISSING_OBSERVATION'"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_batch_large_batch",
+      "description": "Batch processing must handle non-trivial batch sizes correctly, returning exactly as many results as input pairs",
+      "function": "analyze_batch",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Batch of 100 valid pairs, each with matching observation and claim",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(results) == 100"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_batch_error_propagates_not_partial",
+      "description": "When one pair in the batch is invalid (both None), the error must propagate — no partial results should be returned",
+      "function": "analyze_batch",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Batch of 5 pairs where pair at index 3 has both observation and claim as None; the first 3 are valid",
+      "expected_output_description": "",
+      "expected_error": "ConsistencyAnalysisError",
+      "assertions": []
+    },
+    {
+      "id": "goodhart_analyze_batch_each_finding_has_schema_v1",
+      "description": "Every finding in a batch result must have schema_version == 1, verifying the postcondition holds for all elements not just the first",
+      "function": "analyze_batch",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Batch of 5 valid pairs with varying field sets",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all(f.schema_version == 1 for f in results)"
+      ]
+    },
+    {
+      "id": "goodhart_persist_then_get_by_span_multiple_nodes",
+      "description": "Persisting findings for the same span from different analysis runs must all be retrievable via get_by_span",
+      "function": "get_by_span",
+      "category": "happy_path",
+      "setup_description": "Create and persist two ConsistencyFindings with the same span_id",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Persist two findings with the same span_id but different analyzed_at timestamps, then query by that span_id",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(results) == 2",
+        "all(r.span_id == target_span_id for r in results)"
+      ]
+    },
+    {
+      "id": "goodhart_get_by_node_does_not_return_other_nodes",
+      "description": "get_by_node must not return findings for other nodes even when those other nodes share similar prefixes",
+      "function": "get_by_node",
+      "category": "invariant",
+      "setup_description": "Persist one finding for 'service.auth' and one for 'service.auth.handler'",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Persist findings for 'service.auth' and 'service.auth.handler', then query for 'service.auth'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(results) == 1",
+        "results[0].node_id == 'service.auth'"
+      ]
+    },
+    {
+      "id": "goodhart_get_by_span_does_not_return_other_spans",
+      "description": "get_by_span must perform exact span_id matching, not prefix or substring matching",
+      "function": "get_by_span",
+      "category": "invariant",
+      "setup_description": "Persist findings with similar but distinct span_ids",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Persist findings for span 'aabb' * 4 and 'aabb' * 4 + 'cc', then query for 'aabb' * 4",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(results) == 1",
+        "results[0].span_id == target_span_id"
+      ]
+    },
+    {
+      "id": "goodhart_has_high_severity_exact_boundary_since",
+      "description": "has_high_severity with since equal to a HIGH finding's analyzed_at must return True (inclusive boundary: finding.analyzed_at >= since)",
+      "function": "has_high_severity",
+      "category": "edge_case",
+      "setup_description": "Persist a HIGH severity finding at a known timestamp",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Persist a HIGH finding with analyzed_at='2024-06-15T10:30:00Z', then call has_high_severity with since='2024-06-15T10:30:00Z'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "goodhart_has_high_severity_one_second_after",
+      "description": "has_high_severity with since one second after a HIGH finding's analyzed_at must return False (the finding is strictly before since)",
+      "function": "has_high_severity",
+      "category": "edge_case",
+      "setup_description": "Persist a HIGH severity finding at a known timestamp",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Persist a HIGH finding at '2024-06-15T10:30:00Z', then call has_high_severity with since='2024-06-15T10:30:01Z'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "goodhart_has_high_severity_multiple_nodes_isolation",
+      "description": "has_high_severity must only consider findings for the requested node_id, not other nodes that have HIGH severity findings",
+      "function": "has_high_severity",
+      "category": "invariant",
+      "setup_description": "Persist a HIGH severity finding for a different node than the one being queried",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Persist HIGH finding for node 'other.node', then call has_high_severity for 'target.node' which has no findings",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_missing_claim_empty_observation_fields",
+      "description": "MISSING_CLAIM with empty observed_fields should still produce HIGH severity — the adapter observed the span but node didn't claim at all",
+      "function": "analyze_span",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation with empty observed_fields, claim=None",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.outcome.name == 'MISSING_CLAIM'",
+        "result.severity.name == 'HIGH'",
+        "len(result.observed_fields) == 0"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_field_names_case_sensitive",
+      "description": "Field name comparison must be case-sensitive — 'User.Email' and 'user.email' are different fields",
+      "function": "analyze_span",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation with {'user.email'}, claim with {'User.Email'} — differ only by case",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.outcome.name == 'INCONSISTENT'",
+        "len(result.unexplained_fields) == 1",
+        "len(result.overclaimed_fields) == 1"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_observed_claimed_fields_preserved",
+      "description": "The finding must preserve the original observed_fields and claimed_fields exactly, not just the differences",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation with {'a.b', 'c.d', 'e.f'}, claim with {'c.d', 'e.f', 'g.h'}",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.observed_fields == frozenset({'a.b', 'c.d', 'e.f'})",
+        "result.claimed_fields == frozenset({'c.d', 'e.f', 'g.h'})"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_consistent_many_fields",
+      "description": "CONSISTENT outcome must hold for larger identical field sets, not just trivial cases visible in other tests",
+      "function": "analyze_span",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation and claim both with 20 identical fields (field.0 through field.19)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.outcome.name == 'CONSISTENT'",
+        "result.severity.name == 'NONE'",
+        "len(result.observed_fields) == 20"
+      ]
+    },
+    {
+      "id": "goodhart_get_by_node_chronological_multiple_timestamps",
+      "description": "Findings persisted out of chronological order must still be returned sorted by analyzed_at ascending",
+      "function": "get_by_node",
+      "category": "invariant",
+      "setup_description": "Persist findings with analyzed_at='2024-03-01T00:00:00Z', '2024-01-01T00:00:00Z', '2024-02-01T00:00:00Z' in that order",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Persist 3 findings for the same node with analyzed_at timestamps in reverse order (newest first), then retrieve by node",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(results) == 3",
+        "results[0].analyzed_at <= results[1].analyzed_at",
+        "results[1].analyzed_at <= results[2].analyzed_at"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_trace_id_in_result",
+      "description": "The finding must carry trace_id from the inputs, ensuring it is propagated for tracing correlation",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation and claim with trace_id='ef' * 16",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.trace_id == 'ef' * 16"
+      ]
+    },
+    {
+      "id": "goodhart_has_high_severity_medium_not_high",
+      "description": "MEDIUM severity findings must not trigger has_high_severity — only HIGH severity counts",
+      "function": "has_high_severity",
+      "category": "invariant",
+      "setup_description": "Create and persist a finding with severity=MEDIUM",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Persist an INCONSISTENT finding with MEDIUM severity for the target node, then check has_high_severity",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "goodhart_persist_multiple_then_get_by_node_count",
+      "description": "Persisting N findings for a node and then querying must return exactly N findings — verifying no duplicates or drops",
+      "function": "get_by_node",
+      "category": "invariant",
+      "setup_description": "Create and persist 5 findings with distinct span_ids but same node_id",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Persist 5 distinct findings for the same node_id, then get_by_node",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(results) == 5"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_span_missing_observation_severity_not_none",
+      "description": "MISSING_OBSERVATION should not have NONE severity — a claim without observation is still noteworthy",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Claim present with fields, observation=None",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.severity.name != 'NONE'",
+        "result.outcome.name == 'MISSING_OBSERVATION'"
+      ]
+    },
+    {
+      "id": "goodhart_analyze_batch_results_independent",
+      "description": "Each pair in a batch must be analyzed independently — the outcome of one pair must not affect another",
+      "function": "analyze_batch",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Batch of 2 pairs: first is observation-only (MISSING_CLAIM), second is matching obs+claim (CONSISTENT), each for different nodes",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "results[0].outcome.name == 'MISSING_CLAIM'",
+        "results[1].outcome.name == 'CONSISTENT'",
+        "results[0].node_id != results[1].node_id"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nAdversarial hidden acceptance tests for the Consistency Analyzer component.\n\nThese tests target behavioral gaps not covered by visible tests, designed to\ncatch implementations that hardcode returns or take shortcuts based on visible\ntest inputs.\n\"\"\"\n\nimport pytest\nfrom datetime import datetime, timezone, timedelta\nfrom unittest.mock import patch, MagicMock\nimport time\n\nfrom src.consistency import (\n    analyze_span,\n    analyze_batch,\n    persist,\n    get_by_node,\n    get_by_span,\n    has_high_severity,\n    AdapterObservation,\n    NodeAuditClaim,\n    ConsistencyFinding,\n    ConsistencyAnalysisError,\n    ConsistencyOutcome,\n    FindingSeverity,\n    AnalysisPair,\n)\n\n\n# ---- Helpers ----\n\ndef make_observation(\n    span_id=\"aa\" * 8,\n    trace_id=\"bb\" * 16,\n    node_id=\"test.node\",\n    observed_fields=frozenset(),\n    timestamp=\"2024-01-15T12:00:00Z\",\n):\n    return AdapterObservation(\n        span_id=span_id,\n        trace_id=trace_id,\n        node_id=node_id,\n        observed_fields=observed_fields,\n        timestamp=timestamp,\n    )\n\n\ndef make_claim(\n    span_id=\"aa\" * 8,\n    trace_id=\"bb\" * 16,\n    node_id=\"test.node\",\n    claimed_fields=frozenset(),\n    timestamp=\"2024-01-15T12:00:00Z\",\n):\n    return NodeAuditClaim(\n        span_id=span_id,\n        trace_id=trace_id,\n        node_id=node_id,\n        claimed_fields=claimed_fields,\n        timestamp=timestamp,\n    )\n\n\ndef make_finding(\n    node_id=\"test.node\",\n    span_id=\"aa\" * 8,\n    trace_id=\"bb\" * 16,\n    outcome=ConsistencyOutcome.CONSISTENT,\n    severity=FindingSeverity.NONE,\n    observed_fields=frozenset(),\n    claimed_fields=frozenset(),\n    unexplained_fields=frozenset(),\n    overclaimed_fields=frozenset(),\n    analyzed_at=\"2024-01-15T12:00:00Z\",\n    details=\"\",\n):\n    return ConsistencyFinding(\n        schema_version=1,\n        node_id=node_id,\n        span_id=span_id,\n        trace_id=trace_id,\n        outcome=outcome,\n        severity=severity,\n        observed_fields=observed_fields,\n        claimed_fields=claimed_fields,\n        unexplained_fields=unexplained_fields,\n        overclaimed_fields=overclaimed_fields,\n        analyzed_at=analyzed_at,\n        details=details,\n    )\n\n\n# ---- Tests ----\n\n\nclass TestGoodhartAnalyzeSpan:\n    \"\"\"Adversarial tests for analyze_span.\"\"\"\n\n    def test_goodhart_node_id_span_id_trace_id_propagated(self):\n        \"\"\"The finding's node_id, span_id, and trace_id must be copied from the observation (or claim) inputs, not hardcoded to any particular test value\"\"\"\n        obs = make_observation(\n            node_id=\"alpha.bravo.charlie\",\n            span_id=\"ab\" * 8,\n            trace_id=\"cd\" * 16,\n            observed_fields=frozenset({\"x.y\"}),\n        )\n        claim = make_claim(\n            node_id=\"alpha.bravo.charlie\",\n            span_id=\"ab\" * 8,\n            trace_id=\"cd\" * 16,\n            claimed_fields=frozenset({\"x.y\"}),\n        )\n        result = analyze_span(observation=obs, claim=claim)\n        assert result.node_id == \"alpha.bravo.charlie\"\n        assert result.span_id == \"ab\" * 8\n        assert result.trace_id == \"cd\" * 16\n\n    def test_goodhart_large_field_sets(self):\n        \"\"\"Set difference computation must work correctly for large field sets, not just small hand-picked examples\"\"\"\n        observed = frozenset(f\"field.{i}\" for i in range(100))\n        claimed = frozenset(f\"field.{i}\" for i in range(50, 130))\n        obs = make_observation(observed_fields=observed)\n        claim = make_claim(claimed_fields=claimed)\n        result = analyze_span(observation=obs, claim=claim)\n        assert len(result.unexplained_fields) == 50  # field.0 - field.49\n        assert len(result.overclaimed_fields) == 30  # field.100 - field.129\n        assert result.outcome == ConsistencyOutcome.INCONSISTENT\n\n    def test_goodhart_subset_claim_overclaim_only(self):\n        \"\"\"When claimed_fields is a strict superset of observed_fields, unexplained should be empty and overclaimed should be non-empty, with outcome INCONSISTENT\"\"\"\n        obs = make_observation(observed_fields=frozenset({\"a.b\", \"c.d\"}))\n        claim = make_claim(claimed_fields=frozenset({\"a.b\", \"c.d\", \"e.f\", \"g.h\"}))\n        result = analyze_span(observation=obs, claim=claim)\n        assert len(result.unexplained_fields) == 0\n        assert len(result.overclaimed_fields) == 2\n        assert result.outcome == ConsistencyOutcome.INCONSISTENT\n\n    def test_goodhart_subset_observation_unexplained_only(self):\n        \"\"\"When observed_fields is a strict superset of claimed_fields, overclaimed should be empty and unexplained should be non-empty\"\"\"\n        obs = make_observation(\n            observed_fields=frozenset({\"x.a\", \"x.b\", \"x.c\", \"x.d\", \"x.e\"})\n        )\n        claim = make_claim(claimed_fields=frozenset({\"x.d\", \"x.e\"}))\n        result = analyze_span(observation=obs, claim=claim)\n        assert len(result.overclaimed_fields) == 0\n        assert len(result.unexplained_fields) == 3\n        assert result.outcome == ConsistencyOutcome.INCONSISTENT\n\n    def test_goodhart_missing_claim_fields_in_finding(self):\n        \"\"\"When observation is present but claim is None, the finding must carry the observation's fields as observed_fields, empty claimed_fields, and observed_fields as unexplained_fields\"\"\"\n        obs = make_observation(\n            observed_fields=frozenset({\"request.body\", \"response.token\", \"user.id\"})\n        )\n        result = analyze_span(observation=obs, claim=None)\n        assert result.observed_fields == frozenset(\n            {\"request.body\", \"response.token\", \"user.id\"}\n        )\n        assert result.claimed_fields == frozenset()\n        assert result.unexplained_fields == frozenset(\n            {\"request.body\", \"response.token\", \"user.id\"}\n        )\n        assert result.overclaimed_fields == frozenset()\n\n    def test_goodhart_missing_observation_fields_in_finding(self):\n        \"\"\"When claim is present but observation is None, the finding must carry the claim's fields as claimed_fields, empty observed_fields, and claimed_fields as overclaimed_fields\"\"\"\n        claim = make_claim(\n            claimed_fields=frozenset({\"auth.jwt\", \"db.query\"})\n        )\n        result = analyze_span(observation=None, claim=claim)\n        assert result.claimed_fields == frozenset({\"auth.jwt\", \"db.query\"})\n        assert result.observed_fields == frozenset()\n        assert result.overclaimed_fields == frozenset({\"auth.jwt\", \"db.query\"})\n        assert result.unexplained_fields == frozenset()\n\n    def test_goodhart_missing_observation_severity_not_none_not_high(self):\n        \"\"\"MISSING_OBSERVATION outcome severity must be deterministic and distinct from NONE (CONSISTENT) and HIGH (MISSING_CLAIM)\"\"\"\n        claim = make_claim(claimed_fields=frozenset({\"a.b\", \"c.d\"}))\n        result = analyze_span(observation=None, claim=claim)\n        assert result.severity in (FindingSeverity.LOW, FindingSeverity.MEDIUM)\n        assert result.outcome == ConsistencyOutcome.MISSING_OBSERVATION\n\n    def test_goodhart_severity_scales_with_unexplained_count(self):\n        \"\"\"Severity for INCONSISTENT outcomes must scale deterministically with the number of unexplained fields\"\"\"\n        # One unexplained field\n        obs_one = make_observation(\n            observed_fields=frozenset({\"a.b\"}),\n            span_id=\"11\" * 8,\n        )\n        claim_one = make_claim(\n            claimed_fields=frozenset(),\n            span_id=\"11\" * 8,\n        )\n        result_one = analyze_span(observation=obs_one, claim=claim_one)\n\n        # Ten unexplained fields\n        obs_many = make_observation(\n            observed_fields=frozenset(f\"field.{i}\" for i in range(10)),\n            span_id=\"22\" * 8,\n        )\n        claim_many = make_claim(\n            claimed_fields=frozenset(),\n            span_id=\"22\" * 8,\n        )\n        result_many = analyze_span(observation=obs_many, claim=claim_many)\n\n        assert result_one.severity in (FindingSeverity.LOW, FindingSeverity.MEDIUM)\n        assert result_many.severity == FindingSeverity.HIGH\n\n    def test_goodhart_overclaim_only_severity_low(self):\n        \"\"\"When the only difference is overclaimed fields (no unexplained), severity should be LOW\"\"\"\n        obs = make_observation(observed_fields=frozenset({\"a.b\"}))\n        claim = make_claim(claimed_fields=frozenset({\"a.b\", \"c.d\"}))\n        result = analyze_span(observation=obs, claim=claim)\n        assert result.outcome == ConsistencyOutcome.INCONSISTENT\n        assert result.severity == FindingSeverity.LOW\n\n    def test_goodhart_details_nonempty_on_inconsistent(self):\n        \"\"\"The details field should contain meaningful diagnostic information when the outcome is not CONSISTENT\"\"\"\n        obs = make_observation(observed_fields=frozenset({\"a.b\"}))\n        claim = make_claim(claimed_fields=frozenset({\"c.d\"}))\n        result = analyze_span(observation=obs, claim=claim)\n        assert len(result.details) > 0\n        assert result.outcome == ConsistencyOutcome.INCONSISTENT\n\n    def test_goodhart_deeply_nested_fields(self):\n        \"\"\"Dot-notation field names with deep nesting (3+ levels) must be treated as valid and participate correctly in set differences\"\"\"\n        fields = frozenset(\n            {\"a.b.c.d.e.f\", \"response.body.data.items.0.id\", \"x.y.z.w\"}\n        )\n        obs = make_observation(observed_fields=fields)\n        claim = make_claim(claimed_fields=fields)\n        result = analyze_span(observation=obs, claim=claim)\n        assert result.outcome == ConsistencyOutcome.CONSISTENT\n        assert result.severity == FindingSeverity.NONE\n\n    def test_goodhart_single_field_consistent(self):\n        \"\"\"A single-field observation matching a single-field claim must be CONSISTENT\"\"\"\n        obs = make_observation(observed_fields=frozenset({\"only.field\"}))\n        claim = make_claim(claimed_fields=frozenset({\"only.field\"}))\n        result = analyze_span(observation=obs, claim=claim)\n        assert result.outcome == ConsistencyOutcome.CONSISTENT\n        assert result.severity == FindingSeverity.NONE\n        assert len(result.unexplained_fields) == 0\n        assert len(result.overclaimed_fields) == 0\n\n    def test_goodhart_disjoint_fields(self):\n        \"\"\"When observation and claim have completely disjoint field sets, all observed are unexplained and all claimed are overclaimed\"\"\"\n        obs = make_observation(observed_fields=frozenset({\"obs.a\", \"obs.b\"}))\n        claim = make_claim(\n            claimed_fields=frozenset({\"claim.x\", \"claim.y\", \"claim.z\"})\n        )\n        result = analyze_span(observation=obs, claim=claim)\n        assert result.unexplained_fields == frozenset({\"obs.a\", \"obs.b\"})\n        assert result.overclaimed_fields == frozenset(\n            {\"claim.x\", \"claim.y\", \"claim.z\"}\n        )\n        assert result.outcome == ConsistencyOutcome.INCONSISTENT\n\n    def test_goodhart_error_includes_context(self):\n        \"\"\"Error messages from ConsistencyAnalysisError must include identifying context\"\"\"\n        obs = make_observation(node_id=\"unique.node.xyz\")\n        claim = make_claim(node_id=\"different.node.abc\")\n        with pytest.raises(ConsistencyAnalysisError) as exc_info:\n            analyze_span(observation=obs, claim=claim)\n        error = exc_info.value\n        # Error must include some context about the problematic IDs\n        error_str = str(error)\n        assert \"unique.node.xyz\" in error_str or \"different.node.abc\" in error_str or (\n            hasattr(error, \"node_id\") and error.node_id != \"\"\n        )\n\n    def test_goodhart_missing_claim_empty_observation_fields(self):\n        \"\"\"MISSING_CLAIM with empty observed_fields should still produce HIGH severity\"\"\"\n        obs = make_observation(observed_fields=frozenset())\n        result = analyze_span(observation=obs, claim=None)\n        assert result.outcome == ConsistencyOutcome.MISSING_CLAIM\n        assert result.severity == FindingSeverity.HIGH\n        assert len(result.observed_fields) == 0\n\n    def test_goodhart_field_names_case_sensitive(self):\n        \"\"\"Field name comparison must be case-sensitive\"\"\"\n        obs = make_observation(observed_fields=frozenset({\"user.email\"}))\n        claim = make_claim(claimed_fields=frozenset({\"User.Email\"}))\n        result = analyze_span(observation=obs, claim=claim)\n        assert result.outcome == ConsistencyOutcome.INCONSISTENT\n        assert len(result.unexplained_fields) == 1\n        assert len(result.overclaimed_fields) == 1\n\n    def test_goodhart_observed_claimed_fields_preserved(self):\n        \"\"\"The finding must preserve the original observed_fields and claimed_fields exactly\"\"\"\n        obs = make_observation(\n            observed_fields=frozenset({\"a.b\", \"c.d\", \"e.f\"})\n        )\n        claim = make_claim(\n            claimed_fields=frozenset({\"c.d\", \"e.f\", \"g.h\"})\n        )\n        result = analyze_span(observation=obs, claim=claim)\n        assert result.observed_fields == frozenset({\"a.b\", \"c.d\", \"e.f\"})\n        assert result.claimed_fields == frozenset({\"c.d\", \"e.f\", \"g.h\"})\n\n    def test_goodhart_consistent_many_fields(self):\n        \"\"\"CONSISTENT outcome must hold for larger identical field sets\"\"\"\n        fields = frozenset(f\"field.{i}\" for i in range(20))\n        obs = make_observation(observed_fields=fields)\n        claim = make_claim(claimed_fields=fields)\n        result = analyze_span(observation=obs, claim=claim)\n        assert result.outcome == ConsistencyOutcome.CONSISTENT\n        assert result.severity == FindingSeverity.NONE\n        assert len(result.observed_fields) == 20\n\n    def test_goodhart_trace_id_in_result(self):\n        \"\"\"The finding must carry trace_id from the inputs\"\"\"\n        obs = make_observation(trace_id=\"ef\" * 16, observed_fields=frozenset({\"a.b\"}))\n        claim = make_claim(trace_id=\"ef\" * 16, claimed_fields=frozenset({\"a.b\"}))\n        result = analyze_span(observation=obs, claim=claim)\n        assert result.trace_id == \"ef\" * 16\n\n    def test_goodhart_missing_observation_severity_not_none(self):\n        \"\"\"MISSING_OBSERVATION should not have NONE severity\"\"\"\n        claim = make_claim(claimed_fields=frozenset({\"a.b\", \"c.d\", \"e.f\"}))\n        result = analyze_span(observation=None, claim=claim)\n        assert result.severity != FindingSeverity.NONE\n        assert result.outcome == ConsistencyOutcome.MISSING_OBSERVATION\n\n\nclass TestGoodhartAnalyzeBatch:\n    \"\"\"Adversarial tests for analyze_batch.\"\"\"\n\n    def test_goodhart_mixed_outcomes(self):\n        \"\"\"A batch containing pairs that produce different outcomes must return correctly typed findings for each\"\"\"\n        pairs = [\n            AnalysisPair(\n                observation=make_observation(\n                    span_id=\"01\" * 8,\n                    observed_fields=frozenset({\"a.b\"}),\n                ),\n                claim=make_claim(\n                    span_id=\"01\" * 8,\n                    claimed_fields=frozenset({\"a.b\"}),\n                ),\n            ),\n            AnalysisPair(\n                observation=make_observation(\n                    span_id=\"02\" * 8,\n                    observed_fields=frozenset({\"a.b\"}),\n                ),\n                claim=make_claim(\n                    span_id=\"02\" * 8,\n                    claimed_fields=frozenset({\"c.d\"}),\n                ),\n            ),\n            AnalysisPair(\n                observation=make_observation(\n                    span_id=\"03\" * 8,\n                    observed_fields=frozenset({\"a.b\"}),\n                ),\n                claim=None,\n            ),\n            AnalysisPair(\n                observation=None,\n                claim=make_claim(\n                    span_id=\"04\" * 8,\n                    claimed_fields=frozenset({\"a.b\"}),\n                ),\n            ),\n        ]\n        results = analyze_batch(pairs)\n        assert len(results) == 4\n        assert results[0].outcome == ConsistencyOutcome.CONSISTENT\n        assert results[1].outcome == ConsistencyOutcome.INCONSISTENT\n        assert results[2].outcome == ConsistencyOutcome.MISSING_CLAIM\n        assert results[3].outcome == ConsistencyOutcome.MISSING_OBSERVATION\n\n    def test_goodhart_large_batch(self):\n        \"\"\"Batch processing must handle non-trivial batch sizes correctly\"\"\"\n        pairs = [\n            AnalysisPair(\n                observation=make_observation(\n                    span_id=f\"{i:016x}\",\n                    observed_fields=frozenset({\"a.b\"}),\n                ),\n                claim=make_claim(\n                    span_id=f\"{i:016x}\",\n                    claimed_fields=frozenset({\"a.b\"}),\n                ),\n            )\n            for i in range(100)\n        ]\n        results = analyze_batch(pairs)\n        assert len(results) == 100\n\n    def test_goodhart_error_propagates_not_partial(self):\n        \"\"\"When one pair in the batch is invalid, the error must propagate\"\"\"\n        pairs = [\n            AnalysisPair(\n                observation=make_observation(\n                    span_id=f\"{i:016x}\",\n                    observed_fields=frozenset({\"a.b\"}),\n                ),\n                claim=make_claim(\n                    span_id=f\"{i:016x}\",\n                    claimed_fields=frozenset({\"a.b\"}),\n                ),\n            )\n            for i in range(3)\n        ] + [\n            AnalysisPair(observation=None, claim=None),  # invalid pair at index 3\n            AnalysisPair(\n                observation=make_observation(\n                    span_id=\"ff\" * 8,\n                    observed_fields=frozenset({\"a.b\"}),\n                ),\n                claim=make_claim(\n                    span_id=\"ff\" * 8,\n                    claimed_fields=frozenset({\"a.b\"}),\n                ),\n            ),\n        ]\n        with pytest.raises(ConsistencyAnalysisError):\n            analyze_batch(pairs)\n\n    def test_goodhart_each_finding_has_schema_v1(self):\n        \"\"\"Every finding in a batch result must have schema_version == 1\"\"\"\n        pairs = [\n            AnalysisPair(\n                observation=make_observation(\n                    span_id=f\"{i:016x}\",\n                    observed_fields=frozenset({f\"field.{i}\"}),\n                ),\n                claim=make_claim(\n                    span_id=f\"{i:016x}\",\n                    claimed_fields=frozenset({f\"field.{i}\", f\"extra.{i}\"}),\n                ),\n            )\n            for i in range(5)\n        ]\n        results = analyze_batch(pairs)\n        assert all(f.schema_version == 1 for f in results)\n\n    def test_goodhart_batch_results_independent(self):\n        \"\"\"Each pair in a batch must be analyzed independently\"\"\"\n        pairs = [\n            AnalysisPair(\n                observation=make_observation(\n                    node_id=\"node.alpha\",\n                    span_id=\"a1\" * 8,\n                    observed_fields=frozenset({\"x.y\"}),\n                ),\n                claim=None,\n            ),\n            AnalysisPair(\n                observation=make_observation(\n                    node_id=\"node.beta\",\n                    span_id=\"b2\" * 8,\n                    observed_fields=frozenset({\"x.y\"}),\n                ),\n                claim=make_claim(\n                    node_id=\"node.beta\",\n                    span_id=\"b2\" * 8,\n                    claimed_fields=frozenset({\"x.y\"}),\n                ),\n            ),\n        ]\n        results = analyze_batch(pairs)\n        assert results[0].outcome == ConsistencyOutcome.MISSING_CLAIM\n        assert results[1].outcome == ConsistencyOutcome.CONSISTENT\n        assert results[0].node_id != results[1].node_id\n\n\nclass TestGoodhartPersistAndQuery:\n    \"\"\"Adversarial tests for persist, get_by_node, get_by_span, has_high_severity.\"\"\"\n\n    @pytest.fixture(autouse=True)\n    def _setup_store(self, tmp_path):\n        \"\"\"Ensure a fresh finding store for each test.\n        \n        Implementations may use different store initialization approaches.\n        We try common patterns; if the store uses a file path, we patch it.\n        \"\"\"\n        # This fixture may need adaptation per implementation.\n        # Attempting common patterns:\n        import os\n        self._store_path = tmp_path / \"findings.jsonl\"\n        os.environ[\"FINDINGS_STORE_PATH\"] = str(self._store_path)\n        yield\n        if \"FINDINGS_STORE_PATH\" in os.environ:\n            del os.environ[\"FINDINGS_STORE_PATH\"]\n\n    def test_goodhart_persist_then_get_by_span_multiple(self):\n        \"\"\"Persisting findings for the same span from different analysis runs must all be retrievable via get_by_span\"\"\"\n        target_span_id = \"cc\" * 8\n        f1 = make_finding(\n            span_id=target_span_id,\n            analyzed_at=\"2024-01-15T12:00:00Z\",\n        )\n        f2 = make_finding(\n            span_id=target_span_id,\n            analyzed_at=\"2024-01-15T13:00:00Z\",\n        )\n        persist(f1)\n        persist(f2)\n        results = get_by_span(target_span_id)\n        assert len(results) == 2\n        assert all(r.span_id == target_span_id for r in results)\n\n    def test_goodhart_get_by_node_no_prefix_match(self):\n        \"\"\"get_by_node must not return findings for other nodes even when those other nodes share similar prefixes\"\"\"\n        f1 = make_finding(\n            node_id=\"service.auth\",\n            span_id=\"d1\" * 8,\n            analyzed_at=\"2024-01-15T12:00:00Z\",\n        )\n        f2 = make_finding(\n            node_id=\"service.auth.handler\",\n            span_id=\"d2\" * 8,\n            analyzed_at=\"2024-01-15T12:00:00Z\",\n        )\n        persist(f1)\n        persist(f2)\n        results = get_by_node(\"service.auth\")\n        assert len(results) == 1\n        assert results[0].node_id == \"service.auth\"\n\n    def test_goodhart_get_by_span_exact_match(self):\n        \"\"\"get_by_span must perform exact span_id matching, not prefix or substring matching\"\"\"\n        span_a = \"aabb\" * 4\n        span_b = \"aabb\" * 4 + \"cc\"\n        # Only persist if span_b is actually different (it is, since it's longer)\n        f1 = make_finding(span_id=span_a, analyzed_at=\"2024-01-15T12:00:00Z\")\n        f2 = make_finding(span_id=span_b, analyzed_at=\"2024-01-15T12:00:00Z\")\n        persist(f1)\n        persist(f2)\n        results = get_by_span(span_a)\n        assert len(results) == 1\n        assert results[0].span_id == span_a\n\n    def test_goodhart_has_high_severity_exact_boundary(self):\n        \"\"\"has_high_severity with since equal to a HIGH finding's analyzed_at must return True (inclusive >= boundary)\"\"\"\n        finding = make_finding(\n            severity=FindingSeverity.HIGH,\n            outcome=ConsistencyOutcome.MISSING_CLAIM,\n            analyzed_at=\"2024-06-15T10:30:00Z\",\n        )\n        persist(finding)\n        result = has_high_severity(\n            node_id=\"test.node\", since=\"2024-06-15T10:30:00Z\"\n        )\n        assert result is True\n\n    def test_goodhart_has_high_severity_one_second_after(self):\n        \"\"\"has_high_severity with since one second after a HIGH finding's analyzed_at must return False\"\"\"\n        finding = make_finding(\n            severity=FindingSeverity.HIGH,\n            outcome=ConsistencyOutcome.MISSING_CLAIM,\n            analyzed_at=\"2024-06-15T10:30:00Z\",\n        )\n        persist(finding)\n        result = has_high_severity(\n            node_id=\"test.node\", since=\"2024-06-15T10:30:01Z\"\n        )\n        assert result is False\n\n    def test_goodhart_has_high_severity_multiple_nodes_isolation(self):\n        \"\"\"has_high_severity must only consider findings for the requested node_id\"\"\"\n        finding = make_finding(\n            node_id=\"other.node\",\n            severity=FindingSeverity.HIGH,\n            outcome=ConsistencyOutcome.MISSING_CLAIM,\n            analyzed_at=\"2024-06-15T10:30:00Z\",\n        )\n        persist(finding)\n        result = has_high_severity(node_id=\"target.node\", since=None)\n        assert result is False\n\n    def test_goodhart_has_high_severity_medium_not_high(self):\n        \"\"\"MEDIUM severity findings must not trigger has_high_severity\"\"\"\n        finding = make_finding(\n            severity=FindingSeverity.MEDIUM,\n            outcome=ConsistencyOutcome.INCONSISTENT,\n            analyzed_at=\"2024-06-15T10:30:00Z\",\n        )\n        persist(finding)\n        result = has_high_severity(node_id=\"test.node\", since=None)\n        assert result is False\n\n    def test_goodhart_persist_multiple_then_get_by_node_count(self):\n        \"\"\"Persisting N findings for a node and then querying must return exactly N findings\"\"\"\n        for i in range(5):\n            finding = make_finding(\n                span_id=f\"{i:016x}\",\n                analyzed_at=f\"2024-01-{15+i:02d}T12:00:00Z\",\n            )\n            persist(finding)\n        results = get_by_node(\"test.node\")\n        assert len(results) == 5\n\n    def test_goodhart_get_by_node_chronological_out_of_order(self):\n        \"\"\"Findings persisted out of chronological order must still be returned sorted by analyzed_at ascending\"\"\"\n        timestamps = [\n            \"2024-03-01T00:00:00Z\",\n            \"2024-01-01T00:00:00Z\",\n            \"2024-02-01T00:00:00Z\",\n        ]\n        for i, ts in enumerate(timestamps):\n            finding = make_finding(\n                span_id=f\"{i:016x}\",\n                analyzed_at=ts,\n            )\n            persist(finding)\n        results = get_by_node(\"test.node\")\n        assert len(results) == 3\n        assert results[0].analyzed_at <= results[1].analyzed_at\n        assert results[1].analyzed_at <= results[2].analyzed_at\n"
+}

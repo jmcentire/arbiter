@@ -1,0 +1,2047 @@
+{
+  "component_id": "otlp_subscriber",
+  "name": "OTLP Span Subscriber",
+  "description": "gRPC server on configured port (default 4317) receiving OTLP spans from Baton's adapter layer. Uses grpcio thread pool (AS002 — threading OK, no asyncio). On span receipt: enriches with arbiter.* attributes (C012 — arbiter.access.declared, arbiter.access.observed, arbiter.consistency, arbiter.trust.score, arbiter.trust.tier, arbiter.authority.domains, arbiter.taint.detected, arbiter.blast.tier, arbiter.conflict), then dispatches to consistency analyzer, access auditor, taint detector, and conflict resolver. Defines expected span schema contract with Baton (rabbit hole patch — validates span structure, logs warnings on unexpected format). Manages execution-ID correlation buffer for conflict detection windowing. Seven-layer design: (1) gRPC Transport with TraceServiceServicer, ThreadPoolExecutor, partial_success semantics, health checking; (2) Anti-Corruption/Schema Validation with BatonSpanContract Pydantic model, protobuf→domain conversion at handler boundary, custom TraceId/SpanId/ExecutionId types, structured warning logging, explicit default-value handling; (3) Enrichment Model with frozen ArbiterEnrichment composed into EnrichedSpan; (4) Protocol-based Dispatcher with SpanAnalyzer Protocol, 4 registered analyzers with failure isolation, result aggregation; (5) Correlation Buffer with bounded dict, threading.Lock, lazy+periodic eviction, metrics; (6) Configuration via OtlpSubscriberConfig Pydantic model from YAML; (7) Lifecycle with start/stop/is_ready and 3-second cold start target.",
+  "version": 1,
+  "types": [
+    {
+      "name": "TraceId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "str"
+      ],
+      "description": "32-character lowercase hexadecimal string representing an OpenTelemetry trace ID. Must be exactly 32 hex chars and not all zeros."
+    },
+    {
+      "name": "SpanId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "str"
+      ],
+      "description": "16-character lowercase hexadecimal string representing an OpenTelemetry span ID. Must be exactly 16 hex chars and not all zeros."
+    },
+    {
+      "name": "ExecutionId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "str"
+      ],
+      "description": "Non-empty string identifying a Baton execution context. Used as correlation key for conflict detection windowing. Typically a UUID or structured identifier from the adapter layer."
+    },
+    {
+      "name": "TrustTier",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "FULL",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "NONE",
+        "UNKNOWN"
+      ],
+      "inner_types": [],
+      "description": "Trust tier enum. Used only for display/enrichment labeling — all policy calculations use raw trust score, never tiers (domain rule)."
+    },
+    {
+      "name": "BlastTier",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "CONTAINED",
+        "UNKNOWN"
+      ],
+      "inner_types": [],
+      "description": "Blast radius classification tier for enrichment."
+    },
+    {
+      "name": "AnalyzerKind",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "CONSISTENCY",
+        "ACCESS",
+        "TAINT",
+        "CONFLICT"
+      ],
+      "inner_types": [],
+      "description": "Identifies which of the 4 registered downstream analyzers produced a result or error."
+    },
+    {
+      "name": "ServerStatus",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "NOT_STARTED",
+        "STARTING",
+        "SERVING",
+        "STOPPING",
+        "STOPPED"
+      ],
+      "inner_types": [],
+      "description": "gRPC server lifecycle status for health checking."
+    },
+    {
+      "name": "ValidationSeverity",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "WARNING",
+        "ERROR"
+      ],
+      "inner_types": [],
+      "description": "Severity of span schema validation issues."
+    },
+    {
+      "name": "OtlpSubscriberConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "port",
+          "type_ref": "int",
+          "required": false,
+          "default": "4317",
+          "description": "gRPC listen port.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 65535",
+              "error_message": "Port must be between 1 and 65535"
+            }
+          ]
+        },
+        {
+          "name": "max_workers",
+          "type_ref": "int",
+          "required": false,
+          "default": "10",
+          "description": "ThreadPoolExecutor max_workers for gRPC server (AS002 — threading, no asyncio).",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 200",
+              "error_message": "max_workers must be between 1 and 200"
+            }
+          ]
+        },
+        {
+          "name": "buffer_max_size",
+          "type_ref": "int",
+          "required": false,
+          "default": "10000",
+          "description": "Maximum number of ExecutionId keys in the correlation buffer before eviction is forced.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "100 <= value <= 1000000",
+              "error_message": "buffer_max_size must be between 100 and 1,000,000"
+            }
+          ]
+        },
+        {
+          "name": "buffer_window_seconds",
+          "type_ref": "float",
+          "required": false,
+          "default": "30.0",
+          "description": "Duration in seconds to retain spans in correlation buffer for conflict detection windowing.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1.0 <= value <= 300.0",
+              "error_message": "buffer_window_seconds must be between 1 and 300 seconds"
+            }
+          ]
+        },
+        {
+          "name": "grace_shutdown_seconds",
+          "type_ref": "float",
+          "required": false,
+          "default": "5.0",
+          "description": "Grace period in seconds for gRPC server shutdown. Allows in-flight RPCs to complete.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 60.0",
+              "error_message": "grace_shutdown_seconds must be between 0 and 60 seconds"
+            }
+          ]
+        },
+        {
+          "name": "eviction_sweep_interval_seconds",
+          "type_ref": "float",
+          "required": false,
+          "default": "5.0",
+          "description": "Interval in seconds between periodic eviction sweeps of the correlation buffer by daemon thread.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.5 <= value <= 60.0",
+              "error_message": "eviction_sweep_interval_seconds must be between 0.5 and 60 seconds"
+            }
+          ]
+        },
+        {
+          "name": "max_batch_size",
+          "type_ref": "int",
+          "required": false,
+          "default": "512",
+          "description": "Maximum number of spans accepted per ExportTraceServiceRequest. Batches exceeding this are partially accepted.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 10000",
+              "error_message": "max_batch_size must be between 1 and 10,000"
+            }
+          ]
+        },
+        {
+          "name": "bind_address",
+          "type_ref": "str",
+          "required": false,
+          "default": "0.0.0.0",
+          "description": "Network address to bind the gRPC server to.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Pydantic model for OTLP subscriber configuration. Loaded from YAML via project config layer."
+    },
+    {
+      "name": "SpanAttribute",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "key",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Attribute key.",
+          "validators": []
+        },
+        {
+          "name": "value",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Attribute value coerced to string representation. Protobuf default-value ambiguity handled: empty string means explicitly empty, None means attribute was absent.",
+          "validators": []
+        },
+        {
+          "name": "original_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Original protobuf AnyValue type name (string_value, int_value, bool_value, double_value, array_value, kvlist_value, bytes_value) for downstream type recovery.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single key-value attribute from an OTLP span, converted from protobuf AnyValue to a Python-native representation."
+    },
+    {
+      "name": "SpanLink",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "trace_id",
+          "type_ref": "TraceId",
+          "required": true,
+          "default": "",
+          "description": "Trace ID of the linked span.",
+          "validators": []
+        },
+        {
+          "name": "span_id",
+          "type_ref": "SpanId",
+          "required": true,
+          "default": "",
+          "description": "Span ID of the linked span.",
+          "validators": []
+        },
+        {
+          "name": "attributes",
+          "type_ref": "SpanAttributeList",
+          "required": false,
+          "default": "[]",
+          "description": "Attributes on the link.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A link from one span to another, preserving trace/span context."
+    },
+    {
+      "name": "SpanEvent",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Event name.",
+          "validators": []
+        },
+        {
+          "name": "timestamp_unix_nano",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Event timestamp in nanoseconds since Unix epoch (UTC).",
+          "validators": []
+        },
+        {
+          "name": "attributes",
+          "type_ref": "SpanAttributeList",
+          "required": false,
+          "default": "[]",
+          "description": "Attributes on the event.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A timestamped event within a span."
+    },
+    {
+      "name": "SpanAttributeList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "SpanAttribute",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of SpanAttribute."
+    },
+    {
+      "name": "SpanLinkList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "SpanLink",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of SpanLink."
+    },
+    {
+      "name": "SpanEventList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "SpanEvent",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of SpanEvent."
+    },
+    {
+      "name": "ValidationIssue",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "severity",
+          "type_ref": "ValidationSeverity",
+          "required": true,
+          "default": "",
+          "description": "Whether this is a warning (span still processable) or error (span rejected).",
+          "validators": []
+        },
+        {
+          "name": "field",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Dot-path to the problematic field (e.g. 'attributes.baton.node_id').",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable description of the issue, must include specific node/field/domain.",
+          "validators": []
+        },
+        {
+          "name": "span_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "SpanId of the problematic span if available, empty string if not yet parsed.",
+          "validators": []
+        },
+        {
+          "name": "node_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Baton node ID if identifiable from span context, empty string otherwise.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single schema validation issue found when converting a protobuf span to domain types. Includes specific node/field per project error message standards."
+    },
+    {
+      "name": "ValidationIssueList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "ValidationIssue",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of ValidationIssue."
+    },
+    {
+      "name": "BatonSpanContract",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "trace_id",
+          "type_ref": "TraceId",
+          "required": true,
+          "default": "",
+          "description": "32-char hex trace ID from OTLP span.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^[0-9a-f]{32}$",
+              "error_message": "trace_id must be exactly 32 lowercase hex characters"
+            },
+            {
+              "kind": "custom",
+              "expression": "value != '00000000000000000000000000000000'",
+              "error_message": "trace_id must not be all zeros"
+            }
+          ]
+        },
+        {
+          "name": "span_id",
+          "type_ref": "SpanId",
+          "required": true,
+          "default": "",
+          "description": "16-char hex span ID from OTLP span.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^[0-9a-f]{16}$",
+              "error_message": "span_id must be exactly 16 lowercase hex characters"
+            },
+            {
+              "kind": "custom",
+              "expression": "value != '0000000000000000'",
+              "error_message": "span_id must not be all zeros"
+            }
+          ]
+        },
+        {
+          "name": "parent_span_id",
+          "type_ref": "OptionalSpanId",
+          "required": false,
+          "default": "None",
+          "description": "Parent span ID if this span has a parent. None for root spans.",
+          "validators": []
+        },
+        {
+          "name": "name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Span operation name.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1 <= len(value) <= 1024",
+              "error_message": "Span name must be between 1 and 1024 characters"
+            }
+          ]
+        },
+        {
+          "name": "start_time_unix_nano",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Span start time in nanoseconds since Unix epoch (UTC). Must be positive (not protobuf default 0).",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value > 0",
+              "error_message": "start_time_unix_nano must be positive, not protobuf default 0"
+            }
+          ]
+        },
+        {
+          "name": "end_time_unix_nano",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Span end time in nanoseconds since Unix epoch (UTC). Must be >= start_time_unix_nano.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value > 0",
+              "error_message": "end_time_unix_nano must be positive, not protobuf default 0"
+            }
+          ]
+        },
+        {
+          "name": "attributes",
+          "type_ref": "SpanAttributeList",
+          "required": true,
+          "default": "",
+          "description": "All span attributes converted from protobuf AnyValue to SpanAttribute.",
+          "validators": []
+        },
+        {
+          "name": "events",
+          "type_ref": "SpanEventList",
+          "required": false,
+          "default": "[]",
+          "description": "Span events (timeline annotations).",
+          "validators": []
+        },
+        {
+          "name": "links",
+          "type_ref": "SpanLinkList",
+          "required": false,
+          "default": "[]",
+          "description": "Span links to other trace contexts.",
+          "validators": []
+        },
+        {
+          "name": "baton_node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Baton adapter node identifier extracted from span attributes. Error if missing — adapter layer is ground truth.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "baton_node_id is required — adapter layer is ground truth for node identity"
+            }
+          ]
+        },
+        {
+          "name": "baton_execution_id",
+          "type_ref": "ExecutionId",
+          "required": true,
+          "default": "",
+          "description": "Execution context ID from Baton adapter for correlation buffer keying.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "baton_execution_id is required for conflict detection correlation"
+            }
+          ]
+        },
+        {
+          "name": "baton_component_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Optional Pact component identifier from adapter attributes.",
+          "validators": []
+        },
+        {
+          "name": "baton_circuit_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Optional Pact circuit identifier from adapter attributes.",
+          "validators": []
+        },
+        {
+          "name": "resource_attributes",
+          "type_ref": "SpanAttributeList",
+          "required": false,
+          "default": "[]",
+          "description": "Resource-level attributes from the OTLP ResourceSpans envelope.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Pydantic model defining the expected schema for Baton-originated spans at the anti-corruption boundary. Protobuf is converted to this model at the handler boundary; all downstream code uses domain types only. Handles protobuf default-value ambiguity: 0/empty != unset via Optional wrappers."
+    },
+    {
+      "name": "OptionalSpanId",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "SpanId"
+      ],
+      "description": "Optional SpanId — None for root spans, present for child spans."
+    },
+    {
+      "name": "ParsedSpan",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "trace_id",
+          "type_ref": "TraceId",
+          "required": true,
+          "default": "",
+          "description": "Validated trace ID.",
+          "validators": []
+        },
+        {
+          "name": "span_id",
+          "type_ref": "SpanId",
+          "required": true,
+          "default": "",
+          "description": "Validated span ID.",
+          "validators": []
+        },
+        {
+          "name": "parent_span_id",
+          "type_ref": "OptionalSpanId",
+          "required": false,
+          "default": "None",
+          "description": "Parent span ID or None for root.",
+          "validators": []
+        },
+        {
+          "name": "name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Span operation name.",
+          "validators": []
+        },
+        {
+          "name": "start_time_unix_nano",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Span start timestamp in nanoseconds since Unix epoch (UTC).",
+          "validators": []
+        },
+        {
+          "name": "end_time_unix_nano",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Span end timestamp in nanoseconds since Unix epoch (UTC).",
+          "validators": []
+        },
+        {
+          "name": "duration_ns",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Computed span duration in nanoseconds (end - start). Always >= 0.",
+          "validators": []
+        },
+        {
+          "name": "attributes",
+          "type_ref": "SpanAttributeList",
+          "required": true,
+          "default": "",
+          "description": "Span attributes in domain form.",
+          "validators": []
+        },
+        {
+          "name": "events",
+          "type_ref": "SpanEventList",
+          "required": false,
+          "default": "[]",
+          "description": "Span events.",
+          "validators": []
+        },
+        {
+          "name": "links",
+          "type_ref": "SpanLinkList",
+          "required": false,
+          "default": "[]",
+          "description": "Span links.",
+          "validators": []
+        },
+        {
+          "name": "baton_node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Baton adapter node ID — ground truth.",
+          "validators": []
+        },
+        {
+          "name": "baton_execution_id",
+          "type_ref": "ExecutionId",
+          "required": true,
+          "default": "",
+          "description": "Execution context ID for correlation.",
+          "validators": []
+        },
+        {
+          "name": "baton_component_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Pact component ID if present.",
+          "validators": []
+        },
+        {
+          "name": "baton_circuit_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Pact circuit ID if present.",
+          "validators": []
+        },
+        {
+          "name": "resource_attributes",
+          "type_ref": "SpanAttributeList",
+          "required": false,
+          "default": "[]",
+          "description": "Resource-level attributes.",
+          "validators": []
+        },
+        {
+          "name": "validation_issues",
+          "type_ref": "ValidationIssueList",
+          "required": false,
+          "default": "[]",
+          "description": "Non-fatal validation issues (warnings) encountered during parsing. Empty if clean.",
+          "validators": []
+        },
+        {
+          "name": "received_at_unix_nano",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Timestamp when this span was received by the subscriber, in nanoseconds since Unix epoch (UTC). Set at handler boundary.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Domain model for a validated and parsed Baton span, produced from BatonSpanContract after schema validation passes. This is the type consumed by all downstream analyzers."
+    },
+    {
+      "name": "AnalysisResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "analyzer_kind",
+          "type_ref": "AnalyzerKind",
+          "required": true,
+          "default": "",
+          "description": "Which analyzer produced this result.",
+          "validators": []
+        },
+        {
+          "name": "success",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether the analyzer completed without internal error.",
+          "validators": []
+        },
+        {
+          "name": "error_message",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Error detail if success is false. Includes specific node/field per project standards.",
+          "validators": []
+        },
+        {
+          "name": "consistency_score",
+          "type_ref": "OptionalFloat",
+          "required": false,
+          "default": "None",
+          "description": "Consistency score from consistency analyzer. Range [0.0, 1.0].",
+          "validators": []
+        },
+        {
+          "name": "access_declared",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Declared access pattern from access auditor.",
+          "validators": []
+        },
+        {
+          "name": "access_observed",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Observed access pattern from access auditor.",
+          "validators": []
+        },
+        {
+          "name": "authority_domains",
+          "type_ref": "StringList",
+          "required": false,
+          "default": "[]",
+          "description": "Authority domains from access auditor. Authority is declared, distinct from trust.",
+          "validators": []
+        },
+        {
+          "name": "trust_score",
+          "type_ref": "OptionalFloat",
+          "required": false,
+          "default": "None",
+          "description": "Raw trust score. All policy calculations use raw score, never display tiers.",
+          "validators": []
+        },
+        {
+          "name": "trust_tier",
+          "type_ref": "OptionalTrustTier",
+          "required": false,
+          "default": "None",
+          "description": "Trust tier for display/enrichment only — never used in policy calculations.",
+          "validators": []
+        },
+        {
+          "name": "taint_detected",
+          "type_ref": "OptionalBool",
+          "required": false,
+          "default": "None",
+          "description": "Whether taint was detected by taint detector.",
+          "validators": []
+        },
+        {
+          "name": "taint_details",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Detail of taint if detected.",
+          "validators": []
+        },
+        {
+          "name": "blast_tier",
+          "type_ref": "OptionalBlastTier",
+          "required": false,
+          "default": "None",
+          "description": "Blast radius tier classification.",
+          "validators": []
+        },
+        {
+          "name": "conflict_description",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Conflict description from conflict resolver if a conflict is detected.",
+          "validators": []
+        },
+        {
+          "name": "conflict_detected",
+          "type_ref": "OptionalBool",
+          "required": false,
+          "default": "None",
+          "description": "Whether a conflict was detected by conflict resolver.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result from a single SpanAnalyzer. Each analyzer populates the fields relevant to its domain; other fields remain at defaults. Composed into ArbiterEnrichment by the dispatcher."
+    },
+    {
+      "name": "OptionalFloat",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "float"
+      ],
+      "description": "Optional float value."
+    },
+    {
+      "name": "OptionalBool",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "bool"
+      ],
+      "description": "Optional bool value."
+    },
+    {
+      "name": "OptionalTrustTier",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "TrustTier"
+      ],
+      "description": "Optional TrustTier."
+    },
+    {
+      "name": "OptionalBlastTier",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "BlastTier"
+      ],
+      "description": "Optional BlastTier."
+    },
+    {
+      "name": "StringList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of strings."
+    },
+    {
+      "name": "ArbiterEnrichment",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "access_declared",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "arbiter.access.declared — declared access pattern from manifest/authority.",
+          "validators": []
+        },
+        {
+          "name": "access_observed",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "arbiter.access.observed — observed access pattern from adapter ground truth.",
+          "validators": []
+        },
+        {
+          "name": "consistency",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "arbiter.consistency — consistency score in range [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "consistency must be in range [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "trust_score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "arbiter.trust.score — raw trust score used for all policy calculations. Trust is earned, computed from ledger.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "trust_score must be in range [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "trust_tier",
+          "type_ref": "TrustTier",
+          "required": true,
+          "default": "",
+          "description": "arbiter.trust.tier — display tier only, never used in policy calculations.",
+          "validators": []
+        },
+        {
+          "name": "authority_domains",
+          "type_ref": "StringList",
+          "required": true,
+          "default": "",
+          "description": "arbiter.authority.domains — declared authority domains. Authority is declared, distinct from trust.",
+          "validators": []
+        },
+        {
+          "name": "taint_detected",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "arbiter.taint.detected — whether taint propagation was detected.",
+          "validators": []
+        },
+        {
+          "name": "blast_tier",
+          "type_ref": "BlastTier",
+          "required": true,
+          "default": "",
+          "description": "arbiter.blast.tier — blast radius classification tier.",
+          "validators": []
+        },
+        {
+          "name": "conflict",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "arbiter.conflict — conflict description if detected, empty string if no conflict.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic model containing all 9 arbiter.* enrichment attributes (C012). Composed (not inherited) with ParsedSpan into EnrichedSpan. Aggregated from AnalysisResult instances from all 4 analyzers."
+    },
+    {
+      "name": "EnrichedSpan",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "span",
+          "type_ref": "ParsedSpan",
+          "required": true,
+          "default": "",
+          "description": "The original parsed and validated Baton span.",
+          "validators": []
+        },
+        {
+          "name": "enrichment",
+          "type_ref": "ArbiterEnrichment",
+          "required": true,
+          "default": "",
+          "description": "All 9 arbiter.* enrichment attributes computed by the analyzer pipeline.",
+          "validators": []
+        },
+        {
+          "name": "enriched_at_unix_nano",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Timestamp when enrichment completed, nanoseconds since Unix epoch (UTC).",
+          "validators": []
+        },
+        {
+          "name": "analyzer_errors",
+          "type_ref": "AnalyzerErrorList",
+          "required": false,
+          "default": "[]",
+          "description": "Errors from individual analyzers that failed. Enrichment still produced with defaults for failed analyzers.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Composition of ParsedSpan + ArbiterEnrichment. This is the final output of the subscriber pipeline, ready for downstream consumers. Composition over inheritance per project standards."
+    },
+    {
+      "name": "AnalyzerError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "analyzer_kind",
+          "type_ref": "AnalyzerKind",
+          "required": true,
+          "default": "",
+          "description": "Which analyzer failed.",
+          "validators": []
+        },
+        {
+          "name": "error_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Exception class name.",
+          "validators": []
+        },
+        {
+          "name": "error_message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Error detail including specific node/field/domain per project standards.",
+          "validators": []
+        },
+        {
+          "name": "span_id",
+          "type_ref": "SpanId",
+          "required": true,
+          "default": "",
+          "description": "SpanId of the span that caused the failure.",
+          "validators": []
+        },
+        {
+          "name": "node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Baton node ID from the span for error context.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Record of a single analyzer failure during dispatch. Failure isolation: one analyzer failure does not block others."
+    },
+    {
+      "name": "AnalyzerErrorList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "AnalyzerError",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of AnalyzerError."
+    },
+    {
+      "name": "ParsedSpanList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "ParsedSpan",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of ParsedSpan."
+    },
+    {
+      "name": "EnrichedSpanList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "EnrichedSpan",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of EnrichedSpan."
+    },
+    {
+      "name": "ExportResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "accepted_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of spans successfully parsed, enriched, and dispatched.",
+          "validators": []
+        },
+        {
+          "name": "rejected_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of spans rejected due to validation errors (not warnings).",
+          "validators": []
+        },
+        {
+          "name": "enriched_spans",
+          "type_ref": "EnrichedSpanList",
+          "required": true,
+          "default": "",
+          "description": "Successfully enriched spans.",
+          "validators": []
+        },
+        {
+          "name": "validation_issues",
+          "type_ref": "ValidationIssueList",
+          "required": true,
+          "default": "",
+          "description": "All validation issues (warnings and errors) across the batch.",
+          "validators": []
+        },
+        {
+          "name": "partial_success_message",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Human-readable summary for ExportTraceServiceResponse.partial_success.error_message.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of processing an ExportTraceServiceRequest batch. Maps to ExportTraceServiceResponse partial_success semantics: never reject entire batches."
+    },
+    {
+      "name": "BufferStats",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "current_size",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of ExecutionId keys currently in the buffer.",
+          "validators": []
+        },
+        {
+          "name": "total_spans",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of ParsedSpan instances across all buffer entries.",
+          "validators": []
+        },
+        {
+          "name": "max_size",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Configured maximum number of keys.",
+          "validators": []
+        },
+        {
+          "name": "total_evictions",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Cumulative count of keys evicted since buffer creation.",
+          "validators": []
+        },
+        {
+          "name": "total_window_misses",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Cumulative count of lookups that found an execution ID but all its spans had expired.",
+          "validators": []
+        },
+        {
+          "name": "oldest_entry_age_seconds",
+          "type_ref": "OptionalFloat",
+          "required": false,
+          "default": "None",
+          "description": "Age of oldest entry in seconds. None if buffer is empty.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Metrics snapshot from the ExecutionCorrelationBuffer for observability."
+    },
+    {
+      "name": "AnalysisResultList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "AnalysisResult",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of AnalysisResult from all dispatched analyzers."
+    }
+  ],
+  "functions": [
+    {
+      "name": "load_config",
+      "description": "Load OtlpSubscriberConfig from a YAML file via pathlib. Validates all fields via Pydantic. Returns default config if path does not exist or is empty.",
+      "inputs": [
+        {
+          "name": "config_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Path to YAML configuration file. Resolved via pathlib.Path.",
+          "validators": []
+        }
+      ],
+      "output_type": "OtlpSubscriberConfig",
+      "error_cases": [
+        {
+          "name": "invalid_yaml",
+          "condition": "File exists but contains invalid YAML syntax",
+          "error_type": "ConfigLoadError",
+          "error_data": {
+            "includes": "file path and parse error detail"
+          }
+        },
+        {
+          "name": "validation_failure",
+          "condition": "YAML parses but field values fail Pydantic validation",
+          "error_type": "ConfigValidationError",
+          "error_data": {
+            "includes": "specific field name and constraint that failed"
+          }
+        },
+        {
+          "name": "permission_denied",
+          "condition": "File exists but is not readable",
+          "error_type": "ConfigLoadError",
+          "error_data": {
+            "includes": "file path and OS error"
+          }
+        }
+      ],
+      "preconditions": [
+        "config_path is a non-empty string"
+      ],
+      "postconditions": [
+        "Returned config has all fields populated (defaults applied where not specified in YAML)",
+        "All validator constraints are satisfied on the returned config"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "YAML config file at config_path",
+          "description": "Reads configuration from filesystem via pathlib"
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "start",
+      "description": "Start the gRPC server, correlation buffer eviction daemon, and begin accepting OTLP span exports. Binds to configured address:port. Transitions status from NOT_STARTED or STOPPED to SERVING. Registers TraceServiceServicer and gRPC health checking service. Target: accepting connections in under 3 seconds.",
+      "inputs": [
+        {
+          "name": "config",
+          "type_ref": "OtlpSubscriberConfig",
+          "required": true,
+          "default": "",
+          "description": "Validated subscriber configuration.",
+          "validators": []
+        },
+        {
+          "name": "analyzers",
+          "type_ref": "AnalyzerRegistration",
+          "required": true,
+          "default": "",
+          "description": "Dict mapping AnalyzerKind to SpanAnalyzer implementations. All 4 must be registered.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "port_in_use",
+          "condition": "Configured port is already bound by another process",
+          "error_type": "ServerStartError",
+          "error_data": {
+            "includes": "port number and bind address"
+          }
+        },
+        {
+          "name": "already_running",
+          "condition": "Server status is STARTING or SERVING",
+          "error_type": "ServerLifecycleError",
+          "error_data": {
+            "includes": "current server status"
+          }
+        },
+        {
+          "name": "missing_analyzer",
+          "condition": "One or more of the 4 required AnalyzerKind entries is missing from analyzers",
+          "error_type": "ConfigValidationError",
+          "error_data": {
+            "includes": "list of missing AnalyzerKind values"
+          }
+        },
+        {
+          "name": "bind_failure",
+          "condition": "Cannot bind to specified address (e.g. invalid address, permission denied)",
+          "error_type": "ServerStartError",
+          "error_data": {
+            "includes": "bind_address, port, and OS error detail"
+          }
+        }
+      ],
+      "preconditions": [
+        "Server status is NOT_STARTED or STOPPED",
+        "analyzers contains all 4 AnalyzerKind entries (CONSISTENCY, ACCESS, TAINT, CONFLICT)",
+        "config has passed Pydantic validation"
+      ],
+      "postconditions": [
+        "gRPC server is listening on config.bind_address:config.port",
+        "Server status is SERVING",
+        "gRPC health check reports SERVING",
+        "Correlation buffer eviction daemon thread is running",
+        "ThreadPoolExecutor has config.max_workers threads"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "network_call",
+          "target": "gRPC server bind on config.bind_address:config.port",
+          "description": "Starts listening for OTLP ExportTraceServiceRequest RPCs"
+        },
+        {
+          "kind": "mutates_state",
+          "target": "Server status, ThreadPoolExecutor, correlation buffer daemon",
+          "description": "Initializes server state and background threads"
+        },
+        {
+          "kind": "logging",
+          "target": "Structured log",
+          "description": "Logs server start with port, max_workers, buffer config"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 3000,
+        "max_memory_mb": null,
+        "complexity": "O(1)"
+      }
+    },
+    {
+      "name": "stop",
+      "description": "Gracefully stop the gRPC server. Drains correlation buffer, waits for in-flight RPCs up to grace period, then forces shutdown. Transitions status to STOPPED.",
+      "inputs": [
+        {
+          "name": "grace",
+          "type_ref": "OptionalFloat",
+          "required": false,
+          "default": "None",
+          "description": "Grace period in seconds. If None, uses config.grace_shutdown_seconds.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "not_running",
+          "condition": "Server status is NOT_STARTED or STOPPED",
+          "error_type": "ServerLifecycleError",
+          "error_data": {
+            "includes": "current server status"
+          }
+        },
+        {
+          "name": "shutdown_timeout",
+          "condition": "In-flight RPCs did not complete within grace period",
+          "error_type": "ShutdownTimeoutWarning",
+          "error_data": {
+            "includes": "number of in-flight RPCs, grace period seconds"
+          }
+        }
+      ],
+      "preconditions": [
+        "Server status is SERVING or STARTING"
+      ],
+      "postconditions": [
+        "Server status is STOPPED",
+        "gRPC server is no longer accepting connections",
+        "ThreadPoolExecutor is shut down",
+        "Correlation buffer eviction daemon has stopped",
+        "All buffered spans have been drained (best-effort)"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "network_call",
+          "target": "gRPC server shutdown",
+          "description": "Stops accepting new connections, drains in-flight RPCs"
+        },
+        {
+          "kind": "mutates_state",
+          "target": "Server status, ThreadPoolExecutor, correlation buffer",
+          "description": "Transitions all state to stopped/drained"
+        },
+        {
+          "kind": "logging",
+          "target": "Structured log",
+          "description": "Logs shutdown initiation, drain results, and completion"
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "is_ready",
+      "description": "Check whether the subscriber is ready to accept spans. Returns true only when server status is SERVING and all 4 analyzers are registered.",
+      "inputs": [],
+      "output_type": "bool",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Return value is true if and only if server status is SERVING and all 4 analyzers are registered"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": ""
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "get_server_status",
+      "description": "Return the current ServerStatus of the gRPC server.",
+      "inputs": [],
+      "output_type": "ServerStatus",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returned status reflects the actual current lifecycle state"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": ""
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "parse_and_validate_spans",
+      "description": "Anti-corruption layer: convert raw protobuf span data (represented as list of dicts from OTLP deserialization) into validated ParsedSpan domain models. Performs BatonSpanContract schema validation. Logs structured warnings for unexpected/missing attributes with specific node, field, domain. Does not crash on validation warnings — only validation errors cause span rejection. Handles protobuf default-value ambiguity (0/empty != unset).",
+      "inputs": [
+        {
+          "name": "raw_spans",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of dicts representing deserialized protobuf Span messages from ExportTraceServiceRequest.",
+          "validators": []
+        },
+        {
+          "name": "resource_attributes",
+          "type_ref": "SpanAttributeList",
+          "required": false,
+          "default": "[]",
+          "description": "Resource-level attributes from the ResourceSpans envelope, applied to all spans in this batch.",
+          "validators": []
+        }
+      ],
+      "output_type": "ParseValidationResult",
+      "error_cases": [
+        {
+          "name": "malformed_protobuf",
+          "condition": "A raw span dict is structurally invalid (not a dict, missing required top-level keys)",
+          "error_type": "SpanParseError",
+          "error_data": {
+            "includes": "index in batch, available keys"
+          }
+        },
+        {
+          "name": "trace_id_invalid",
+          "condition": "trace_id is not 32 hex chars or is all zeros",
+          "error_type": "SpanValidationError",
+          "error_data": {
+            "includes": "raw trace_id value, span index"
+          }
+        },
+        {
+          "name": "span_id_invalid",
+          "condition": "span_id is not 16 hex chars or is all zeros",
+          "error_type": "SpanValidationError",
+          "error_data": {
+            "includes": "raw span_id value, span index"
+          }
+        },
+        {
+          "name": "missing_baton_node_id",
+          "condition": "Required baton.node_id attribute is absent from span",
+          "error_type": "SpanValidationError",
+          "error_data": {
+            "includes": "span_id, available attribute keys"
+          }
+        },
+        {
+          "name": "missing_baton_execution_id",
+          "condition": "Required baton.execution_id attribute is absent from span",
+          "error_type": "SpanValidationError",
+          "error_data": {
+            "includes": "span_id, node_id if available"
+          }
+        },
+        {
+          "name": "timestamp_zero",
+          "condition": "start_time_unix_nano or end_time_unix_nano is 0 (protobuf default, not explicitly set)",
+          "error_type": "SpanValidationError",
+          "error_data": {
+            "includes": "span_id, which timestamp field is zero"
+          }
+        }
+      ],
+      "preconditions": [
+        "raw_spans is a list (may be empty)"
+      ],
+      "postconditions": [
+        "Every span in parsed_spans has passed BatonSpanContract validation (possibly with warnings)",
+        "Every span in rejected_spans has at least one ERROR-severity ValidationIssue",
+        "parsed_spans.length + rejected_count == raw_spans.length",
+        "All timestamps in parsed spans are positive (not protobuf default 0)",
+        "duration_ns == end_time_unix_nano - start_time_unix_nano for every parsed span",
+        "received_at_unix_nano is set to current UTC time at parse boundary"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "logging",
+          "target": "Structured log",
+          "description": "Logs WARNING-level structured messages for each validation issue with node, field, domain specifics"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 50,
+        "max_memory_mb": null,
+        "complexity": "O(n)"
+      }
+    },
+    {
+      "name": "dispatch_to_analyzers",
+      "description": "Dispatch a ParsedSpan to all 4 registered analyzers (consistency, access, taint, conflict) with failure isolation. Each analyzer is invoked independently; if one throws an exception, it is caught, logged, and processing continues with the remaining analyzers. Returns aggregated AnalysisResult list.",
+      "inputs": [
+        {
+          "name": "span",
+          "type_ref": "ParsedSpan",
+          "required": true,
+          "default": "",
+          "description": "The validated parsed span to analyze.",
+          "validators": []
+        }
+      ],
+      "output_type": "AnalysisResultList",
+      "error_cases": [],
+      "preconditions": [
+        "All 4 analyzers are registered (CONSISTENCY, ACCESS, TAINT, CONFLICT)",
+        "span has passed validation (is a valid ParsedSpan)"
+      ],
+      "postconditions": [
+        "Returned list has exactly 4 entries, one per AnalyzerKind",
+        "For each analyzer that threw an exception: success=false, error_message populated with node/field detail",
+        "For each analyzer that completed: success=true, relevant fields populated",
+        "No exception is propagated to caller — all failures are captured in results"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "logging",
+          "target": "Structured log",
+          "description": "Logs ERROR-level message for each analyzer that throws, including analyzer kind, span_id, node_id, exception detail"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 100,
+        "max_memory_mb": null,
+        "complexity": null
+      }
+    },
+    {
+      "name": "aggregate_enrichment",
+      "description": "Aggregate AnalysisResult instances from all 4 analyzers into a single ArbiterEnrichment (frozen Pydantic model). Applies defaults for any analyzer that failed. Enrichment is always produced even if some analyzers errored.",
+      "inputs": [
+        {
+          "name": "results",
+          "type_ref": "AnalysisResultList",
+          "required": true,
+          "default": "",
+          "description": "Exactly 4 AnalysisResult instances, one per AnalyzerKind.",
+          "validators": []
+        }
+      ],
+      "output_type": "ArbiterEnrichment",
+      "error_cases": [
+        {
+          "name": "wrong_result_count",
+          "condition": "results does not have exactly 4 entries",
+          "error_type": "EnrichmentAggregationError",
+          "error_data": {
+            "includes": "actual count, expected 4"
+          }
+        },
+        {
+          "name": "duplicate_analyzer_kind",
+          "condition": "Two or more results have the same AnalyzerKind",
+          "error_type": "EnrichmentAggregationError",
+          "error_data": {
+            "includes": "duplicated AnalyzerKind value"
+          }
+        }
+      ],
+      "preconditions": [
+        "results has exactly 4 entries",
+        "Each AnalyzerKind appears exactly once in results"
+      ],
+      "postconditions": [
+        "All 9 arbiter.* attributes are populated",
+        "consistency is in [0.0, 1.0]",
+        "trust_score is in [0.0, 1.0]",
+        "trust_tier is for display only — reflects trust_score but is never used in policy",
+        "For failed analyzers: corresponding fields have safe defaults (0.0 for scores, UNKNOWN for tiers, empty for strings, false for booleans)"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": ""
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "build_enriched_span",
+      "description": "Compose a ParsedSpan and ArbiterEnrichment into an EnrichedSpan. Records enrichment timestamp and any analyzer errors. Pure function — no side effects.",
+      "inputs": [
+        {
+          "name": "span",
+          "type_ref": "ParsedSpan",
+          "required": true,
+          "default": "",
+          "description": "The validated parsed span.",
+          "validators": []
+        },
+        {
+          "name": "enrichment",
+          "type_ref": "ArbiterEnrichment",
+          "required": true,
+          "default": "",
+          "description": "Aggregated enrichment from all analyzers.",
+          "validators": []
+        },
+        {
+          "name": "analyzer_errors",
+          "type_ref": "AnalyzerErrorList",
+          "required": false,
+          "default": "[]",
+          "description": "Errors from failed analyzers, if any.",
+          "validators": []
+        }
+      ],
+      "output_type": "EnrichedSpan",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "enriched_span.span is the input span (identity)",
+        "enriched_span.enrichment is the input enrichment (identity)",
+        "enriched_span.enriched_at_unix_nano is set to current UTC time",
+        "enriched_span.analyzer_errors matches input analyzer_errors"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": ""
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "handle_export_request",
+      "description": "Top-level handler for ExportTraceServiceRequest. Orchestrates the full pipeline: parse → buffer → dispatch → aggregate → enrich. Returns ExportResult with partial_success semantics — never rejects entire batches. This is the entry point called by the gRPC TraceServiceServicer.Export method.",
+      "inputs": [
+        {
+          "name": "raw_spans",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of dicts representing deserialized protobuf Span messages.",
+          "validators": []
+        },
+        {
+          "name": "resource_attributes",
+          "type_ref": "SpanAttributeList",
+          "required": false,
+          "default": "[]",
+          "description": "Resource-level attributes from ResourceSpans envelope.",
+          "validators": []
+        }
+      ],
+      "output_type": "ExportResult",
+      "error_cases": [
+        {
+          "name": "server_not_ready",
+          "condition": "Server status is not SERVING",
+          "error_type": "ServerNotReadyError",
+          "error_data": {
+            "includes": "current server status"
+          }
+        },
+        {
+          "name": "batch_too_large",
+          "condition": "raw_spans length exceeds config.max_batch_size",
+          "error_type": "BatchSizeExceededError",
+          "error_data": {
+            "includes": "actual size, max_batch_size — excess spans are rejected, rest processed"
+          }
+        },
+        {
+          "name": "empty_batch",
+          "condition": "raw_spans is empty",
+          "error_type": "EmptyBatchWarning",
+          "error_data": {
+            "includes": "warning only, returns ExportResult with zero counts"
+          }
+        }
+      ],
+      "preconditions": [
+        "Server status is SERVING",
+        "All 4 analyzers are registered"
+      ],
+      "postconditions": [
+        "accepted_count + rejected_count == len(raw_spans)",
+        "Each accepted span is enriched with all 9 arbiter.* attributes",
+        "Each accepted span has been added to the correlation buffer",
+        "Each accepted span has been dispatched to all 4 analyzers",
+        "Partial success: if some spans fail validation, remaining spans are still processed",
+        "validation_issues contains all issues across the batch (warnings and errors)"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "mutates_state",
+          "target": "ExecutionCorrelationBuffer",
+          "description": "Adds parsed spans to correlation buffer keyed by execution ID"
+        },
+        {
+          "kind": "logging",
+          "target": "Structured log",
+          "description": "Logs batch processing summary: accepted, rejected, validation issues, analyzer errors"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 200,
+        "max_memory_mb": null,
+        "complexity": "O(n)"
+      }
+    },
+    {
+      "name": "buffer_add",
+      "description": "Add a parsed span to the ExecutionCorrelationBuffer, keyed by its baton_execution_id. Thread-safe via threading.Lock. Triggers lazy eviction if buffer exceeds max_size.",
+      "inputs": [
+        {
+          "name": "span",
+          "type_ref": "ParsedSpan",
+          "required": true,
+          "default": "",
+          "description": "The parsed span to buffer for correlation.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "buffer_full_no_evictable",
+          "condition": "Buffer is at max_size and no entries are eligible for eviction (all within window)",
+          "error_type": "BufferCapacityError",
+          "error_data": {
+            "includes": "current size, max_size, oldest entry age"
+          }
+        }
+      ],
+      "preconditions": [
+        "span.baton_execution_id is a non-empty string"
+      ],
+      "postconditions": [
+        "Span is retrievable via buffer_get(span.baton_execution_id) until evicted",
+        "If buffer_max_size was exceeded, at least one expired or oldest entry was evicted",
+        "Buffer size metrics are updated"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "mutates_state",
+          "target": "ExecutionCorrelationBuffer internal dict",
+          "description": "Inserts span under execution_id key, may evict expired entries"
+        },
+        {
+          "kind": "logging",
+          "target": "Structured log",
+          "description": "Logs at DEBUG level on add; logs at WARN level on forced eviction"
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "buffer_get",
+      "description": "Retrieve all buffered spans for a given execution ID from the correlation buffer. Thread-safe. Returns empty list if execution ID not found or all spans expired.",
+      "inputs": [
+        {
+          "name": "execution_id",
+          "type_ref": "ExecutionId",
+          "required": true,
+          "default": "",
+          "description": "The execution ID to look up.",
+          "validators": []
+        }
+      ],
+      "output_type": "ParsedSpanList",
+      "error_cases": [],
+      "preconditions": [
+        "execution_id is a non-empty string"
+      ],
+      "postconditions": [
+        "Returned list contains only spans within the configured window_duration_seconds",
+        "Returned list is ordered by received_at_unix_nano ascending",
+        "If execution_id not in buffer, returns empty list",
+        "Window miss metric incremented if key exists but all spans expired"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "mutates_state",
+          "target": "BufferStats.total_window_misses",
+          "description": "Increments window miss counter if key found but all spans expired"
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "buffer_get_stats",
+      "description": "Return a snapshot of correlation buffer metrics for observability.",
+      "inputs": [],
+      "output_type": "BufferStats",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returned stats reflect buffer state at time of call",
+        "current_size <= max_size"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": ""
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "buffer_drain",
+      "description": "Drain all entries from the correlation buffer. Called during graceful shutdown. Returns all buffered spans for final processing.",
+      "inputs": [],
+      "output_type": "ParsedSpanList",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Buffer is empty after drain",
+        "All previously buffered spans are in the returned list",
+        "Buffer stats show current_size == 0"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "mutates_state",
+          "target": "ExecutionCorrelationBuffer internal dict",
+          "description": "Clears all entries from the buffer"
+        },
+        {
+          "kind": "logging",
+          "target": "Structured log",
+          "description": "Logs drain operation with count of drained entries and spans"
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "buffer_evict_expired",
+      "description": "Evict all buffer entries whose spans have all aged past window_duration_seconds. Called lazily on insert and periodically by the daemon sweep thread. Thread-safe.",
+      "inputs": [],
+      "output_type": "int",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "All entries where every span is older than window_duration_seconds have been removed",
+        "total_evictions metric incremented by returned count",
+        "Returned int is the number of execution_id keys evicted"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "mutates_state",
+          "target": "ExecutionCorrelationBuffer internal dict and eviction counter",
+          "description": "Removes expired entries and updates metrics"
+        },
+        {
+          "kind": "logging",
+          "target": "Structured log",
+          "description": "Logs at DEBUG level with eviction count if > 0"
+        }
+      ],
+      "performance_budget": null
+    }
+  ],
+  "dependencies": [
+    "consistency_analyzer",
+    "access_auditor",
+    "taint_detector",
+    "conflict_resolver"
+  ],
+  "dependency_contracts": {
+    "consistency_analyzer": [
+      "Implements SpanAnalyzer Protocol: analyze(span: ParsedSpan) -> AnalysisResult",
+      "Must be stateless or internally thread-safe — called from grpcio thread pool threads",
+      "Returns AnalysisResult with consistency_score float and optional findings list"
+    ],
+    "access_auditor": [
+      "Implements SpanAnalyzer Protocol: analyze(span: ParsedSpan) -> AnalysisResult",
+      "Must be stateless or internally thread-safe — called from grpcio thread pool threads",
+      "Returns AnalysisResult with declared_access, observed_access, and authority_domains"
+    ],
+    "taint_detector": [
+      "Implements SpanAnalyzer Protocol: analyze(span: ParsedSpan) -> AnalysisResult",
+      "Must be stateless or internally thread-safe — called from grpcio thread pool threads",
+      "Returns AnalysisResult with taint_detected bool and taint details"
+    ],
+    "conflict_resolver": [
+      "Implements SpanAnalyzer Protocol: analyze(span: ParsedSpan) -> AnalysisResult",
+      "Must be stateless or internally thread-safe — called from grpcio thread pool threads",
+      "Returns AnalysisResult with conflict description if detected",
+      "May request correlated spans from correlation buffer via ExecutionId"
+    ]
+  },
+  "invariants": [
+    "Trust and authority are distinct: trust is earned (computed from ledger), authority is declared (from manifests) — never conflated in any enrichment or analysis",
+    "The adapter layer is ground truth; node self-reports are claims — baton_node_id from adapter attributes is authoritative",
+    "All policy calculations use raw trust_score (float), never trust_tier (enum) — trust_tier is display/enrichment only",
+    "Partial success semantics: the server never rejects an entire ExportTraceServiceRequest batch — valid spans are always processed even if some spans in the batch fail validation",
+    "The correlation buffer is append-only within a window: spans are never modified after insertion, only evicted by age or capacity",
+    "Failure isolation: a single analyzer failure never prevents other analyzers from processing the same span — all 4 are always invoked",
+    "All timestamps are UTC, represented as nanoseconds since Unix epoch — no local time, no timezone-naive datetimes",
+    "Protobuf default-value ambiguity is handled explicitly: 0 for int fields and empty string for string fields are treated as 'unset' where semantically appropriate (e.g. start_time_unix_nano == 0 is invalid)",
+    "The correlation buffer is bounded: it never exceeds buffer_max_size keys — lazy eviction on insert plus periodic sweep guarantee this",
+    "All protobuf-to-domain conversion happens at the handler boundary — no protobuf types leak past parse_and_validate_spans",
+    "Server transitions to SERVING only when all 4 analyzers are registered and gRPC is accepting connections — is_ready() reflects this",
+    "Error messages always include the specific node, field, or domain that caused the error per project standards",
+    "Thread safety: correlation buffer operations are serialized via threading.Lock — no asyncio (AS002)",
+    "Cold start: server accepting connections in under 3 seconds from start() invocation"
+  ],
+  "requires": [
+    "grpcio",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "pydantic>=2.0",
+    "PyYAML"
+  ],
+  "processing_register": "rigorous-analytical"
+}

@@ -1,0 +1,561 @@
+{
+  "component_id": "config",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "goodhart_env_override_nested_trust",
+      "description": "Environment variables with nested delimiter __ should override deeply nested trust config fields, not just top-level fields",
+      "function": "load_config",
+      "category": "happy_path",
+      "setup_description": "Set environment variable ARBITER_TRUST__DECAY_LAMBDA to '0.123' before calling load_config(None) with no YAML file present",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Set ARBITER_TRUST__DECAY_LAMBDA env var to a non-default float value and load config with no YAML",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.trust.decay_lambda == 0.123",
+        "Other trust fields remain at defaults"
+      ]
+    },
+    {
+      "id": "goodhart_env_override_soak_target",
+      "description": "Environment variable override should work for nested integer fields like soak.target_requests, verifying the nested delimiter parsing is general",
+      "function": "load_config",
+      "category": "happy_path",
+      "setup_description": "Set ARBITER_SOAK__TARGET_REQUESTS=42 env var, no YAML file",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Set ARBITER_SOAK__TARGET_REQUESTS env var to '42' and load config",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.soak.target_requests == 42"
+      ]
+    },
+    {
+      "id": "goodhart_load_nonexistent_explicit_path_falls_back",
+      "description": "When an explicit path is given but the file does not exist, the system should fall back to defaults rather than raising an error",
+      "function": "load_config",
+      "category": "edge_case",
+      "setup_description": "Call load_config with a path to a file that does not exist",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Explicit path pointing to a non-existent file",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns a valid ArbiterConfig with all default values",
+        "config_version == 1"
+      ]
+    },
+    {
+      "id": "goodhart_soak_duration_negative_rejected",
+      "description": "Soak base duration values should reject negative integers since they represent time in seconds",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with soak.base_durations.PUBLIC set to -1",
+      "expected_output_description": "",
+      "expected_error": "validation_error",
+      "assertions": [
+        "Raises ConfigurationError or ValidationError"
+      ]
+    },
+    {
+      "id": "goodhart_soak_target_requests_negative",
+      "description": "Negative soak.target_requests should be rejected, not just zero",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with soak.target_requests set to -5",
+      "expected_output_description": "",
+      "expected_error": "validation_error",
+      "assertions": [
+        "Raises validation error for negative target_requests"
+      ]
+    },
+    {
+      "id": "goodhart_ledger_checksum_interval_negative",
+      "description": "Negative ledger.checksum_interval should be rejected, not just zero",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with ledger.checksum_interval set to -1",
+      "expected_output_description": "",
+      "expected_error": "validation_error",
+      "assertions": [
+        "Raises validation error for negative checksum_interval"
+      ]
+    },
+    {
+      "id": "goodhart_port_66000_rejected",
+      "description": "Port values just above 65535 (e.g., 66000) should be rejected, verifying the boundary is not hardcoded only for 65536",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with api.port set to 66000",
+      "expected_output_description": "",
+      "expected_error": "validation_error",
+      "assertions": [
+        "Raises validation error for port 66000"
+      ]
+    },
+    {
+      "id": "goodhart_trust_floor_slightly_above_authority",
+      "description": "Cross-field validation should catch trust.floor barely exceeding trust.authority_override_floor (e.g., 0.51 vs 0.50), not just large gaps",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with trust.floor=0.51 and trust.authority_override_floor=0.50",
+      "expected_output_description": "",
+      "expected_error": "cross_field_validation_error",
+      "assertions": [
+        "Raises validation error for floor > authority_override_floor"
+      ]
+    },
+    {
+      "id": "goodhart_mid_range_valid_trust_values",
+      "description": "Non-boundary trust values (e.g., floor=0.3, authority_override_floor=0.7) should load successfully, verifying the validator is not hardcoded for boundary values",
+      "function": "load_config",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with trust.floor=0.3 and trust.authority_override_floor=0.7",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.trust.floor == 0.3",
+        "config.trust.authority_override_floor == 0.7"
+      ]
+    },
+    {
+      "id": "goodhart_mid_range_port_valid",
+      "description": "Mid-range port values (e.g., 8080, 4317) should be accepted, verifying port validation is range-based not hardcoded for boundary values",
+      "function": "load_config",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with api.port=8080, otlp.listen_port=4317, otlp.http_port=4318",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.api.port == 8080",
+        "config.otlp.listen_port == 4317",
+        "config.otlp.http_port == 4318"
+      ]
+    },
+    {
+      "id": "goodhart_config_version_zero_rejected",
+      "description": "config_version=0 should be rejected, verifying the constraint is specifically for value 1, not just non-negative",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with config_version: 0",
+      "expected_output_description": "",
+      "expected_error": "validation_error",
+      "assertions": [
+        "Raises validation error"
+      ]
+    },
+    {
+      "id": "goodhart_config_version_negative_rejected",
+      "description": "config_version with a negative value should be rejected",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with config_version: -1",
+      "expected_output_description": "",
+      "expected_error": "validation_error",
+      "assertions": [
+        "Raises validation error"
+      ]
+    },
+    {
+      "id": "goodhart_validate_does_not_set_singleton_when_none",
+      "description": "validate_config_file must not populate the singleton even when it was previously None, ensuring complete isolation from load_config",
+      "function": "validate_config_file",
+      "category": "invariant",
+      "setup_description": "Call reset_config(), then validate_config_file on a valid file, then verify get_config() still raises",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "get_config() raises ConfigNotLoadedError after validate_config_file"
+      ]
+    },
+    {
+      "id": "goodhart_validate_does_not_overwrite_existing_singleton",
+      "description": "validate_config_file must not overwrite an existing singleton even if the validated file has different values",
+      "function": "validate_config_file",
+      "category": "invariant",
+      "setup_description": "Load config with defaults, then validate a file with different values (e.g., different port), then verify get_config() returns original",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "get_config() returns the original config, not the validated one"
+      ]
+    },
+    {
+      "id": "goodhart_generate_header_comment",
+      "description": "Generated config file must begin with a YAML comment line (starting with #) identifying it as auto-generated",
+      "function": "generate_default_config",
+      "category": "invariant",
+      "setup_description": "Generate default config and read the first line of the file",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "First line starts with '#'",
+        "File content contains 'auto-generated' or similar identifier"
+      ]
+    },
+    {
+      "id": "goodhart_generate_contains_all_sections",
+      "description": "Generated YAML file must contain all top-level configuration sections, not just a subset",
+      "function": "generate_default_config",
+      "category": "invariant",
+      "setup_description": "Generate default config and parse the YAML content",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "YAML contains keys: config_version, registry, trust, soak, otlp, api, classification_registry, human_gate, ledger"
+      ]
+    },
+    {
+      "id": "goodhart_immutable_nested_config",
+      "description": "Nested config objects (trust, soak, etc.) should also be frozen/immutable, not just the top-level ArbiterConfig",
+      "function": "load_config",
+      "category": "invariant",
+      "setup_description": "Load config with defaults and attempt to mutate a nested field like config.trust.floor = 0.99",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Raises an error when attempting to set config.trust.floor",
+        "Raises an error when attempting to set config.soak.target_requests"
+      ]
+    },
+    {
+      "id": "goodhart_full_yaml_override_all_fields",
+      "description": "A complete YAML file specifying every field with non-default values should have all values reflected in the loaded config",
+      "function": "load_config",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with all sections fully specified with non-default values",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Every field in the returned config matches the YAML values, not defaults"
+      ]
+    },
+    {
+      "id": "goodhart_single_taint_lock_tier",
+      "description": "A single valid DataClassificationTier in taint_lock_tiers should be accepted, testing that the list validator handles non-empty non-full lists",
+      "function": "load_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with trust.taint_lock_tiers containing only ['CRITICAL']",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.trust.taint_lock_tiers has exactly one element",
+        "The element is CRITICAL"
+      ]
+    },
+    {
+      "id": "goodhart_duplicate_taint_lock_tier",
+      "description": "Duplicate DataClassificationTier values in taint_lock_tiers should either be deduplicated or rejected, as duplicates are meaningless",
+      "function": "load_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with trust.taint_lock_tiers: [CRITICAL, CRITICAL]",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Either raises validation error or deduplicates to single CRITICAL entry"
+      ]
+    },
+    {
+      "id": "goodhart_env_overrides_yaml_value",
+      "description": "When both YAML and env var specify the same field, env var must take priority per the source priority invariant",
+      "function": "load_config",
+      "category": "invariant",
+      "setup_description": "Create YAML with api.port=9090 and set ARBITER_API__PORT=7070, then load_config",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.api.port == 7070, not 9090"
+      ]
+    },
+    {
+      "id": "goodhart_reset_then_load_fresh",
+      "description": "After reset_config() followed by load_config(), get_config() should return the newly loaded config, not any stale reference",
+      "function": "load_config",
+      "category": "happy_path",
+      "setup_description": "load_config(), reset_config(), load_config() with different YAML, verify get_config()",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "get_config() returns the config from the second load_config call"
+      ]
+    },
+    {
+      "id": "goodhart_authority_floor_slightly_below_one",
+      "description": "trust.authority_override_floor=0.999 with trust.floor=0.999 should be valid, testing non-boundary float equality",
+      "function": "load_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with trust.floor=0.999, trust.authority_override_floor=0.999",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Config loads successfully",
+        "config.trust.floor == 0.999",
+        "config.trust.authority_override_floor == 0.999"
+      ]
+    },
+    {
+      "id": "goodhart_port_two_valid",
+      "description": "Port value of 2 should be valid, verifying the lower boundary acceptance is not hardcoded only for port=1",
+      "function": "load_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with api.port=2",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.api.port == 2"
+      ]
+    },
+    {
+      "id": "goodhart_port_65534_valid",
+      "description": "Port value of 65534 should be valid, verifying the upper boundary acceptance is not hardcoded only for port=65535",
+      "function": "load_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with otlp.listen_port=65534",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.otlp.listen_port == 65534"
+      ]
+    },
+    {
+      "id": "goodhart_soak_target_requests_large",
+      "description": "Large soak.target_requests values (e.g., 1000000) should be accepted, verifying there is no artificial upper bound",
+      "function": "load_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with soak.target_requests=1000000",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.soak.target_requests == 1000000"
+      ]
+    },
+    {
+      "id": "goodhart_decay_lambda_large",
+      "description": "Large trust.decay_lambda values should be accepted since the only constraint is >= 0.0",
+      "function": "load_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with trust.decay_lambda=100.0",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.trust.decay_lambda == 100.0"
+      ]
+    },
+    {
+      "id": "goodhart_yaml_with_extra_keys_ignored_or_rejected",
+      "description": "YAML containing unknown/extra keys should either be silently ignored or raise a validation error, but should not crash",
+      "function": "load_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with an extra unknown key like 'foo: bar' at root level",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Either loads successfully ignoring extra key, or raises a clean validation error"
+      ]
+    },
+    {
+      "id": "goodhart_validate_returns_immutable",
+      "description": "The ArbiterConfig returned by validate_config_file should also be frozen/immutable, same as load_config's return",
+      "function": "validate_config_file",
+      "category": "invariant",
+      "setup_description": "Call validate_config_file on valid YAML and try to mutate the returned config",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Raises error on attribute assignment to the returned config"
+      ]
+    },
+    {
+      "id": "goodhart_soak_durations_all_tiers_in_yaml",
+      "description": "When YAML specifies custom soak base_durations, all five tier keys must be present in the loaded config",
+      "function": "load_config",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with soak.base_durations specifying all five tiers with custom values",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All five DataClassificationTier keys present in config.soak.base_durations",
+        "Values match the YAML-specified custom values"
+      ]
+    },
+    {
+      "id": "goodhart_otlp_http_port_zero_rejected",
+      "description": "otlp.http_port of 0 should also be rejected, verifying port validation applies to all three port fields",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with otlp.http_port=0",
+      "expected_output_description": "",
+      "expected_error": "validation_error",
+      "assertions": [
+        "Raises validation error for http_port=0"
+      ]
+    },
+    {
+      "id": "goodhart_otlp_listen_port_above_65535_rejected",
+      "description": "otlp.listen_port above 65535 should be rejected, verifying upper bound validation on all port fields",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with otlp.listen_port=70000",
+      "expected_output_description": "",
+      "expected_error": "validation_error",
+      "assertions": [
+        "Raises validation error for listen_port=70000"
+      ]
+    },
+    {
+      "id": "goodhart_load_config_returns_same_as_get_config",
+      "description": "The object returned by load_config() must be the exact same instance (identity) as what get_config() returns",
+      "function": "load_config",
+      "category": "invariant",
+      "setup_description": "result = load_config(path), then verify result is get_config()",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is get_config() (same object identity)"
+      ]
+    },
+    {
+      "id": "goodhart_conflict_threshold_mid_value",
+      "description": "A mid-range conflict_trust_delta_threshold (e.g., 0.45) should be accepted, verifying the validator is range-based",
+      "function": "load_config",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with trust.conflict_trust_delta_threshold=0.45",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.trust.conflict_trust_delta_threshold == 0.45"
+      ]
+    },
+    {
+      "id": "goodhart_trust_floor_epsilon_below_authority",
+      "description": "trust.floor very slightly below trust.authority_override_floor (e.g., 0.4999 vs 0.5) should be valid",
+      "function": "load_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with trust.floor=0.4999, trust.authority_override_floor=0.5",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Config loads successfully",
+        "config.trust.floor == 0.4999"
+      ]
+    },
+    {
+      "id": "goodhart_generate_sort_keys_false",
+      "description": "Generated YAML must preserve definition order (sort_keys=False), meaning config_version appears before registry, trust before soak, etc.",
+      "function": "generate_default_config",
+      "category": "invariant",
+      "setup_description": "Generate default config, read the YAML content, and check key ordering",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config_version key appears before registry key in the file",
+        "registry key appears before trust key"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nHidden adversarial acceptance tests for Configuration Loader component.\nThese tests catch implementations that 'teach to the test' by hardcoding\nreturns or skipping general validation logic.\n\"\"\"\nimport os\nimport tempfile\nimport textwrap\nfrom pathlib import Path\n\nimport pytest\nimport yaml\n\nfrom src.config import (\n    load_config,\n    get_config,\n    reset_config,\n    generate_default_config,\n    validate_config_file,\n    ArbiterConfig,\n    ConfigurationError,\n    ConfigNotLoadedError,\n)\n\n\n@pytest.fixture(autouse=True)\ndef clean_config_state(monkeypatch):\n    \"\"\"Reset config singleton and clean env vars before/after each test.\"\"\"\n    reset_config()\n    # Remove any ARBITER_ env vars that might pollute tests\n    for key in list(os.environ.keys()):\n        if key.startswith(\"ARBITER_\"):\n            monkeypatch.delenv(key, raising=False)\n    yield\n    reset_config()\n\n\ndef _write_yaml(tmp_path, content):\n    \"\"\"Helper to write YAML content to a temp file and return its path.\"\"\"\n    p = tmp_path / \"arbiter.yaml\"\n    p.write_text(textwrap.dedent(content))\n    return str(p)\n\n\n# --- Happy Path ---\n\nclass TestGoodhartHappyPath:\n\n    def test_goodhart_env_override_nested_trust(self, tmp_path, monkeypatch):\n        \"\"\"Environment variables with nested delimiter __ should override deeply nested trust config fields, not just top-level fields.\"\"\"\n        monkeypatch.setenv(\"ARBITER_TRUST__DECAY_LAMBDA\", \"0.123\")\n        monkeypatch.chdir(tmp_path)\n        cfg = load_config(None)\n        assert cfg.trust.decay_lambda == pytest.approx(0.123)\n\n    def test_goodhart_env_override_soak_target(self, tmp_path, monkeypatch):\n        \"\"\"Environment variable override should work for nested integer fields like soak.target_requests.\"\"\"\n        monkeypatch.setenv(\"ARBITER_SOAK__TARGET_REQUESTS\", \"42\")\n        monkeypatch.chdir(tmp_path)\n        cfg = load_config(None)\n        assert cfg.soak.target_requests == 42\n\n    def test_goodhart_mid_range_valid_trust_values(self, tmp_path):\n        \"\"\"Non-boundary trust values should load successfully, verifying the validator is range-based not hardcoded for boundary values.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            trust:\n              floor: 0.3\n              authority_override_floor: 0.7\n        \"\"\")\n        cfg = load_config(path)\n        assert cfg.trust.floor == pytest.approx(0.3)\n        assert cfg.trust.authority_override_floor == pytest.approx(0.7)\n\n    def test_goodhart_mid_range_port_valid(self, tmp_path):\n        \"\"\"Mid-range port values should be accepted, verifying port validation is range-based.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            api:\n              port: 8080\n            otlp:\n              listen_port: 4317\n              http_port: 4318\n        \"\"\")\n        cfg = load_config(path)\n        assert cfg.api.port == 8080\n        assert cfg.otlp.listen_port == 4317\n        assert cfg.otlp.http_port == 4318\n\n    def test_goodhart_full_yaml_override_all_fields(self, tmp_path):\n        \"\"\"A complete YAML file specifying every field with non-default values should have all values reflected.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            config_version: 1\n            registry:\n              path: /custom/registry.yaml\n              append_only: false\n            trust:\n              floor: 0.2\n              authority_override_floor: 0.8\n              decay_lambda: 0.05\n              conflict_trust_delta_threshold: 0.15\n              taint_lock_tiers:\n                - RESTRICTED\n                - CRITICAL\n            soak:\n              base_durations:\n                PUBLIC: 100\n                INTERNAL: 200\n                CONFIDENTIAL: 300\n                RESTRICTED: 400\n                CRITICAL: 500\n              target_requests: 99\n            otlp:\n              listen_port: 5317\n              http_port: 5318\n            api:\n              port: 9999\n            classification_registry:\n              path: /custom/classification.yaml\n            human_gate:\n              webhook_url: https://example.com/gate\n              block_on_gate: false\n            ledger:\n              checksum_interval: 50\n        \"\"\")\n        cfg = load_config(path)\n        assert cfg.trust.floor == pytest.approx(0.2)\n        assert cfg.trust.authority_override_floor == pytest.approx(0.8)\n        assert cfg.trust.decay_lambda == pytest.approx(0.05)\n        assert cfg.trust.conflict_trust_delta_threshold == pytest.approx(0.15)\n        assert cfg.soak.target_requests == 99\n        assert cfg.api.port == 9999\n        assert cfg.otlp.listen_port == 5317\n        assert cfg.otlp.http_port == 5318\n        assert cfg.ledger.checksum_interval == 50\n\n    def test_goodhart_reset_then_load_fresh(self, tmp_path):\n        \"\"\"After reset_config() followed by load_config(), get_config() should return the newly loaded config.\"\"\"\n        path1 = tmp_path / \"config1.yaml\"\n        path1.write_text(\"api:\\n  port: 3000\\n\")\n        path2 = tmp_path / \"config2.yaml\"\n        path2.write_text(\"api:\\n  port: 4000\\n\")\n\n        load_config(str(path1))\n        assert get_config().api.port == 3000\n        reset_config()\n        load_config(str(path2))\n        assert get_config().api.port == 4000\n\n    def test_goodhart_conflict_threshold_mid_value(self, tmp_path):\n        \"\"\"A mid-range conflict_trust_delta_threshold should be accepted.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            trust:\n              conflict_trust_delta_threshold: 0.45\n        \"\"\")\n        cfg = load_config(path)\n        assert cfg.trust.conflict_trust_delta_threshold == pytest.approx(0.45)\n\n\n# --- Edge Cases ---\n\nclass TestGoodhartEdgeCases:\n\n    def test_goodhart_load_nonexistent_explicit_path_falls_back(self, tmp_path):\n        \"\"\"When an explicit path is given but the file does not exist, the system should fall back to defaults.\"\"\"\n        nonexistent = str(tmp_path / \"does_not_exist.yaml\")\n        cfg = load_config(nonexistent)\n        assert cfg.config_version == 1\n        assert isinstance(cfg, ArbiterConfig)\n\n    def test_goodhart_single_taint_lock_tier(self, tmp_path):\n        \"\"\"A single valid DataClassificationTier in taint_lock_tiers should be accepted.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            trust:\n              taint_lock_tiers:\n                - CRITICAL\n        \"\"\")\n        cfg = load_config(path)\n        assert len(cfg.trust.taint_lock_tiers) == 1\n        assert str(cfg.trust.taint_lock_tiers[0]) == \"CRITICAL\" or cfg.trust.taint_lock_tiers[0].value == \"CRITICAL\" or cfg.trust.taint_lock_tiers[0] == \"CRITICAL\"\n\n    def test_goodhart_authority_floor_slightly_below_one(self, tmp_path):\n        \"\"\"Non-boundary float equality for trust config values should work correctly.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            trust:\n              floor: 0.999\n              authority_override_floor: 0.999\n        \"\"\")\n        cfg = load_config(path)\n        assert cfg.trust.floor == pytest.approx(0.999)\n        assert cfg.trust.authority_override_floor == pytest.approx(0.999)\n\n    def test_goodhart_port_two_valid(self, tmp_path):\n        \"\"\"Port value of 2 should be valid, not just hardcoded acceptance for port=1.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            api:\n              port: 2\n        \"\"\")\n        cfg = load_config(path)\n        assert cfg.api.port == 2\n\n    def test_goodhart_port_65534_valid(self, tmp_path):\n        \"\"\"Port value of 65534 should be valid, not just hardcoded for 65535.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            otlp:\n              listen_port: 65534\n        \"\"\")\n        cfg = load_config(path)\n        assert cfg.otlp.listen_port == 65534\n\n    def test_goodhart_soak_target_requests_large(self, tmp_path):\n        \"\"\"Large soak.target_requests values should be accepted without artificial upper bound.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            soak:\n              target_requests: 1000000\n        \"\"\")\n        cfg = load_config(path)\n        assert cfg.soak.target_requests == 1000000\n\n    def test_goodhart_decay_lambda_large(self, tmp_path):\n        \"\"\"Large trust.decay_lambda values should be accepted since the only constraint is >= 0.0.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            trust:\n              decay_lambda: 100.0\n        \"\"\")\n        cfg = load_config(path)\n        assert cfg.trust.decay_lambda == pytest.approx(100.0)\n\n    def test_goodhart_yaml_with_extra_keys(self, tmp_path):\n        \"\"\"YAML containing unknown/extra keys should either be ignored or raise a clean error, not crash.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            foo: bar\n            baz: 123\n        \"\"\")\n        try:\n            cfg = load_config(path)\n            # If it loaded, it should still have valid defaults\n            assert cfg.config_version == 1\n        except (ConfigurationError, Exception):\n            # A clean validation error is also acceptable\n            pass\n\n    def test_goodhart_trust_floor_epsilon_below_authority(self, tmp_path):\n        \"\"\"trust.floor very slightly below trust.authority_override_floor should be valid.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            trust:\n              floor: 0.4999\n              authority_override_floor: 0.5\n        \"\"\")\n        cfg = load_config(path)\n        assert cfg.trust.floor == pytest.approx(0.4999)\n        assert cfg.trust.authority_override_floor == pytest.approx(0.5)\n\n    def test_goodhart_duplicate_taint_lock_tier(self, tmp_path):\n        \"\"\"Duplicate DataClassificationTier values in taint_lock_tiers should either be deduplicated or rejected.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            trust:\n              taint_lock_tiers:\n                - CRITICAL\n                - CRITICAL\n        \"\"\")\n        try:\n            cfg = load_config(path)\n            # If accepted, duplicates may or may not be deduplicated\n            # But the config should still be valid\n            assert all(\n                str(t) == \"CRITICAL\" or getattr(t, 'value', t) == \"CRITICAL\"\n                for t in cfg.trust.taint_lock_tiers\n            )\n        except (ConfigurationError, Exception):\n            # Rejecting duplicates is also acceptable\n            pass\n\n\n# --- Error Cases ---\n\nclass TestGoodhartErrorCases:\n\n    def test_goodhart_soak_duration_negative_rejected(self, tmp_path):\n        \"\"\"Soak base duration values should reject negative integers.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            soak:\n              base_durations:\n                PUBLIC: -1\n                INTERNAL: 200\n                CONFIDENTIAL: 300\n                RESTRICTED: 400\n                CRITICAL: 500\n        \"\"\")\n        with pytest.raises((ConfigurationError, Exception)):\n            load_config(path)\n\n    def test_goodhart_soak_target_requests_negative(self, tmp_path):\n        \"\"\"Negative soak.target_requests should be rejected, not just zero.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            soak:\n              target_requests: -5\n        \"\"\")\n        with pytest.raises((ConfigurationError, Exception)):\n            load_config(path)\n\n    def test_goodhart_ledger_checksum_interval_negative(self, tmp_path):\n        \"\"\"Negative ledger.checksum_interval should be rejected, not just zero.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            ledger:\n              checksum_interval: -1\n        \"\"\")\n        with pytest.raises((ConfigurationError, Exception)):\n            load_config(path)\n\n    def test_goodhart_port_66000_rejected(self, tmp_path):\n        \"\"\"Port values just above 65535 should be rejected generically, not just 65536.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            api:\n              port: 66000\n        \"\"\")\n        with pytest.raises((ConfigurationError, Exception)):\n            load_config(path)\n\n    def test_goodhart_trust_floor_slightly_above_authority(self, tmp_path):\n        \"\"\"Cross-field validation should catch trust.floor barely exceeding trust.authority_override_floor.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            trust:\n              floor: 0.51\n              authority_override_floor: 0.50\n        \"\"\")\n        with pytest.raises((ConfigurationError, Exception)):\n            load_config(path)\n\n    def test_goodhart_config_version_zero_rejected(self, tmp_path):\n        \"\"\"config_version=0 should be rejected, verifying the constraint is specifically for value 1.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            config_version: 0\n        \"\"\")\n        with pytest.raises((ConfigurationError, Exception)):\n            load_config(path)\n\n    def test_goodhart_config_version_negative_rejected(self, tmp_path):\n        \"\"\"config_version with a negative value should be rejected.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            config_version: -1\n        \"\"\")\n        with pytest.raises((ConfigurationError, Exception)):\n            load_config(path)\n\n    def test_goodhart_otlp_http_port_zero_rejected(self, tmp_path):\n        \"\"\"otlp.http_port of 0 should be rejected, verifying port validation applies to all port fields.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            otlp:\n              http_port: 0\n        \"\"\")\n        with pytest.raises((ConfigurationError, Exception)):\n            load_config(path)\n\n    def test_goodhart_otlp_listen_port_above_65535_rejected(self, tmp_path):\n        \"\"\"otlp.listen_port above 65535 should be rejected, verifying upper bound on all port fields.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            otlp:\n              listen_port: 70000\n        \"\"\")\n        with pytest.raises((ConfigurationError, Exception)):\n            load_config(path)\n\n\n# --- Invariants ---\n\nclass TestGoodhartInvariants:\n\n    def test_goodhart_validate_does_not_set_singleton_when_none(self, tmp_path):\n        \"\"\"validate_config_file must not populate the singleton even when it was previously None.\"\"\"\n        reset_config()\n        # Generate a valid config file\n        path = str(tmp_path / \"arbiter.yaml\")\n        generate_default_config(path, overwrite=False)\n        # Validate it - should NOT set the singleton\n        validate_config_file(path)\n        with pytest.raises(ConfigNotLoadedError):\n            get_config()\n\n    def test_goodhart_validate_does_not_overwrite_existing_singleton(self, tmp_path):\n        \"\"\"validate_config_file must not overwrite an existing singleton.\"\"\"\n        # Load defaults first\n        default_path = str(tmp_path / \"default.yaml\")\n        generate_default_config(default_path, overwrite=False)\n        load_config(default_path)\n        original = get_config()\n        original_port = original.api.port\n\n        # Create a different config file\n        other_path = _write_yaml(tmp_path, \"\"\"\\\n            api:\n              port: 12345\n        \"\"\")\n        validated = validate_config_file(other_path)\n        # Singleton should still be the original\n        assert get_config() is original\n        assert get_config().api.port == original_port\n\n    def test_goodhart_generate_header_comment(self, tmp_path):\n        \"\"\"Generated config file must begin with a YAML comment line identifying it as auto-generated.\"\"\"\n        path = str(tmp_path / \"arbiter.yaml\")\n        generate_default_config(path, overwrite=False)\n        content = Path(path).read_text()\n        first_line = content.strip().split('\\n')[0]\n        assert first_line.startswith('#'), f\"First line should be a comment, got: {first_line}\"\n\n    def test_goodhart_generate_contains_all_sections(self, tmp_path):\n        \"\"\"Generated YAML file must contain all top-level configuration sections.\"\"\"\n        path = str(tmp_path / \"arbiter.yaml\")\n        generate_default_config(path, overwrite=False)\n        content = Path(path).read_text()\n        data = yaml.safe_load(content)\n        expected_keys = {'config_version', 'registry', 'trust', 'soak', 'otlp', 'api',\n                         'classification_registry', 'human_gate', 'ledger'}\n        assert expected_keys.issubset(set(data.keys())), \\\n            f\"Missing keys: {expected_keys - set(data.keys())}\"\n\n    def test_goodhart_immutable_nested_config(self, tmp_path):\n        \"\"\"Nested config objects should also be frozen/immutable, not just the top-level.\"\"\"\n        path = str(tmp_path / \"arbiter.yaml\")\n        generate_default_config(path, overwrite=False)\n        cfg = load_config(path)\n        with pytest.raises(Exception):\n            cfg.trust.floor = 0.99\n        with pytest.raises(Exception):\n            cfg.soak.target_requests = 999\n        with pytest.raises(Exception):\n            cfg.api.port = 1234\n\n    def test_goodhart_load_config_returns_same_as_get_config(self, tmp_path):\n        \"\"\"The object returned by load_config() must be the exact same instance as get_config().\"\"\"\n        path = str(tmp_path / \"arbiter.yaml\")\n        generate_default_config(path, overwrite=False)\n        result = load_config(path)\n        assert result is get_config()\n\n    def test_goodhart_env_overrides_yaml_value(self, tmp_path, monkeypatch):\n        \"\"\"When both YAML and env var specify the same field, env var must take priority.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            api:\n              port: 9090\n        \"\"\")\n        monkeypatch.setenv(\"ARBITER_API__PORT\", \"7070\")\n        cfg = load_config(path)\n        assert cfg.api.port == 7070\n\n    def test_goodhart_validate_returns_immutable(self, tmp_path):\n        \"\"\"The ArbiterConfig returned by validate_config_file should be frozen/immutable.\"\"\"\n        path = str(tmp_path / \"arbiter.yaml\")\n        generate_default_config(path, overwrite=False)\n        cfg = validate_config_file(path)\n        with pytest.raises(Exception):\n            cfg.config_version = 99\n        with pytest.raises(Exception):\n            cfg.api.port = 1234\n\n    def test_goodhart_soak_durations_all_tiers_in_yaml(self, tmp_path):\n        \"\"\"When YAML specifies custom soak base_durations, all five tier keys must be present.\"\"\"\n        path = _write_yaml(tmp_path, \"\"\"\\\n            soak:\n              base_durations:\n                PUBLIC: 10\n                INTERNAL: 20\n                CONFIDENTIAL: 30\n                RESTRICTED: 40\n                CRITICAL: 50\n              target_requests: 5\n        \"\"\")\n        cfg = load_config(path)\n        durations = cfg.soak.base_durations\n        # Check all five tiers are present (as attributes or dict keys)\n        tier_names = [\"PUBLIC\", \"INTERNAL\", \"CONFIDENTIAL\", \"RESTRICTED\", \"CRITICAL\"]\n        if isinstance(durations, dict):\n            for tier in tier_names:\n                assert tier in durations or any(str(k) == tier for k in durations.keys())\n        else:\n            for tier in tier_names:\n                assert hasattr(durations, tier) or hasattr(durations, tier.lower())\n\n    def test_goodhart_generate_sort_keys_false(self, tmp_path):\n        \"\"\"Generated YAML must preserve definition order (sort_keys=False).\"\"\"\n        path = str(tmp_path / \"arbiter.yaml\")\n        generate_default_config(path, overwrite=False)\n        content = Path(path).read_text()\n        lines = content.split('\\n')\n        # Find top-level keys (lines that don't start with whitespace or #)\n        top_keys = []\n        for line in lines:\n            if line and not line.startswith(' ') and not line.startswith('#') and ':' in line:\n                key = line.split(':')[0].strip()\n                top_keys.append(key)\n        # config_version should come before registry, and registry before trust\n        if 'config_version' in top_keys and 'registry' in top_keys:\n            assert top_keys.index('config_version') < top_keys.index('registry'), \\\n                f\"config_version should come before registry. Order: {top_keys}\"\n        if 'registry' in top_keys and 'trust' in top_keys:\n            assert top_keys.index('registry') < top_keys.index('trust'), \\\n                f\"registry should come before trust. Order: {top_keys}\"\n"
+}

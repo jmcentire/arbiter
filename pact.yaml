@@ -1,0 +1,4 @@
+budget: 30.0
+build_mode: hierarchy
+shaping: false
+parallel_components: true

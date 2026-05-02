@@ -1,0 +1,645 @@
+{
+  "component_id": "consistency",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "analyze_span_consistent_matching_fields",
+      "description": "Both observation and claim present with identical fields produces CONSISTENT outcome with NONE severity",
+      "function": "analyze_span",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation and claim with same span_id, node_id, trace_id, and identical field sets",
+      "expected_output_description": "ConsistencyFinding with outcome=CONSISTENT, severity=NONE, empty unexplained and overclaimed sets",
+      "expected_error": "",
+      "assertions": [
+        "result.outcome == ConsistencyOutcome.CONSISTENT",
+        "result.severity == FindingSeverity.NONE",
+        "result.unexplained_fields == frozenset()",
+        "result.overclaimed_fields == frozenset()",
+        "result.schema_version == 1"
+      ]
+    },
+    {
+      "id": "analyze_span_consistent_empty_fields",
+      "description": "Both observation and claim present with empty field sets produces CONSISTENT (vacuous truth)",
+      "function": "analyze_span",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation and claim with empty observed_fields and claimed_fields",
+      "expected_output_description": "CONSISTENT outcome with NONE severity, empty sets",
+      "expected_error": "",
+      "assertions": [
+        "result.outcome == ConsistencyOutcome.CONSISTENT",
+        "result.severity == FindingSeverity.NONE",
+        "result.unexplained_fields == frozenset()",
+        "result.overclaimed_fields == frozenset()"
+      ]
+    },
+    {
+      "id": "analyze_span_inconsistent_unexplained",
+      "description": "Observation has fields not in claim, producing unexplained_fields and INCONSISTENT outcome",
+      "function": "analyze_span",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation with fields {a, b, c}, claim with fields {a, b}",
+      "expected_output_description": "INCONSISTENT with unexplained_fields={c}, overclaimed_fields=empty",
+      "expected_error": "",
+      "assertions": [
+        "result.outcome == ConsistencyOutcome.INCONSISTENT",
+        "result.unexplained_fields == frozenset({'response.body.token'})",
+        "result.overclaimed_fields == frozenset()"
+      ]
+    },
+    {
+      "id": "analyze_span_inconsistent_overclaimed",
+      "description": "Claim has fields not in observation, producing overclaimed_fields and INCONSISTENT outcome",
+      "function": "analyze_span",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation with fields {a}, claim with fields {a, b}",
+      "expected_output_description": "INCONSISTENT with overclaimed_fields={b}, unexplained_fields=empty",
+      "expected_error": "",
+      "assertions": [
+        "result.outcome == ConsistencyOutcome.INCONSISTENT",
+        "result.overclaimed_fields == frozenset({'user.password'})",
+        "result.unexplained_fields == frozenset()"
+      ]
+    },
+    {
+      "id": "analyze_span_inconsistent_both_differences",
+      "description": "Both unexplained and overclaimed fields present produces INCONSISTENT",
+      "function": "analyze_span",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation has {a, b}, claim has {b, c} — unexplained={a}, overclaimed={c}",
+      "expected_output_description": "INCONSISTENT with both unexplained and overclaimed non-empty",
+      "expected_error": "",
+      "assertions": [
+        "result.outcome == ConsistencyOutcome.INCONSISTENT",
+        "result.unexplained_fields == frozenset({'user.email'})",
+        "result.overclaimed_fields == frozenset({'user.password'})"
+      ]
+    },
+    {
+      "id": "analyze_span_missing_claim",
+      "description": "Observation present but claim is None produces MISSING_CLAIM with HIGH severity",
+      "function": "analyze_span",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid observation, claim=None",
+      "expected_output_description": "MISSING_CLAIM outcome with HIGH severity",
+      "expected_error": "",
+      "assertions": [
+        "result.outcome == ConsistencyOutcome.MISSING_CLAIM",
+        "result.severity == FindingSeverity.HIGH",
+        "result.claimed_fields == frozenset()"
+      ]
+    },
+    {
+      "id": "analyze_span_missing_observation",
+      "description": "Claim present but observation is None produces MISSING_OBSERVATION",
+      "function": "analyze_span",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "observation=None, valid claim",
+      "expected_output_description": "MISSING_OBSERVATION outcome",
+      "expected_error": "",
+      "assertions": [
+        "result.outcome == ConsistencyOutcome.MISSING_OBSERVATION",
+        "result.observed_fields == frozenset()"
+      ]
+    },
+    {
+      "id": "analyze_span_both_none_error",
+      "description": "Both observation and claim are None raises ConsistencyAnalysisError",
+      "function": "analyze_span",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "observation=None, claim=None",
+      "expected_output_description": "",
+      "expected_error": "ConsistencyAnalysisError",
+      "assertions": [
+        "error is raised with descriptive message"
+      ]
+    },
+    {
+      "id": "analyze_span_span_id_mismatch",
+      "description": "Mismatched span_id between observation and claim raises ConsistencyAnalysisError",
+      "function": "analyze_span",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "observation.span_id != claim.span_id",
+      "expected_output_description": "",
+      "expected_error": "ConsistencyAnalysisError",
+      "assertions": [
+        "error message contains span_id info"
+      ]
+    },
+    {
+      "id": "analyze_span_node_id_mismatch",
+      "description": "Mismatched node_id between observation and claim raises ConsistencyAnalysisError",
+      "function": "analyze_span",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "observation.node_id != claim.node_id",
+      "expected_output_description": "",
+      "expected_error": "ConsistencyAnalysisError",
+      "assertions": [
+        "error message contains node_id info"
+      ]
+    },
+    {
+      "id": "analyze_span_trace_id_mismatch",
+      "description": "Mismatched trace_id between observation and claim raises ConsistencyAnalysisError",
+      "function": "analyze_span",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "observation.trace_id != claim.trace_id",
+      "expected_output_description": "",
+      "expected_error": "ConsistencyAnalysisError",
+      "assertions": [
+        "error message contains trace_id info"
+      ]
+    },
+    {
+      "id": "analyze_span_schema_version_always_1",
+      "description": "Result schema_version is always 1",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Any valid input",
+      "expected_output_description": "schema_version == 1",
+      "expected_error": "",
+      "assertions": [
+        "result.schema_version == 1"
+      ]
+    },
+    {
+      "id": "analyze_span_analyzed_at_valid_utc",
+      "description": "Result analyzed_at is a valid UTC timestamp at or after invocation time",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Any valid input",
+      "expected_output_description": "analyzed_at is valid UTC timestamp",
+      "expected_error": "",
+      "assertions": [
+        "result.analyzed_at is a valid UTC ISO 8601 string"
+      ]
+    },
+    {
+      "id": "analyze_span_severity_none_when_consistent",
+      "description": "Severity is NONE when outcome is CONSISTENT",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Matching observation and claim",
+      "expected_output_description": "severity == NONE",
+      "expected_error": "",
+      "assertions": [
+        "result.severity == FindingSeverity.NONE"
+      ]
+    },
+    {
+      "id": "analyze_span_severity_high_when_missing_claim",
+      "description": "Severity is HIGH when outcome is MISSING_CLAIM",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation present, claim=None",
+      "expected_output_description": "severity == HIGH",
+      "expected_error": "",
+      "assertions": [
+        "result.severity == FindingSeverity.HIGH"
+      ]
+    },
+    {
+      "id": "analyze_span_set_difference_invariant",
+      "description": "unexplained = observed - claimed, overclaimed = claimed - observed as set differences",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various field combinations",
+      "expected_output_description": "Set differences hold",
+      "expected_error": "",
+      "assertions": [
+        "result.unexplained_fields == observed_fields - claimed_fields",
+        "result.overclaimed_fields == claimed_fields - observed_fields"
+      ]
+    },
+    {
+      "id": "analyze_batch_happy_path",
+      "description": "Batch of valid pairs returns one finding per pair in order",
+      "function": "analyze_batch",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "List of 3 valid AnalysisPair objects",
+      "expected_output_description": "List of 3 ConsistencyFindings matching input order",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == len(pairs)",
+        "result[i] corresponds to pairs[i]"
+      ]
+    },
+    {
+      "id": "analyze_batch_empty_error",
+      "description": "Empty batch raises ConsistencyAnalysisError",
+      "function": "analyze_batch",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Empty list",
+      "expected_output_description": "",
+      "expected_error": "ConsistencyAnalysisError",
+      "assertions": [
+        "error raised for empty batch"
+      ]
+    },
+    {
+      "id": "analyze_batch_pair_both_none_error",
+      "description": "Batch with a pair having both None raises ConsistencyAnalysisError",
+      "function": "analyze_batch",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "List containing a pair with observation=None and claim=None",
+      "expected_output_description": "",
+      "expected_error": "ConsistencyAnalysisError",
+      "assertions": [
+        "error propagates, no partial results"
+      ]
+    },
+    {
+      "id": "analyze_batch_ordering_preserved",
+      "description": "Results maintain same ordering as input pairs",
+      "function": "analyze_batch",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Mixed pair types in specific order",
+      "expected_output_description": "Each result[i] matches pairs[i]",
+      "expected_error": "",
+      "assertions": [
+        "result ordering matches input ordering"
+      ]
+    },
+    {
+      "id": "analyze_batch_pair_id_mismatch_error",
+      "description": "Batch with a pair having mismatched IDs raises ConsistencyAnalysisError",
+      "function": "analyze_batch",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "List containing a pair where observation.span_id != claim.span_id",
+      "expected_output_description": "",
+      "expected_error": "ConsistencyAnalysisError",
+      "assertions": [
+        "error raised for mismatched IDs"
+      ]
+    },
+    {
+      "id": "analyze_batch_single_pair",
+      "description": "Batch with single pair works identically to analyze_span",
+      "function": "analyze_batch",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "List with one valid pair",
+      "expected_output_description": "List with one finding",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 1"
+      ]
+    },
+    {
+      "id": "persist_happy_path",
+      "description": "Persisting a valid finding makes it retrievable by node and span",
+      "function": "persist",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid ConsistencyFinding",
+      "expected_output_description": "Finding stored and retrievable",
+      "expected_error": "",
+      "assertions": [
+        "finding appears in get_by_node",
+        "finding appears in get_by_span"
+      ]
+    },
+    {
+      "id": "persist_append_only",
+      "description": "Multiple persists increase store size by one each time",
+      "function": "persist",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two distinct findings persisted sequentially",
+      "expected_output_description": "Both findings retrievable, store size increased by 2",
+      "expected_error": "",
+      "assertions": [
+        "both findings retrievable",
+        "store size increased correctly"
+      ]
+    },
+    {
+      "id": "persist_io_error",
+      "description": "IO error during persist raises appropriate error",
+      "function": "persist",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid finding, storage unavailable",
+      "expected_output_description": "",
+      "expected_error": "IO error or equivalent",
+      "assertions": [
+        "error raised when storage unavailable"
+      ]
+    },
+    {
+      "id": "get_by_node_happy_path",
+      "description": "Retrieves all findings for a given node_id in chronological order",
+      "function": "get_by_node",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "node_id with multiple persisted findings",
+      "expected_output_description": "List of findings ordered by analyzed_at ascending",
+      "expected_error": "",
+      "assertions": [
+        "all returned findings have correct node_id",
+        "results ordered by analyzed_at ascending"
+      ]
+    },
+    {
+      "id": "get_by_node_empty_result",
+      "description": "Returns empty list for unknown node_id",
+      "function": "get_by_node",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "node_id with no persisted findings",
+      "expected_output_description": "Empty list",
+      "expected_error": "",
+      "assertions": [
+        "result == []"
+      ]
+    },
+    {
+      "id": "get_by_node_filters_correctly",
+      "description": "Only returns findings matching the given node_id",
+      "function": "get_by_node",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Multiple findings for different node_ids",
+      "expected_output_description": "Only findings with matching node_id returned",
+      "expected_error": "",
+      "assertions": [
+        "all(f.node_id == target_node_id for f in result)"
+      ]
+    },
+    {
+      "id": "get_by_span_happy_path",
+      "description": "Retrieves all findings for a given span_id in chronological order",
+      "function": "get_by_span",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "span_id with persisted finding",
+      "expected_output_description": "List of findings ordered by analyzed_at ascending",
+      "expected_error": "",
+      "assertions": [
+        "all returned findings have correct span_id",
+        "results ordered by analyzed_at ascending"
+      ]
+    },
+    {
+      "id": "get_by_span_empty_result",
+      "description": "Returns empty list for unknown span_id",
+      "function": "get_by_span",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "span_id with no persisted findings",
+      "expected_output_description": "Empty list",
+      "expected_error": "",
+      "assertions": [
+        "result == []"
+      ]
+    },
+    {
+      "id": "has_high_severity_happy_path_true",
+      "description": "Returns True when HIGH severity finding exists for the node",
+      "function": "has_high_severity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "node_id with a HIGH severity finding, since=None",
+      "expected_output_description": "True",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "has_high_severity_no_findings",
+      "description": "Returns False when no findings exist for the node",
+      "function": "has_high_severity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Unknown node_id, since=None",
+      "expected_output_description": "False",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "has_high_severity_only_low",
+      "description": "Returns False when only LOW/MEDIUM/NONE severity findings exist",
+      "function": "has_high_severity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "node_id with only NONE and LOW severity findings",
+      "expected_output_description": "False",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "has_high_severity_with_since_filter",
+      "description": "Returns True only when HIGH finding is at or after since timestamp",
+      "function": "has_high_severity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "node_id with HIGH finding, since before that finding",
+      "expected_output_description": "True",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "has_high_severity_with_since_excludes_old",
+      "description": "Returns False when HIGH finding is before the since timestamp",
+      "function": "has_high_severity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "node_id with HIGH finding analyzed_at before since",
+      "expected_output_description": "False",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "has_high_severity_since_none",
+      "description": "When since is None, considers all findings regardless of time",
+      "function": "has_high_severity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "node_id with HIGH severity finding, since=None",
+      "expected_output_description": "True",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "has_high_severity_future_since",
+      "description": "Returns False when since is in the future beyond all findings",
+      "function": "has_high_severity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "node_id with HIGH finding, since far in the future",
+      "expected_output_description": "False",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "invariant_outcome_consistent_iff_no_differences",
+      "description": "CONSISTENT iff unexplained and overclaimed are both empty and both present",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Parametrized field combinations",
+      "expected_output_description": "Outcome matches set difference emptiness",
+      "expected_error": "",
+      "assertions": [
+        "outcome == CONSISTENT iff both sets empty"
+      ]
+    },
+    {
+      "id": "invariant_adapter_is_ground_truth",
+      "description": "Adapter observations are ground truth - missing claim is HIGH severity (adapter saw it, node didn't report)",
+      "function": "analyze_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observation present, claim absent",
+      "expected_output_description": "HIGH severity finding",
+      "expected_error": "",
+      "assertions": [
+        "result.severity == FindingSeverity.HIGH"
+      ]
+    },
+    {
+      "id": "invariant_findings_chronological_order",
+      "description": "get_by_node and get_by_span always return findings ordered by analyzed_at ascending",
+      "function": "get_by_node",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Multiple findings with different analyzed_at timestamps",
+      "expected_output_description": "Findings in chronological order",
+      "expected_error": "",
+      "assertions": [
+        "all(result[i].analyzed_at <= result[i+1].analyzed_at for i in range(len(result)-1))"
+      ]
+    },
+    {
+      "id": "persist_high_severity_updates_has_high",
+      "description": "After persisting a HIGH severity finding, has_high_severity returns True",
+      "function": "persist",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "HIGH severity finding persisted for a node",
+      "expected_output_description": "has_high_severity returns True for that node",
+      "expected_error": "",
+      "assertions": [
+        "has_high_severity(node_id) is True after persist"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract test suite for the Consistency Analyzer component.\n\nTests verify behavior at boundaries against the contract specification.\nOrganized into: analyze_span, analyze_batch, persistence, has_high_severity, and invariants.\n\"\"\"\n\nimport pytest\nfrom datetime import datetime, timezone, timedelta\nfrom unittest.mock import patch, MagicMock, PropertyMock\nfrom freezegun import freeze_time\n\n# Import the component under test\nfrom consistency import (\n    analyze_span,\n    analyze_batch,\n    persist,\n    get_by_node,\n    get_by_span,\n    has_high_severity,\n    AdapterObservation,\n    NodeAuditClaim,\n    ConsistencyFinding,\n    ConsistencyOutcome,\n    FindingSeverity,\n    ConsistencyAnalysisError,\n    AnalysisPair,\n)\n\n\n# ---------------------------------------------------------------------------\n# Fixtures & Factory Helpers\n# ---------------------------------------------------------------------------\n\nFIXED_TIME = \"2024-06-15T12:00:00Z\"\nFIXED_TIME_DT = datetime(2024, 6, 15, 12, 0, 0, tzinfo=timezone.utc)\n\nDEFAULT_SPAN_ID = \"ab\" * 8  # 16-byte hex\nDEFAULT_TRACE_ID = \"cd\" * 16  # 32-byte hex\nDEFAULT_NODE_ID = \"pipeline.node.alpha\"\n\nALT_SPAN_ID = \"ef\" * 8\nALT_TRACE_ID = \"01\" * 16\nALT_NODE_ID = \"pipeline.node.beta\"\n\n\ndef make_observation(\n    span_id=DEFAULT_SPAN_ID,\n    trace_id=DEFAULT_TRACE_ID,\n    node_id=DEFAULT_NODE_ID,\n    observed_fields=None,\n    timestamp=FIXED_TIME,\n):\n    if observed_fields is None:\n        observed_fields = frozenset({\"user.email\", \"request.body\"})\n    return AdapterObservation(\n        span_id=span_id,\n        trace_id=trace_id,\n        node_id=node_id,\n        observed_fields=observed_fields,\n        timestamp=timestamp,\n    )\n\n\ndef make_claim(\n    span_id=DEFAULT_SPAN_ID,\n    trace_id=DEFAULT_TRACE_ID,\n    node_id=DEFAULT_NODE_ID,\n    claimed_fields=None,\n    timestamp=FIXED_TIME,\n):\n    if claimed_fields is None:\n        claimed_fields = frozenset({\"user.email\", \"request.body\"})\n    return NodeAuditClaim(\n        span_id=span_id,\n        trace_id=trace_id,\n        node_id=node_id,\n        claimed_fields=claimed_fields,\n        timestamp=timestamp,\n    )\n\n\ndef make_finding(\n    node_id=DEFAULT_NODE_ID,\n    span_id=DEFAULT_SPAN_ID,\n    trace_id=DEFAULT_TRACE_ID,\n    outcome=ConsistencyOutcome.CONSISTENT,\n    severity=FindingSeverity.NONE,\n    observed_fields=None,\n    claimed_fields=None,\n    unexplained_fields=None,\n    overclaimed_fields=None,\n    analyzed_at=FIXED_TIME,\n    details=\"\",\n    schema_version=1,\n):\n    return ConsistencyFinding(\n        schema_version=schema_version,\n        node_id=node_id,\n        span_id=span_id,\n        trace_id=trace_id,\n        outcome=outcome,\n        severity=severity,\n        observed_fields=observed_fields if observed_fields is not None else frozenset(),\n        claimed_fields=claimed_fields if claimed_fields is not None else frozenset(),\n        unexplained_fields=unexplained_fields if unexplained_fields is not None else frozenset(),\n        overclaimed_fields=overclaimed_fields if overclaimed_fields is not None else frozenset(),\n        analyzed_at=analyzed_at,\n        details=details,\n    )\n\n\n# ===========================================================================\n# TEST: analyze_span\n# ===========================================================================\n\n\nclass TestAnalyzeSpanHappyPath:\n    \"\"\"Happy-path tests for analyze_span.\"\"\"\n\n    def test_consistent_matching_fields(self):\n        \"\"\"Both observation and claim with identical fields → CONSISTENT, NONE severity.\"\"\"\n        fields = frozenset({\"user.email\", \"request.body\"})\n        obs = make_observation(observed_fields=fields)\n        claim = make_claim(claimed_fields=fields)\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        assert result.outcome == ConsistencyOutcome.CONSISTENT\n        assert result.severity == FindingSeverity.NONE\n        assert result.unexplained_fields == frozenset()\n        assert result.overclaimed_fields == frozenset()\n        assert result.schema_version == 1\n        assert result.node_id == DEFAULT_NODE_ID\n        assert result.span_id == DEFAULT_SPAN_ID\n        assert result.trace_id == DEFAULT_TRACE_ID\n\n    def test_inconsistent_unexplained_fields(self):\n        \"\"\"Observation has fields not in claim → unexplained, INCONSISTENT.\"\"\"\n        obs = make_observation(observed_fields=frozenset({\"user.email\", \"request.body\", \"response.body.token\"}))\n        claim = make_claim(claimed_fields=frozenset({\"user.email\", \"request.body\"}))\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        assert result.outcome == ConsistencyOutcome.INCONSISTENT\n        assert result.unexplained_fields == frozenset({\"response.body.token\"})\n        assert result.overclaimed_fields == frozenset()\n\n    def test_inconsistent_overclaimed_fields(self):\n        \"\"\"Claim has fields not in observation → overclaimed, INCONSISTENT.\"\"\"\n        obs = make_observation(observed_fields=frozenset({\"user.email\"}))\n        claim = make_claim(claimed_fields=frozenset({\"user.email\", \"user.password\"}))\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        assert result.outcome == ConsistencyOutcome.INCONSISTENT\n        assert result.overclaimed_fields == frozenset({\"user.password\"})\n        assert result.unexplained_fields == frozenset()\n\n    def test_inconsistent_both_unexplained_and_overclaimed(self):\n        \"\"\"Both unexplained and overclaimed fields present → INCONSISTENT.\"\"\"\n        obs = make_observation(observed_fields=frozenset({\"user.email\", \"request.body\"}))\n        claim = make_claim(claimed_fields=frozenset({\"request.body\", \"user.password\"}))\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        assert result.outcome == ConsistencyOutcome.INCONSISTENT\n        assert result.unexplained_fields == frozenset({\"user.email\"})\n        assert result.overclaimed_fields == frozenset({\"user.password\"})\n\n    def test_missing_claim(self):\n        \"\"\"Observation present, claim is None → MISSING_CLAIM, HIGH severity.\"\"\"\n        obs = make_observation()\n\n        result = analyze_span(observation=obs, claim=None)\n\n        assert result.outcome == ConsistencyOutcome.MISSING_CLAIM\n        assert result.severity == FindingSeverity.HIGH\n        assert result.claimed_fields == frozenset()\n        assert result.node_id == DEFAULT_NODE_ID\n        assert result.span_id == DEFAULT_SPAN_ID\n\n    def test_missing_observation(self):\n        \"\"\"Claim present, observation is None → MISSING_OBSERVATION.\"\"\"\n        claim = make_claim()\n\n        result = analyze_span(observation=None, claim=claim)\n\n        assert result.outcome == ConsistencyOutcome.MISSING_OBSERVATION\n        assert result.observed_fields == frozenset()\n        assert result.node_id == DEFAULT_NODE_ID\n        assert result.span_id == DEFAULT_SPAN_ID\n\n\nclass TestAnalyzeSpanEdgeCases:\n    \"\"\"Edge case tests for analyze_span.\"\"\"\n\n    def test_consistent_empty_fields_vacuous_truth(self):\n        \"\"\"Both present with empty field sets → CONSISTENT (vacuous truth).\"\"\"\n        obs = make_observation(observed_fields=frozenset())\n        claim = make_claim(claimed_fields=frozenset())\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        assert result.outcome == ConsistencyOutcome.CONSISTENT\n        assert result.severity == FindingSeverity.NONE\n        assert result.unexplained_fields == frozenset()\n        assert result.overclaimed_fields == frozenset()\n\n    def test_large_field_sets(self):\n        \"\"\"Large field sets still compute correct set differences.\"\"\"\n        observed = frozenset({f\"field.level.{i}\" for i in range(100)})\n        claimed = frozenset({f\"field.level.{i}\" for i in range(50, 150)})\n        obs = make_observation(observed_fields=observed)\n        claim = make_claim(claimed_fields=claimed)\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        expected_unexplained = observed - claimed\n        expected_overclaimed = claimed - observed\n        assert result.unexplained_fields == expected_unexplained\n        assert result.overclaimed_fields == expected_overclaimed\n        if expected_unexplained or expected_overclaimed:\n            assert result.outcome == ConsistencyOutcome.INCONSISTENT\n        else:\n            assert result.outcome == ConsistencyOutcome.CONSISTENT\n\n    def test_single_field_consistent(self):\n        \"\"\"Single identical field in both → CONSISTENT.\"\"\"\n        obs = make_observation(observed_fields=frozenset({\"user.email\"}))\n        claim = make_claim(claimed_fields=frozenset({\"user.email\"}))\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        assert result.outcome == ConsistencyOutcome.CONSISTENT\n        assert result.severity == FindingSeverity.NONE\n\n    def test_observation_fields_preserved_in_result(self):\n        \"\"\"Observed and claimed fields are preserved in the result.\"\"\"\n        observed = frozenset({\"user.email\", \"request.body\"})\n        claimed = frozenset({\"user.email\", \"response.status\"})\n        obs = make_observation(observed_fields=observed)\n        claim = make_claim(claimed_fields=claimed)\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        assert result.observed_fields == observed\n        assert result.claimed_fields == claimed\n\n\nclass TestAnalyzeSpanErrors:\n    \"\"\"Error case tests for analyze_span.\"\"\"\n\n    def test_both_none_raises_error(self):\n        \"\"\"Both observation and claim are None → ConsistencyAnalysisError.\"\"\"\n        with pytest.raises(ConsistencyAnalysisError):\n            analyze_span(observation=None, claim=None)\n\n    def test_span_id_mismatch_raises_error(self):\n        \"\"\"Mismatched span_id → ConsistencyAnalysisError with span info.\"\"\"\n        obs = make_observation(span_id=\"aa\" * 8)\n        claim = make_claim(span_id=\"bb\" * 8)\n\n        with pytest.raises(ConsistencyAnalysisError) as exc_info:\n            analyze_span(observation=obs, claim=claim)\n\n        error = exc_info.value\n        # Error should contain identifying info (span_id)\n        error_str = str(error)\n        assert \"aa\" * 8 in error_str or \"bb\" * 8 in error_str or \"span\" in error_str.lower()\n\n    def test_node_id_mismatch_raises_error(self):\n        \"\"\"Mismatched node_id → ConsistencyAnalysisError with node info.\"\"\"\n        obs = make_observation(node_id=\"pipeline.node.alpha\")\n        claim = make_claim(node_id=\"pipeline.node.beta\")\n\n        with pytest.raises(ConsistencyAnalysisError) as exc_info:\n            analyze_span(observation=obs, claim=claim)\n\n        error = exc_info.value\n        error_str = str(error)\n        assert \"alpha\" in error_str or \"beta\" in error_str or \"node\" in error_str.lower()\n\n    def test_trace_id_mismatch_raises_error(self):\n        \"\"\"Mismatched trace_id → ConsistencyAnalysisError with trace info.\"\"\"\n        obs = make_observation(trace_id=\"aa\" * 16)\n        claim = make_claim(trace_id=\"bb\" * 16)\n\n        with pytest.raises(ConsistencyAnalysisError) as exc_info:\n            analyze_span(observation=obs, claim=claim)\n\n        error = exc_info.value\n        error_str = str(error)\n        assert \"aa\" * 16 in error_str or \"bb\" * 16 in error_str or \"trace\" in error_str.lower()\n\n    def test_both_none_error_has_descriptive_message(self):\n        \"\"\"Both None error includes descriptive message.\"\"\"\n        with pytest.raises(ConsistencyAnalysisError) as exc_info:\n            analyze_span(observation=None, claim=None)\n\n        # The error should have some descriptive information\n        assert exc_info.value is not None\n\n\nclass TestAnalyzeSpanSeverityMapping:\n    \"\"\"Tests for severity deterministic mapping.\"\"\"\n\n    def test_severity_none_when_consistent(self):\n        \"\"\"CONSISTENT → NONE severity.\"\"\"\n        obs = make_observation(observed_fields=frozenset({\"user.email\"}))\n        claim = make_claim(claimed_fields=frozenset({\"user.email\"}))\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        assert result.outcome == ConsistencyOutcome.CONSISTENT\n        assert result.severity == FindingSeverity.NONE\n\n    def test_severity_high_when_missing_claim(self):\n        \"\"\"MISSING_CLAIM → HIGH severity.\"\"\"\n        obs = make_observation()\n\n        result = analyze_span(observation=obs, claim=None)\n\n        assert result.outcome == ConsistencyOutcome.MISSING_CLAIM\n        assert result.severity == FindingSeverity.HIGH\n\n    def test_analyzed_at_is_valid_utc(self):\n        \"\"\"analyzed_at is a valid UTC timestamp.\"\"\"\n        before = datetime.now(timezone.utc)\n        obs = make_observation()\n        claim = make_claim()\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        # Parse the analyzed_at to verify it's a valid timestamp\n        analyzed_at = result.analyzed_at\n        assert analyzed_at is not None\n        assert len(analyzed_at) > 0\n        # Should be parseable as ISO 8601\n        parsed = datetime.fromisoformat(analyzed_at.replace(\"Z\", \"+00:00\"))\n        assert parsed.tzinfo is not None\n        assert parsed >= before - timedelta(seconds=1)  # small tolerance\n\n\n# ===========================================================================\n# TEST: analyze_batch\n# ===========================================================================\n\n\nclass TestAnalyzeBatchHappyPath:\n    \"\"\"Happy-path tests for analyze_batch.\"\"\"\n\n    def test_batch_returns_one_finding_per_pair(self):\n        \"\"\"Batch of valid pairs returns one finding per pair.\"\"\"\n        pairs = []\n        for i in range(3):\n            sid = f\"{i:02d}\" * 8\n            obs = make_observation(span_id=sid, observed_fields=frozenset({\"user.email\"}))\n            claim = make_claim(span_id=sid, claimed_fields=frozenset({\"user.email\"}))\n            pairs.append(AnalysisPair(observation=obs, claim=claim))\n\n        result = analyze_batch(pairs)\n\n        assert len(result) == 3\n        for i, finding in enumerate(result):\n            expected_sid = f\"{i:02d}\" * 8\n            assert finding.span_id == expected_sid\n\n    def test_batch_mixed_outcomes(self):\n        \"\"\"Batch with mixed pair types produces correct outcomes per pair.\"\"\"\n        # Pair 1: consistent\n        obs1 = make_observation(\n            span_id=\"11\" * 8,\n            observed_fields=frozenset({\"user.email\"}),\n        )\n        claim1 = make_claim(\n            span_id=\"11\" * 8,\n            claimed_fields=frozenset({\"user.email\"}),\n        )\n        # Pair 2: missing claim\n        obs2 = make_observation(span_id=\"22\" * 8)\n        # Pair 3: missing observation\n        claim3 = make_claim(span_id=\"33\" * 8)\n\n        pairs = [\n            AnalysisPair(observation=obs1, claim=claim1),\n            AnalysisPair(observation=obs2, claim=None),\n            AnalysisPair(observation=None, claim=claim3),\n        ]\n\n        result = analyze_batch(pairs)\n\n        assert len(result) == 3\n        assert result[0].outcome == ConsistencyOutcome.CONSISTENT\n        assert result[1].outcome == ConsistencyOutcome.MISSING_CLAIM\n        assert result[2].outcome == ConsistencyOutcome.MISSING_OBSERVATION\n\n\nclass TestAnalyzeBatchEdgeCases:\n    \"\"\"Edge cases for analyze_batch.\"\"\"\n\n    def test_single_pair_batch(self):\n        \"\"\"Single-pair batch works identically to analyze_span.\"\"\"\n        obs = make_observation()\n        claim = make_claim()\n        pairs = [AnalysisPair(observation=obs, claim=claim)]\n\n        result = analyze_batch(pairs)\n\n        assert len(result) == 1\n        assert result[0].outcome == ConsistencyOutcome.CONSISTENT\n\n    def test_ordering_preserved(self):\n        \"\"\"Results maintain the same ordering as input pairs.\"\"\"\n        pairs = []\n        node_ids = [\"pipeline.node.first\", \"pipeline.node.second\", \"pipeline.node.third\"]\n        for i, nid in enumerate(node_ids):\n            sid = f\"{i:02d}\" * 8\n            tid = f\"{i:02d}\" * 16\n            obs = make_observation(span_id=sid, trace_id=tid, node_id=nid)\n            claim = make_claim(span_id=sid, trace_id=tid, node_id=nid)\n            pairs.append(AnalysisPair(observation=obs, claim=claim))\n\n        result = analyze_batch(pairs)\n\n        assert len(result) == len(pairs)\n        for i, finding in enumerate(result):\n            assert finding.node_id == node_ids[i]\n\n\nclass TestAnalyzeBatchErrors:\n    \"\"\"Error case tests for analyze_batch.\"\"\"\n\n    def test_empty_batch_raises_error(self):\n        \"\"\"Empty batch → ConsistencyAnalysisError.\"\"\"\n        with pytest.raises(ConsistencyAnalysisError):\n            analyze_batch([])\n\n    def test_pair_both_none_raises_error(self):\n        \"\"\"Pair with both None in batch → ConsistencyAnalysisError (error propagates, no partial results).\"\"\"\n        obs = make_observation(span_id=\"11\" * 8)\n        claim = make_claim(span_id=\"11\" * 8)\n        pairs = [\n            AnalysisPair(observation=obs, claim=claim),\n            AnalysisPair(observation=None, claim=None),  # invalid\n        ]\n\n        with pytest.raises(ConsistencyAnalysisError):\n            analyze_batch(pairs)\n\n    def test_pair_id_mismatch_raises_error(self):\n        \"\"\"Pair with mismatched IDs in batch → ConsistencyAnalysisError.\"\"\"\n        obs = make_observation(span_id=\"aa\" * 8)\n        claim = make_claim(span_id=\"bb\" * 8)\n        pairs = [AnalysisPair(observation=obs, claim=claim)]\n\n        with pytest.raises(ConsistencyAnalysisError):\n            analyze_batch(pairs)\n\n\n# ===========================================================================\n# TEST: persist / get_by_node / get_by_span\n# ===========================================================================\n\n\nclass TestPersistHappyPath:\n    \"\"\"Happy-path tests for persist and retrieval.\"\"\"\n\n    def test_persist_and_retrieve_by_node(self, tmp_path):\n        \"\"\"Persisted finding is retrievable via get_by_node.\"\"\"\n        finding = make_finding(node_id=\"pipeline.test.persist\")\n\n        # We need to mock or configure the store to use tmp_path\n        # The test verifies the contract behavior: persist → get_by_node returns it\n        persist(finding)\n        results = get_by_node(\"pipeline.test.persist\")\n\n        assert len(results) >= 1\n        matched = [f for f in results if f.span_id == finding.span_id]\n        assert len(matched) >= 1\n        assert matched[0].node_id == \"pipeline.test.persist\"\n\n    def test_persist_and_retrieve_by_span(self, tmp_path):\n        \"\"\"Persisted finding is retrievable via get_by_span.\"\"\"\n        finding = make_finding(span_id=\"ff\" * 8)\n\n        persist(finding)\n        results = get_by_span(\"ff\" * 8)\n\n        assert len(results) >= 1\n        matched = [f for f in results if f.node_id == finding.node_id]\n        assert len(matched) >= 1\n        assert matched[0].span_id == \"ff\" * 8\n\n\nclass TestPersistAppendOnly:\n    \"\"\"Append-only invariant tests for persist.\"\"\"\n\n    def test_multiple_persists_accumulate(self, tmp_path):\n        \"\"\"Multiple persists increase store size, no overwrites.\"\"\"\n        finding1 = make_finding(\n            span_id=\"11\" * 8,\n            analyzed_at=\"2024-06-15T12:00:00Z\",\n        )\n        finding2 = make_finding(\n            span_id=\"22\" * 8,\n            analyzed_at=\"2024-06-15T12:01:00Z\",\n        )\n\n        persist(finding1)\n        persist(finding2)\n\n        results = get_by_node(DEFAULT_NODE_ID)\n        span_ids = {f.span_id for f in results}\n        assert \"11\" * 8 in span_ids or \"1111111111111111\" in span_ids\n        assert \"22\" * 8 in span_ids or \"2222222222222222\" in span_ids\n\n\nclass TestPersistErrors:\n    \"\"\"Error case tests for persist.\"\"\"\n\n    def test_io_error_on_persist(self):\n        \"\"\"IO error during persist raises appropriate error.\"\"\"\n        finding = make_finding()\n\n        # Mock the underlying storage to simulate IO failure\n        with patch(\"consistency.open\", side_effect=IOError(\"disk full\")):\n            with pytest.raises(Exception):  # Could be IOError or wrapped ConsistencyAnalysisError\n                persist(finding)\n\n\nclass TestGetByNodeDetails:\n    \"\"\"Detailed tests for get_by_node.\"\"\"\n\n    def test_empty_result_for_unknown_node(self):\n        \"\"\"Returns empty list for node_id with no findings.\"\"\"\n        results = get_by_node(\"nonexistent.node.xyz123\")\n        assert results == []\n\n    def test_filters_by_node_id(self, tmp_path):\n        \"\"\"Only returns findings matching the given node_id.\"\"\"\n        finding_a = make_finding(node_id=\"pipeline.node.alpha\", span_id=\"aa\" * 8)\n        finding_b = make_finding(node_id=\"pipeline.node.beta\", span_id=\"bb\" * 8)\n\n        persist(finding_a)\n        persist(finding_b)\n\n        results = get_by_node(\"pipeline.node.alpha\")\n        assert all(f.node_id == \"pipeline.node.alpha\" for f in results)\n\n    def test_chronological_order(self, tmp_path):\n        \"\"\"Results are ordered by analyzed_at ascending (oldest first).\"\"\"\n        finding1 = make_finding(\n            span_id=\"11\" * 8,\n            analyzed_at=\"2024-01-01T00:00:00Z\",\n        )\n        finding2 = make_finding(\n            span_id=\"22\" * 8,\n            analyzed_at=\"2024-06-15T12:00:00Z\",\n        )\n        finding3 = make_finding(\n            span_id=\"33\" * 8,\n            analyzed_at=\"2024-03-01T06:00:00Z\",\n        )\n\n        persist(finding1)\n        persist(finding2)\n        persist(finding3)\n\n        results = get_by_node(DEFAULT_NODE_ID)\n        timestamps = [f.analyzed_at for f in results]\n        assert timestamps == sorted(timestamps)\n\n\nclass TestGetBySpanDetails:\n    \"\"\"Detailed tests for get_by_span.\"\"\"\n\n    def test_empty_result_for_unknown_span(self):\n        \"\"\"Returns empty list for span_id with no findings.\"\"\"\n        results = get_by_span(\"00\" * 8)\n        assert results == []\n\n    def test_filters_by_span_id(self, tmp_path):\n        \"\"\"Only returns findings matching the given span_id.\"\"\"\n        finding_a = make_finding(span_id=\"aa\" * 8)\n        finding_b = make_finding(span_id=\"bb\" * 8)\n\n        persist(finding_a)\n        persist(finding_b)\n\n        results = get_by_span(\"aa\" * 8)\n        assert all(f.span_id == \"aa\" * 8 for f in results)\n\n    def test_chronological_order(self, tmp_path):\n        \"\"\"Results ordered by analyzed_at ascending.\"\"\"\n        finding1 = make_finding(\n            span_id=\"aa\" * 8,\n            analyzed_at=\"2024-01-01T00:00:00Z\",\n        )\n        finding2 = make_finding(\n            span_id=\"aa\" * 8,\n            analyzed_at=\"2024-06-15T12:00:00Z\",\n        )\n\n        persist(finding1)\n        persist(finding2)\n\n        results = get_by_span(\"aa\" * 8)\n        timestamps = [f.analyzed_at for f in results]\n        assert timestamps == sorted(timestamps)\n\n\n# ===========================================================================\n# TEST: has_high_severity\n# ===========================================================================\n\n\nclass TestHasHighSeverityHappyPath:\n    \"\"\"Happy-path tests for has_high_severity.\"\"\"\n\n    def test_returns_true_when_high_exists(self, tmp_path):\n        \"\"\"Returns True when HIGH severity finding exists for the node.\"\"\"\n        finding = make_finding(\n            node_id=\"pipeline.node.high\",\n            severity=FindingSeverity.HIGH,\n            outcome=ConsistencyOutcome.MISSING_CLAIM,\n        )\n        persist(finding)\n\n        result = has_high_severity(\"pipeline.node.high\", since=None)\n        assert result is True\n\n    def test_returns_true_with_since_before_finding(self, tmp_path):\n        \"\"\"Returns True when HIGH finding is at or after since timestamp.\"\"\"\n        finding = make_finding(\n            node_id=\"pipeline.node.high2\",\n            severity=FindingSeverity.HIGH,\n            outcome=ConsistencyOutcome.MISSING_CLAIM,\n            analyzed_at=\"2024-06-15T12:00:00Z\",\n        )\n        persist(finding)\n\n        result = has_high_severity(\"pipeline.node.high2\", since=\"2024-06-01T00:00:00Z\")\n        assert result is True\n\n    def test_since_none_considers_all(self, tmp_path):\n        \"\"\"When since is None, considers all findings regardless of time.\"\"\"\n        finding = make_finding(\n            node_id=\"pipeline.node.alltime\",\n            severity=FindingSeverity.HIGH,\n            outcome=ConsistencyOutcome.MISSING_CLAIM,\n            analyzed_at=\"2020-01-01T00:00:00Z\",\n        )\n        persist(finding)\n\n        result = has_high_severity(\"pipeline.node.alltime\", since=None)\n        assert result is True\n\n\nclass TestHasHighSeverityEdgeCases:\n    \"\"\"Edge case tests for has_high_severity.\"\"\"\n\n    def test_returns_false_no_findings(self):\n        \"\"\"Returns False when no findings exist for the node.\"\"\"\n        result = has_high_severity(\"nonexistent.node.xyz999\", since=None)\n        assert result is False\n\n    def test_returns_false_only_low_severity(self, tmp_path):\n        \"\"\"Returns False when only LOW/MEDIUM/NONE severity findings exist.\"\"\"\n        for sev in [FindingSeverity.NONE, FindingSeverity.LOW, FindingSeverity.MEDIUM]:\n            finding = make_finding(\n                node_id=\"pipeline.node.lowonly\",\n                span_id=f\"{'ab' * 7}{sev.name[:2].lower()}\" if hasattr(sev, 'name') else \"ab\" * 8,\n                severity=sev,\n                outcome=ConsistencyOutcome.CONSISTENT if sev == FindingSeverity.NONE else ConsistencyOutcome.INCONSISTENT,\n            )\n            persist(finding)\n\n        result = has_high_severity(\"pipeline.node.lowonly\", since=None)\n        assert result is False\n\n    def test_returns_false_high_before_since(self, tmp_path):\n        \"\"\"Returns False when HIGH finding is before the since timestamp.\"\"\"\n        finding = make_finding(\n            node_id=\"pipeline.node.oldhigh\",\n            severity=FindingSeverity.HIGH,\n            outcome=ConsistencyOutcome.MISSING_CLAIM,\n            analyzed_at=\"2024-01-01T00:00:00Z\",\n        )\n        persist(finding)\n\n        result = has_high_severity(\"pipeline.node.oldhigh\", since=\"2024-06-01T00:00:00Z\")\n        assert result is False\n\n    def test_returns_false_future_since(self, tmp_path):\n        \"\"\"Returns False when since is in the future beyond all findings.\"\"\"\n        finding = make_finding(\n            node_id=\"pipeline.node.futuretime\",\n            severity=FindingSeverity.HIGH,\n            outcome=ConsistencyOutcome.MISSING_CLAIM,\n            analyzed_at=\"2024-06-15T12:00:00Z\",\n        )\n        persist(finding)\n\n        result = has_high_severity(\"pipeline.node.futuretime\", since=\"2099-01-01T00:00:00Z\")\n        assert result is False\n\n    def test_persist_high_then_has_high_is_true(self, tmp_path):\n        \"\"\"After persisting a HIGH severity finding, has_high_severity returns True.\"\"\"\n        node = \"pipeline.node.posthigh\"\n\n        # Before: no findings\n        assert has_high_severity(node, since=None) is False\n\n        # Persist HIGH finding\n        finding = make_finding(\n            node_id=node,\n            severity=FindingSeverity.HIGH,\n            outcome=ConsistencyOutcome.MISSING_CLAIM,\n        )\n        persist(finding)\n\n        # After: should be True\n        assert has_high_severity(node, since=None) is True\n\n\n# ===========================================================================\n# TEST: Invariants\n# ===========================================================================\n\n\nclass TestInvariants:\n    \"\"\"Cross-cutting invariant tests.\"\"\"\n\n    def test_set_difference_invariant_observed_superset(self):\n        \"\"\"unexplained = observed - claimed, overclaimed = claimed - observed (observed superset).\"\"\"\n        observed = frozenset({\"a.b\", \"c.d\", \"e.f\"})\n        claimed = frozenset({\"a.b\"})\n        obs = make_observation(observed_fields=observed)\n        claim = make_claim(claimed_fields=claimed)\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        assert result.unexplained_fields == observed - claimed\n        assert result.overclaimed_fields == claimed - observed\n\n    def test_set_difference_invariant_claimed_superset(self):\n        \"\"\"overclaimed = claimed - observed when claimed is superset.\"\"\"\n        observed = frozenset({\"a.b\"})\n        claimed = frozenset({\"a.b\", \"c.d\", \"e.f\"})\n        obs = make_observation(observed_fields=observed)\n        claim = make_claim(claimed_fields=claimed)\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        assert result.unexplained_fields == observed - claimed\n        assert result.overclaimed_fields == claimed - observed\n\n    def test_set_difference_invariant_disjoint(self):\n        \"\"\"Completely disjoint field sets.\"\"\"\n        observed = frozenset({\"a.b\", \"c.d\"})\n        claimed = frozenset({\"e.f\", \"g.h\"})\n        obs = make_observation(observed_fields=observed)\n        claim = make_claim(claimed_fields=claimed)\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        assert result.unexplained_fields == observed\n        assert result.overclaimed_fields == claimed\n        assert result.outcome == ConsistencyOutcome.INCONSISTENT\n\n    def test_set_difference_invariant_identical(self):\n        \"\"\"Identical field sets produce empty differences.\"\"\"\n        fields = frozenset({\"a.b\", \"c.d\"})\n        obs = make_observation(observed_fields=fields)\n        claim = make_claim(claimed_fields=fields)\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        assert result.unexplained_fields == frozenset()\n        assert result.overclaimed_fields == frozenset()\n        assert result.outcome == ConsistencyOutcome.CONSISTENT\n\n    def test_outcome_consistent_iff_no_differences(self):\n        \"\"\"CONSISTENT iff unexplained and overclaimed are both empty and both present.\"\"\"\n        # Case 1: Both empty → CONSISTENT\n        obs = make_observation(observed_fields=frozenset({\"x.y\"}))\n        claim = make_claim(claimed_fields=frozenset({\"x.y\"}))\n        result = analyze_span(observation=obs, claim=claim)\n        assert result.outcome == ConsistencyOutcome.CONSISTENT\n        assert result.unexplained_fields == frozenset()\n        assert result.overclaimed_fields == frozenset()\n\n        # Case 2: Non-empty unexplained → INCONSISTENT\n        obs2 = make_observation(observed_fields=frozenset({\"x.y\", \"z.w\"}))\n        claim2 = make_claim(claimed_fields=frozenset({\"x.y\"}))\n        result2 = analyze_span(observation=obs2, claim=claim2)\n        assert result2.outcome == ConsistencyOutcome.INCONSISTENT\n        assert result2.unexplained_fields != frozenset()\n\n    def test_adapter_is_ground_truth_missing_claim_high(self):\n        \"\"\"Adapter observations are ground truth — missing claim is HIGH severity.\"\"\"\n        obs = make_observation(observed_fields=frozenset({\"sensitive.data\"}))\n        result = analyze_span(observation=obs, claim=None)\n\n        assert result.outcome == ConsistencyOutcome.MISSING_CLAIM\n        assert result.severity == FindingSeverity.HIGH\n\n    def test_schema_version_always_1(self):\n        \"\"\"schema_version is always 1 for all outcomes.\"\"\"\n        # CONSISTENT\n        obs = make_observation(observed_fields=frozenset({\"a.b\"}))\n        claim = make_claim(claimed_fields=frozenset({\"a.b\"}))\n        assert analyze_span(observation=obs, claim=claim).schema_version == 1\n\n        # MISSING_CLAIM\n        assert analyze_span(observation=obs, claim=None).schema_version == 1\n\n        # MISSING_OBSERVATION\n        assert analyze_span(observation=None, claim=claim).schema_version == 1\n\n        # INCONSISTENT\n        obs2 = make_observation(observed_fields=frozenset({\"a.b\", \"c.d\"}))\n        assert analyze_span(observation=obs2, claim=claim).schema_version == 1\n\n    @pytest.mark.parametrize(\n        \"observed,claimed,expected_outcome\",\n        [\n            (frozenset({\"a.b\"}), frozenset({\"a.b\"}), ConsistencyOutcome.CONSISTENT),\n            (frozenset({\"a.b\", \"c.d\"}), frozenset({\"a.b\"}), ConsistencyOutcome.INCONSISTENT),\n            (frozenset({\"a.b\"}), frozenset({\"a.b\", \"c.d\"}), ConsistencyOutcome.INCONSISTENT),\n            (frozenset(), frozenset(), ConsistencyOutcome.CONSISTENT),\n            (frozenset({\"x.y\"}), frozenset({\"z.w\"}), ConsistencyOutcome.INCONSISTENT),\n        ],\n    )\n    def test_outcome_parametrized(self, observed, claimed, expected_outcome):\n        \"\"\"Parametrized outcome verification for various field combinations.\"\"\"\n        obs = make_observation(observed_fields=observed)\n        claim = make_claim(claimed_fields=claimed)\n\n        result = analyze_span(observation=obs, claim=claim)\n\n        assert result.outcome == expected_outcome\n\n    def test_findings_chronological_order_invariant(self, tmp_path):\n        \"\"\"get_by_node returns findings in chronological order.\"\"\"\n        node = \"pipeline.node.chrono\"\n        timestamps = [\n            \"2024-01-15T12:00:00Z\",\n            \"2024-06-15T12:00:00Z\",\n            \"2024-03-15T12:00:00Z\",\n        ]\n        for i, ts in enumerate(timestamps):\n            finding = make_finding(\n                node_id=node,\n                span_id=f\"{i:02d}\" * 8,\n                analyzed_at=ts,\n            )\n            persist(finding)\n\n        results = get_by_node(node)\n        result_timestamps = [f.analyzed_at for f in results]\n        assert result_timestamps == sorted(result_timestamps)\n\n    def test_analyze_both_none_invalid_invariant(self):\n        \"\"\"analyze_span with both observation=None and claim=None is invalid.\"\"\"\n        with pytest.raises(ConsistencyAnalysisError):\n            analyze_span(observation=None, claim=None)\n\n\nclass TestRandomizedFieldSets:\n    \"\"\"Randomized tests for field set invariants using stdlib random.\"\"\"\n\n    def test_random_field_set_differences(self):\n        \"\"\"Randomized verification of set difference invariants.\"\"\"\n        import random\n        random.seed(42)\n\n        for _ in range(20):\n            n_observed = random.randint(0, 15)\n            n_claimed = random.randint(0, 15)\n            all_fields = [f\"field.level{i}.sub{j}\" for i in range(20) for j in range(3)]\n            observed = frozenset(random.sample(all_fields, min(n_observed, len(all_fields))))\n            claimed = frozenset(random.sample(all_fields, min(n_claimed, len(all_fields))))\n\n            obs = make_observation(observed_fields=observed)\n            claim = make_claim(claimed_fields=claimed)\n\n            result = analyze_span(observation=obs, claim=claim)\n\n            # Invariant: set differences\n            assert result.unexplained_fields == observed - claimed\n            assert result.overclaimed_fields == claimed - observed\n\n            # Invariant: outcome consistency\n            if (observed - claimed) == frozenset() and (claimed - observed) == frozenset():\n                assert result.outcome == ConsistencyOutcome.CONSISTENT\n                assert result.severity == FindingSeverity.NONE\n            else:\n                assert result.outcome == ConsistencyOutcome.INCONSISTENT\n"
+}

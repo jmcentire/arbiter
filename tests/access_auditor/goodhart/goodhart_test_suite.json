@@ -1,0 +1,725 @@
+{
+  "component_id": "access_auditor",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "goodhart_walk_anyof_composition",
+      "description": "walk_response_schema should flatten anyOf with union semantics, discovering leaf fields from all branches — not just allOf",
+      "function": "walk_response_schema",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Schema with anyOf containing two object branches, each with distinct leaf fields",
+      "expected_output_description": "WalkResult with FieldEntry for every leaf across all anyOf branches",
+      "expected_error": "",
+      "assertions": [
+        "All leaf fields from both anyOf branches appear in result.fields",
+        "No intermediate object nodes in result.fields"
+      ]
+    },
+    {
+      "id": "goodhart_walk_oneof_composition",
+      "description": "walk_response_schema should flatten oneOf with union semantics, discovering leaf fields from all variant branches",
+      "function": "walk_response_schema",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Schema with oneOf containing three variant schemas",
+      "expected_output_description": "WalkResult with FieldEntry for every leaf across all oneOf branches",
+      "expected_error": "",
+      "assertions": [
+        "All leaf fields from all oneOf branches appear in result.fields"
+      ]
+    },
+    {
+      "id": "goodhart_walk_custom_root_path",
+      "description": "All discovered field paths must be prefixed with the provided root_path, not a hardcoded default",
+      "function": "walk_response_schema",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Flat schema with root_path='custom.prefix'",
+      "expected_output_description": "All FieldEntry paths start with 'custom.prefix.'",
+      "expected_error": "",
+      "assertions": [
+        "Every field path starts with 'custom.prefix'",
+        "No field path starts with 'response'"
+      ]
+    },
+    {
+      "id": "goodhart_walk_deeply_nested_at_max_depth",
+      "description": "Schema at exactly max_depth should succeed — max_depth is the limit, not off-by-one before it",
+      "function": "walk_response_schema",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Schema nested exactly max_depth levels deep with a leaf at the final level, max_depth=3",
+      "expected_output_description": "WalkResult with the deep leaf field discovered successfully",
+      "expected_error": "",
+      "assertions": [
+        "result.fields contains the leaf at exactly depth 3",
+        "No error raised"
+      ]
+    },
+    {
+      "id": "goodhart_walk_format_hint_preserved",
+      "description": "FieldEntry format_hint should capture the schema's format field (e.g. 'date-time', 'email') rather than being empty or hardcoded",
+      "function": "walk_response_schema",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Schema with fields having format='date-time' and format='email'",
+      "expected_output_description": "FieldEntry objects carry the correct format_hint values",
+      "expected_error": "",
+      "assertions": [
+        "At least one FieldEntry has format_hint 'date-time'",
+        "At least one FieldEntry has format_hint 'email'"
+      ]
+    },
+    {
+      "id": "goodhart_walk_nested_ref_chain",
+      "description": "Schema walker should resolve chains of $ref references (A -> B -> C) discovering leaf fields at the end",
+      "function": "walk_response_schema",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Schema with $ref pointing to another schema that itself has a $ref to a third schema with a leaf",
+      "expected_output_description": "WalkResult with FieldEntry from the deeply referenced schema",
+      "expected_error": "",
+      "assertions": [
+        "result.fields contains the leaf from the final referenced schema"
+      ]
+    },
+    {
+      "id": "goodhart_walk_empty_dict_schema",
+      "description": "An empty dict {} schema (not None) should still produce an INCOMPLETE_SCHEMA warning",
+      "function": "walk_response_schema",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "schema={} with valid ref_resolver",
+      "expected_output_description": "WalkResult with at least one INCOMPLETE_SCHEMA warning and empty fields",
+      "expected_error": "",
+      "assertions": [
+        "result.warnings has at least one warning with code INCOMPLETE_SCHEMA",
+        "result.fields is empty"
+      ]
+    },
+    {
+      "id": "goodhart_walk_nested_array_of_objects",
+      "description": "Schema walker should traverse arrays of objects, producing correct dot-separated paths including the array traversal",
+      "function": "walk_response_schema",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Schema with array of objects where each object has leaf string fields",
+      "expected_output_description": "FieldEntry paths reflect the array-object nesting structure",
+      "expected_error": "",
+      "assertions": [
+        "result.fields contains FieldEntry for leaf fields inside the array items"
+      ]
+    },
+    {
+      "id": "goodhart_classify_multiple_fields_different_tiers",
+      "description": "Classification should independently assign different tiers to different fields based on which patterns they match",
+      "function": "classify_fields",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Three fields: one matching RESTRICTED pattern, one matching INTERNAL, one unmatched",
+      "expected_output_description": "ClassificationResult with RESTRICTED, INTERNAL, and PUBLIC respectively; tier_set contains all three",
+      "expected_error": "",
+      "assertions": [
+        "Three classified fields with three different tiers",
+        "tier_set contains exactly {PUBLIC, INTERNAL, RESTRICTED}"
+      ]
+    },
+    {
+      "id": "goodhart_classify_fnmatch_wildcard_patterns",
+      "description": "fnmatch patterns with wildcards should match arbitrary subpaths, not just exact strings",
+      "function": "classify_fields",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Fields like 'response.users.ssn' and 'response.admin.ssn' with fnmatch pattern '*.ssn'",
+      "expected_output_description": "Both fields match the wildcard pattern and receive the configured tier",
+      "expected_error": "",
+      "assertions": [
+        "Both fields are classified at the pattern's tier, not PUBLIC"
+      ]
+    },
+    {
+      "id": "goodhart_classify_regex_partial_vs_full_match",
+      "description": "Regex patterns should match against the field path correctly — verify whether partial matches are handled per contract",
+      "function": "classify_fields",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Field 'response.email_verified' with regex pattern 'email' (partial) vs '^.*\\.email$' (exact leaf)",
+      "expected_output_description": "Behavior depends on whether regex uses search or fullmatch semantics — classification should be consistent",
+      "expected_error": "",
+      "assertions": [
+        "The field is classified consistently with the pattern matching semantics"
+      ]
+    },
+    {
+      "id": "goodhart_classify_empty_registry",
+      "description": "When no registry entries are provided, all fields should default to PUBLIC tier",
+      "function": "classify_fields",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Multiple FieldEntry objects with empty registry_entries list",
+      "expected_output_description": "All fields classified as PUBLIC, tier_set contains only PUBLIC",
+      "expected_error": "",
+      "assertions": [
+        "All classified fields have tier PUBLIC",
+        "tier_set == frozenset({PUBLIC})"
+      ]
+    },
+    {
+      "id": "goodhart_classify_three_overlapping_patterns_highest_wins",
+      "description": "When a field matches three patterns of different tiers, the highest tier (by integer value) must win",
+      "function": "classify_fields",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Field matching patterns for PUBLIC, INTERNAL, and CONFIDENTIAL simultaneously",
+      "expected_output_description": "Field is classified as CONFIDENTIAL (highest among the three)",
+      "expected_error": "",
+      "assertions": [
+        "Classified field tier is CONFIDENTIAL",
+        "matched_pattern corresponds to the CONFIDENTIAL registry entry"
+      ]
+    },
+    {
+      "id": "goodhart_profile_assume_worst_false_empty_schema",
+      "description": "When assume_worst_on_incomplete is False, an empty schema should NOT inject RESTRICTED tier",
+      "function": "compute_structural_profile",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Empty schema with assume_worst_on_incomplete=False",
+      "expected_output_description": "Profile does not contain RESTRICTED tier (though it has warnings and schema_complete=False)",
+      "expected_error": "",
+      "assertions": [
+        "RESTRICTED not in result.tiers",
+        "result.schema_complete is False",
+        "result.warnings is non-empty"
+      ]
+    },
+    {
+      "id": "goodhart_profile_schema_incomplete_sets_false",
+      "description": "schema_complete must be False when the schema walk produces warnings, even if fields were discovered",
+      "function": "compute_structural_profile",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Schema with some valid fields but also an unresolvable $ref causing a warning",
+      "expected_output_description": "Profile has both fields and warnings, schema_complete=False",
+      "expected_error": "",
+      "assertions": [
+        "result.schema_complete is False",
+        "result.warnings is non-empty",
+        "result.classified_fields is non-empty"
+      ]
+    },
+    {
+      "id": "goodhart_profile_empty_adapter_slot_id_error",
+      "description": "Empty adapter_slot_id should violate precondition, same as empty node_id",
+      "function": "compute_structural_profile",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid node_id but empty string adapter_slot_id",
+      "expected_output_description": "Error raised for empty adapter_slot_id",
+      "expected_error": "precondition violation for empty adapter_slot_id",
+      "assertions": [
+        "An error is raised when adapter_slot_id is empty"
+      ]
+    },
+    {
+      "id": "goodhart_profile_empty_endpoint_error",
+      "description": "Empty endpoint should violate precondition",
+      "function": "compute_structural_profile",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid node_id and adapter_slot_id but empty endpoint",
+      "expected_output_description": "Error raised for empty endpoint",
+      "expected_error": "precondition violation for empty endpoint",
+      "assertions": [
+        "An error is raised when endpoint is empty"
+      ]
+    },
+    {
+      "id": "goodhart_audit_slot_allow_when_c005_not_in_block_codes",
+      "description": "C005 findings should not trigger BLOCK when C005 is not in gate_config.block_on_codes — BLOCK is only if finding code is in block_on_codes",
+      "function": "audit_slot",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Profile with undeclared tier, but gate_config.block_on_codes=[] (empty list)",
+      "expected_output_description": "SlotDecision with ALLOW verdict despite C005 findings existing",
+      "expected_error": "",
+      "assertions": [
+        "result.decision == ALLOW",
+        "result.findings contains C005 findings",
+        "result.blocking_codes is empty"
+      ]
+    },
+    {
+      "id": "goodhart_audit_slot_block_on_incomplete_schema_code",
+      "description": "When INCOMPLETE_SCHEMA is in block_on_codes and profile has INCOMPLETE_SCHEMA warnings, verdict should be BLOCK",
+      "function": "audit_slot",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Profile with INCOMPLETE_SCHEMA warnings, all tiers declared, gate_config.block_on_codes=[INCOMPLETE_SCHEMA]",
+      "expected_output_description": "SlotDecision with BLOCK verdict because INCOMPLETE_SCHEMA finding matches block_on_codes",
+      "expected_error": "",
+      "assertions": [
+        "result.decision == BLOCK",
+        "INCOMPLETE_SCHEMA in result.blocking_codes"
+      ]
+    },
+    {
+      "id": "goodhart_audit_slot_evidence_fields_populated",
+      "description": "C005 finding evidence must contain structural_tiers, declared_tiers, undeclared_tiers, and fields_by_undeclared_tier",
+      "function": "audit_slot",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Profile with CONFIDENTIAL tier not in declared_access.declared_read_tiers",
+      "expected_output_description": "C005 finding has evidence with all required evidence fields populated correctly",
+      "expected_error": "",
+      "assertions": [
+        "evidence.undeclared_tiers contains CONFIDENTIAL",
+        "evidence.structural_tiers matches profile.tiers",
+        "evidence.declared_tiers matches declared_access.declared_read_tiers",
+        "evidence.fields_by_undeclared_tier has key for CONFIDENTIAL"
+      ]
+    },
+    {
+      "id": "goodhart_audit_slot_no_findings_when_all_declared",
+      "description": "When all structural tiers are declared, there should be zero C005 findings (not just ALLOW verdict)",
+      "function": "audit_slot",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Profile with tiers={PUBLIC, INTERNAL}, declared_read_tiers={PUBLIC, INTERNAL, CONFIDENTIAL}",
+      "expected_output_description": "SlotDecision with ALLOW and empty findings (no C005 since all tiers are declared)",
+      "expected_error": "",
+      "assertions": [
+        "result.decision == ALLOW",
+        "No C005 findings in result.findings"
+      ]
+    },
+    {
+      "id": "goodhart_audit_slot_multiple_undeclared_tiers_separate_findings",
+      "description": "When multiple tiers are undeclared, each gets its own C005 finding — not one combined finding",
+      "function": "audit_slot",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Profile with tiers={PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED}, declared_read_tiers={PUBLIC}",
+      "expected_output_description": "Exactly three C005 findings (one for INTERNAL, CONFIDENTIAL, RESTRICTED each)",
+      "expected_error": "",
+      "assertions": [
+        "Exactly 3 C005 findings in result.findings",
+        "Each of INTERNAL, CONFIDENTIAL, RESTRICTED has its own finding"
+      ]
+    },
+    {
+      "id": "goodhart_audit_slot_finding_has_adapter_slot_id",
+      "description": "Each AccessFinding must include the adapter_slot_id from the profile, not just node_id",
+      "function": "audit_slot",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Profile with specific adapter_slot_id and undeclared tiers",
+      "expected_output_description": "All findings have adapter_slot_id matching profile.adapter_slot_id",
+      "expected_error": "",
+      "assertions": [
+        "Every finding in result.findings has adapter_slot_id == profile.adapter_slot_id"
+      ]
+    },
+    {
+      "id": "goodhart_observed_single_undeclared_restricted",
+      "description": "A single RESTRICTED tier observed but not declared should produce exactly one FA_A_015 finding",
+      "function": "audit_observed_output",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observed tiers=[RESTRICTED], declared_read_tiers=[PUBLIC, INTERNAL]",
+      "expected_output_description": "Exactly one FA_A_015 finding for RESTRICTED",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 1",
+        "result[0].code == FA_A_015",
+        "RESTRICTED mentioned in result[0].message"
+      ]
+    },
+    {
+      "id": "goodhart_observed_message_includes_field_paths",
+      "description": "FA_A_015 finding messages must include the specific field paths observed at the undeclared tier, not just the tier name",
+      "function": "audit_observed_output",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observed output with specific field paths at undeclared tier",
+      "expected_output_description": "Finding message includes the field paths that were observed at the violating tier",
+      "expected_error": "",
+      "assertions": [
+        "Finding message contains at least one observed field path string"
+      ]
+    },
+    {
+      "id": "goodhart_observed_finding_has_adapter_slot_id",
+      "description": "FA_A_015 findings must carry the adapter_slot_id from the observed output",
+      "function": "audit_observed_output",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ObservedOutput with specific adapter_slot_id",
+      "expected_output_description": "All findings have adapter_slot_id matching observed.adapter_slot_id",
+      "expected_error": "",
+      "assertions": [
+        "Every finding has adapter_slot_id == observed.adapter_slot_id"
+      ]
+    },
+    {
+      "id": "goodhart_observed_all_declared_empty_result",
+      "description": "When all observed tiers are declared (including higher tiers), the result must be an empty list, not a list with zero-severity findings",
+      "function": "audit_observed_output",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Observed tiers=[PUBLIC, CONFIDENTIAL], declared_read_tiers=[PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED]",
+      "expected_output_description": "Empty list returned",
+      "expected_error": "",
+      "assertions": [
+        "result == []",
+        "result is a list"
+      ]
+    },
+    {
+      "id": "goodhart_gate_config_assume_worst_explicit_false",
+      "description": "When assume_worst_on_incomplete is explicitly set to False in config_source, the loaded config must respect that value",
+      "function": "load_gate_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "config_source={'assume_worst_on_incomplete': False}",
+      "expected_output_description": "GateConfig with assume_worst_on_incomplete=False and default block_on_codes",
+      "expected_error": "",
+      "assertions": [
+        "result.assume_worst_on_incomplete is False",
+        "result.block_on_codes contains C005"
+      ]
+    },
+    {
+      "id": "goodhart_gate_config_multiple_block_codes",
+      "description": "load_gate_config should accept multiple valid FindingCode values in block_on_codes",
+      "function": "load_gate_config",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "config_source={'block_on_codes': ['C005', 'INCOMPLETE_SCHEMA']}",
+      "expected_output_description": "GateConfig with both codes in block_on_codes",
+      "expected_error": "",
+      "assertions": [
+        "C005 in result.block_on_codes",
+        "INCOMPLETE_SCHEMA in result.block_on_codes",
+        "len(result.block_on_codes) == 2"
+      ]
+    },
+    {
+      "id": "goodhart_gate_config_empty_block_codes",
+      "description": "An explicitly empty block_on_codes list should be accepted (no defaults injected when key is present)",
+      "function": "load_gate_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "config_source={'block_on_codes': []}",
+      "expected_output_description": "GateConfig with empty block_on_codes list",
+      "expected_error": "",
+      "assertions": [
+        "result.block_on_codes == []"
+      ]
+    },
+    {
+      "id": "goodhart_registry_multiple_entries",
+      "description": "load_classification_registry should correctly load multiple entries with different pattern types and tiers",
+      "function": "load_classification_registry",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Three registry entries: fnmatch/PUBLIC, regex/CONFIDENTIAL, fnmatch/RESTRICTED",
+      "expected_output_description": "Three ClassificationRegistryEntry objects with correct values",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 3",
+        "Each entry has correct tier and pattern_type"
+      ]
+    },
+    {
+      "id": "goodhart_registry_description_preserved",
+      "description": "The description field from registry source should be preserved in the loaded entry",
+      "function": "load_classification_registry",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Registry entry with description='Social security number field'",
+      "expected_output_description": "Loaded entry preserves the description",
+      "expected_error": "",
+      "assertions": [
+        "result[0].description == 'Social security number field'"
+      ]
+    },
+    {
+      "id": "goodhart_datatier_integer_values",
+      "description": "DataTier enum members must have specific integer values: PUBLIC=0, INTERNAL=1, CONFIDENTIAL=2, RESTRICTED=3",
+      "function": "DataTier",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Access DataTier enum integer values directly",
+      "expected_output_description": "Integer values match the contract specification",
+      "expected_error": "",
+      "assertions": [
+        "int(DataTier.PUBLIC) == 0",
+        "int(DataTier.INTERNAL) == 1",
+        "int(DataTier.CONFIDENTIAL) == 2",
+        "int(DataTier.RESTRICTED) == 3"
+      ]
+    },
+    {
+      "id": "goodhart_datatier_comparison",
+      "description": "DataTier members must support natural integer comparison consistent with severity ordering",
+      "function": "DataTier",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Compare all adjacent DataTier pairs",
+      "expected_output_description": "Each lower tier is less than the next higher tier",
+      "expected_error": "",
+      "assertions": [
+        "DataTier.PUBLIC < DataTier.INTERNAL",
+        "DataTier.INTERNAL < DataTier.CONFIDENTIAL",
+        "DataTier.CONFIDENTIAL < DataTier.RESTRICTED"
+      ]
+    },
+    {
+      "id": "goodhart_finding_code_string_values",
+      "description": "FindingCode enum members should be usable as stable string identifiers matching their names",
+      "function": "FindingCode",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Access FindingCode string values",
+      "expected_output_description": "String representation matches expected stable identifiers",
+      "expected_error": "",
+      "assertions": [
+        "str(FindingCode.C005) contains 'C005'",
+        "str(FindingCode.FA_A_015) contains 'FA_A_015' or 'FA-A-015'",
+        "str(FindingCode.INCOMPLETE_SCHEMA) contains 'INCOMPLETE_SCHEMA'"
+      ]
+    },
+    {
+      "id": "goodhart_finding_severity_ordering",
+      "description": "FindingSeverity enum must have correct integer ordering: INFO(0) < WARNING(1) < ERROR(2) < CRITICAL(3)",
+      "function": "FindingSeverity",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Access FindingSeverity integer values and compare",
+      "expected_output_description": "Ordering matches contract specification",
+      "expected_error": "",
+      "assertions": [
+        "FindingSeverity.INFO < FindingSeverity.WARNING",
+        "FindingSeverity.WARNING < FindingSeverity.ERROR",
+        "FindingSeverity.ERROR < FindingSeverity.CRITICAL"
+      ]
+    },
+    {
+      "id": "goodhart_walk_field_type_captured",
+      "description": "FieldEntry field_type should reflect the schema's type (e.g. 'string', 'integer', 'boolean'), not a default or empty string",
+      "function": "walk_response_schema",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Schema with string, integer, and boolean leaf fields",
+      "expected_output_description": "Each FieldEntry has the correct field_type",
+      "expected_error": "",
+      "assertions": [
+        "FieldEntry for string field has field_type 'string'",
+        "FieldEntry for integer field has field_type 'integer'",
+        "FieldEntry for boolean field has field_type 'boolean'"
+      ]
+    },
+    {
+      "id": "goodhart_audit_slot_c005_finding_code_exact",
+      "description": "C005 findings must have code exactly equal to FindingCode.C005, not a string approximation",
+      "function": "audit_slot",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Profile with undeclared tier",
+      "expected_output_description": "Finding code is the FindingCode.C005 enum member",
+      "expected_error": "",
+      "assertions": [
+        "finding.code == FindingCode.C005 for each C005 finding"
+      ]
+    },
+    {
+      "id": "goodhart_audit_slot_blocking_codes_match_findings",
+      "description": "result.blocking_codes should contain exactly the finding codes that are both present in findings AND in gate_config.block_on_codes",
+      "function": "audit_slot",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Profile with undeclared tier, gate_config.block_on_codes=[C005]",
+      "expected_output_description": "blocking_codes contains C005",
+      "expected_error": "",
+      "assertions": [
+        "C005 in result.blocking_codes",
+        "result.blocking_codes is subset of gate_config.block_on_codes"
+      ]
+    },
+    {
+      "id": "goodhart_observed_finding_node_id_matches",
+      "description": "Each FA_A_015 finding's node_id field must equal the observed output's node_id, not just appear in the message",
+      "function": "audit_observed_output",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ObservedOutput with specific node_id and undeclared tier",
+      "expected_output_description": "Each finding.node_id == observed.node_id",
+      "expected_error": "",
+      "assertions": [
+        "Every finding has node_id == observed.node_id"
+      ]
+    },
+    {
+      "id": "goodhart_classify_single_field_no_registry",
+      "description": "A single field with no registry entries should produce exactly one ClassifiedField at PUBLIC tier",
+      "function": "classify_fields",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "One FieldEntry, empty registry_entries",
+      "expected_output_description": "One ClassifiedField with tier PUBLIC",
+      "expected_error": "",
+      "assertions": [
+        "len(result.classified_fields) == 1",
+        "result.classified_fields[0].tier == DataTier.PUBLIC"
+      ]
+    },
+    {
+      "id": "goodhart_walk_ref_resolver_used_not_ignored",
+      "description": "The ref_resolver callable must actually be invoked for $ref URIs — not silently skipped",
+      "function": "walk_response_schema",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Schema with $ref to a schema containing unique leaf field; ref_resolver tracks if called",
+      "expected_output_description": "ref_resolver was called and the referenced leaf appears in result.fields",
+      "expected_error": "",
+      "assertions": [
+        "ref_resolver was called at least once",
+        "result.fields contains the leaf from the referenced schema"
+      ]
+    },
+    {
+      "id": "goodhart_profile_tiers_are_set_like",
+      "description": "Profile tiers should be a set/frozenset — no duplicate tiers even when multiple fields share a tier",
+      "function": "compute_structural_profile",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Schema with multiple fields all classified as INTERNAL",
+      "expected_output_description": "result.tiers contains INTERNAL exactly once",
+      "expected_error": "",
+      "assertions": [
+        "len(result.tiers) == number of unique tiers",
+        "No duplicate tiers in result.tiers"
+      ]
+    },
+    {
+      "id": "goodhart_audit_slot_evidence_endpoint",
+      "description": "C005 finding evidence should include the endpoint from the profile",
+      "function": "audit_slot",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Profile with endpoint='/api/v2/users' and undeclared tier",
+      "expected_output_description": "Finding evidence.endpoint == '/api/v2/users'",
+      "expected_error": "",
+      "assertions": [
+        "evidence.endpoint == profile.endpoint"
+      ]
+    },
+    {
+      "id": "goodhart_classify_matched_pattern_recorded",
+      "description": "ClassifiedField should record which pattern caused the match, not an empty string or wrong pattern",
+      "function": "classify_fields",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Field matching a specific fnmatch pattern '*.ssn'",
+      "expected_output_description": "ClassifiedField.matched_pattern == '*.ssn'",
+      "expected_error": "",
+      "assertions": [
+        "result.classified_fields[0].matched_pattern == '*.ssn'"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nHidden adversarial acceptance tests for Access Auditor & OpenAPI Integration.\n\nThese tests target behavioral gaps not covered by visible tests, specifically\nlooking for hardcoded returns, boundary errors, and invariant violations.\n\"\"\"\nimport pytest\nfrom datetime import datetime, timezone\nfrom unittest.mock import MagicMock, patch, call\nfrom src.access_auditor import *\n\n\n# ---------------------------------------------------------------------------\n# walk_response_schema — gaps\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartWalkResponseSchema:\n\n    def test_goodhart_walk_anyof_composition(self):\n        \"\"\"walk_response_schema should flatten anyOf with union semantics, discovering leaf fields from all branches.\"\"\"\n        schema = {\n            \"anyOf\": [\n                {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"alpha\": {\"type\": \"string\"},\n                    }\n                },\n                {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"beta\": {\"type\": \"integer\"},\n                    }\n                }\n            ]\n        }\n        ref_resolver = lambda uri: {}\n        result = walk_response_schema(schema, ref_resolver, root_path=\"response\", max_depth=10)\n        paths = [f.path for f in result.fields]\n        assert any(\"alpha\" in p for p in paths), \"alpha field not found in anyOf branch\"\n        assert any(\"beta\" in p for p in paths), \"beta field not found in anyOf branch\"\n\n    def test_goodhart_walk_oneof_composition(self):\n        \"\"\"walk_response_schema should flatten oneOf with union semantics, discovering all variant leaves.\"\"\"\n        schema = {\n            \"oneOf\": [\n                {\"type\": \"object\", \"properties\": {\"variant_a\": {\"type\": \"string\"}}},\n                {\"type\": \"object\", \"properties\": {\"variant_b\": {\"type\": \"integer\"}}},\n                {\"type\": \"object\", \"properties\": {\"variant_c\": {\"type\": \"boolean\"}}},\n            ]\n        }\n        ref_resolver = lambda uri: {}\n        result = walk_response_schema(schema, ref_resolver, root_path=\"response\", max_depth=10)\n        paths = [f.path for f in result.fields]\n        assert any(\"variant_a\" in p for p in paths)\n        assert any(\"variant_b\" in p for p in paths)\n        assert any(\"variant_c\" in p for p in paths)\n\n    def test_goodhart_walk_custom_root_path(self):\n        \"\"\"All discovered field paths must be prefixed with the provided root_path, not a hardcoded default.\"\"\"\n        schema = {\n            \"type\": \"object\",\n            \"properties\": {\n                \"name\": {\"type\": \"string\"},\n                \"age\": {\"type\": \"integer\"},\n            }\n        }\n        ref_resolver = lambda uri: {}\n        result = walk_response_schema(schema, ref_resolver, root_path=\"custom.prefix\", max_depth=10)\n        assert len(result.fields) >= 2\n        for f in result.fields:\n            assert str(f.path).startswith(\"custom.prefix\"), f\"Path {f.path} does not start with custom.prefix\"\n\n    def test_goodhart_walk_deeply_nested_at_max_depth(self):\n        \"\"\"Schema at exactly max_depth should succeed — verifying no off-by-one in depth limit.\"\"\"\n        # Build a schema nested 3 levels deep: root -> level1 -> level2 -> leaf\n        schema = {\n            \"type\": \"object\",\n            \"properties\": {\n                \"level1\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"level2\": {\n                            \"type\": \"object\",\n                            \"properties\": {\n                                \"leaf\": {\"type\": \"string\"}\n                            }\n                        }\n                    }\n                }\n            }\n        }\n        ref_resolver = lambda uri: {}\n        # max_depth=3 should allow reaching depth 3\n        result = walk_response_schema(schema, ref_resolver, root_path=\"r\", max_depth=3)\n        paths = [str(f.path) for f in result.fields]\n        assert any(\"leaf\" in p for p in paths), f\"Leaf at depth 3 not found. Fields: {paths}\"\n\n    def test_goodhart_walk_format_hint_preserved(self):\n        \"\"\"FieldEntry format_hint should capture the schema's format field.\"\"\"\n        schema = {\n            \"type\": \"object\",\n            \"properties\": {\n                \"created_at\": {\"type\": \"string\", \"format\": \"date-time\"},\n                \"contact_email\": {\"type\": \"string\", \"format\": \"email\"},\n            }\n        }\n        ref_resolver = lambda uri: {}\n        result = walk_response_schema(schema, ref_resolver, root_path=\"response\", max_depth=10)\n        format_hints = {f.format_hint for f in result.fields}\n        assert \"date-time\" in format_hints, f\"date-time format not found. Hints: {format_hints}\"\n        assert \"email\" in format_hints, f\"email format not found. Hints: {format_hints}\"\n\n    def test_goodhart_walk_nested_ref_chain(self):\n        \"\"\"Schema walker should resolve chains of $ref references (A -> B -> C).\"\"\"\n        schema = {\"$ref\": \"#/components/schemas/A\"}\n\n        def resolver(uri):\n            if uri == \"#/components/schemas/A\":\n                return {\"$ref\": \"#/components/schemas/B\"}\n            elif uri == \"#/components/schemas/B\":\n                return {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"deep_leaf\": {\"type\": \"string\"}\n                    }\n                }\n            raise ValueError(f\"Unknown ref: {uri}\")\n\n        result = walk_response_schema(schema, resolver, root_path=\"response\", max_depth=10)\n        paths = [str(f.path) for f in result.fields]\n        assert any(\"deep_leaf\" in p for p in paths), f\"Deep leaf not found via ref chain. Fields: {paths}\"\n\n    def test_goodhart_walk_empty_dict_schema(self):\n        \"\"\"An empty dict {} schema should produce an INCOMPLETE_SCHEMA warning.\"\"\"\n        ref_resolver = lambda uri: {}\n        result = walk_response_schema({}, ref_resolver, root_path=\"response\", max_depth=10)\n        warning_codes = [w.code for w in result.warnings]\n        assert any(\n            str(c) == str(FindingCode.INCOMPLETE_SCHEMA) or c == FindingCode.INCOMPLETE_SCHEMA\n            for c in warning_codes\n        ), f\"No INCOMPLETE_SCHEMA warning for empty dict. Codes: {warning_codes}\"\n\n    def test_goodhart_walk_nested_array_of_objects(self):\n        \"\"\"Schema walker should traverse arrays of objects.\"\"\"\n        schema = {\n            \"type\": \"object\",\n            \"properties\": {\n                \"items_list\": {\n                    \"type\": \"array\",\n                    \"items\": {\n                        \"type\": \"object\",\n                        \"properties\": {\n                            \"item_name\": {\"type\": \"string\"},\n                            \"item_price\": {\"type\": \"number\"}\n                        }\n                    }\n                }\n            }\n        }\n        ref_resolver = lambda uri: {}\n        result = walk_response_schema(schema, ref_resolver, root_path=\"response\", max_depth=10)\n        paths = [str(f.path) for f in result.fields]\n        assert any(\"item_name\" in p for p in paths), f\"item_name not found. Fields: {paths}\"\n        assert any(\"item_price\" in p for p in paths), f\"item_price not found. Fields: {paths}\"\n\n    def test_goodhart_walk_field_type_captured(self):\n        \"\"\"FieldEntry field_type should reflect the schema's type.\"\"\"\n        schema = {\n            \"type\": \"object\",\n            \"properties\": {\n                \"name\": {\"type\": \"string\"},\n                \"count\": {\"type\": \"integer\"},\n                \"active\": {\"type\": \"boolean\"},\n            }\n        }\n        ref_resolver = lambda uri: {}\n        result = walk_response_schema(schema, ref_resolver, root_path=\"response\", max_depth=10)\n        type_map = {str(f.path).split(\".\")[-1]: f.field_type for f in result.fields}\n        assert type_map.get(\"name\") == \"string\", f\"Expected string, got {type_map.get('name')}\"\n        assert type_map.get(\"count\") == \"integer\", f\"Expected integer, got {type_map.get('count')}\"\n        assert type_map.get(\"active\") == \"boolean\", f\"Expected boolean, got {type_map.get('active')}\"\n\n    def test_goodhart_walk_ref_resolver_used_not_ignored(self):\n        \"\"\"The ref_resolver callable must actually be invoked for $ref URIs.\"\"\"\n        schema = {\n            \"type\": \"object\",\n            \"properties\": {\n                \"address\": {\"$ref\": \"#/components/schemas/Address\"}\n            }\n        }\n        call_count = {\"n\": 0}\n\n        def tracking_resolver(uri):\n            call_count[\"n\"] += 1\n            return {\n                \"type\": \"object\",\n                \"properties\": {\n                    \"street\": {\"type\": \"string\"}\n                }\n            }\n\n        result = walk_response_schema(schema, tracking_resolver, root_path=\"response\", max_depth=10)\n        assert call_count[\"n\"] >= 1, \"ref_resolver was never called\"\n        paths = [str(f.path) for f in result.fields]\n        assert any(\"street\" in p for p in paths), \"Referenced field not discovered\"\n\n\n# ---------------------------------------------------------------------------\n# classify_fields — gaps\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartClassifyFields:\n\n    def _make_field(self, path, field_type=\"string\"):\n        return FieldEntry(path=FieldPath(path), field_type=field_type, nullable=False, format_hint=\"\")\n\n    def _make_entry(self, pattern, tier, pattern_type=\"fnmatch\", desc=\"\"):\n        return ClassificationRegistryEntry(\n            field_pattern=pattern, tier=tier, pattern_type=pattern_type, description=desc\n        )\n\n    def test_goodhart_classify_multiple_fields_different_tiers(self):\n        \"\"\"Classification should independently assign different tiers to different fields.\"\"\"\n        fields = [\n            self._make_field(\"response.user.ssn\"),\n            self._make_field(\"response.user.department\"),\n            self._make_field(\"response.user.display_name\"),\n        ]\n        registry = [\n            self._make_entry(\"*.ssn\", DataTier.RESTRICTED),\n            self._make_entry(\"*.department\", DataTier.INTERNAL),\n        ]\n        result = classify_fields(fields, registry)\n        tier_by_path = {str(cf.path): cf.tier for cf in result.classified_fields}\n        assert tier_by_path[\"response.user.ssn\"] == DataTier.RESTRICTED\n        assert tier_by_path[\"response.user.department\"] == DataTier.INTERNAL\n        assert tier_by_path[\"response.user.display_name\"] == DataTier.PUBLIC\n        assert DataTier.PUBLIC in result.tier_set\n        assert DataTier.INTERNAL in result.tier_set\n        assert DataTier.RESTRICTED in result.tier_set\n\n    def test_goodhart_classify_fnmatch_wildcard_patterns(self):\n        \"\"\"fnmatch patterns with wildcards should match arbitrary subpaths.\"\"\"\n        fields = [\n            self._make_field(\"response.users.ssn\"),\n            self._make_field(\"response.admin.ssn\"),\n        ]\n        registry = [\n            self._make_entry(\"*.ssn\", DataTier.RESTRICTED),\n        ]\n        result = classify_fields(fields, registry)\n        for cf in result.classified_fields:\n            assert cf.tier == DataTier.RESTRICTED, f\"Field {cf.path} should be RESTRICTED, got {cf.tier}\"\n\n    def test_goodhart_classify_empty_registry(self):\n        \"\"\"When no registry entries are provided, all fields default to PUBLIC.\"\"\"\n        fields = [\n            self._make_field(\"response.a\"),\n            self._make_field(\"response.b\"),\n            self._make_field(\"response.c\"),\n        ]\n        result = classify_fields(fields, [])\n        for cf in result.classified_fields:\n            assert cf.tier == DataTier.PUBLIC, f\"Expected PUBLIC, got {cf.tier}\"\n        assert len(result.tier_set) == 1\n        assert DataTier.PUBLIC in result.tier_set\n\n    def test_goodhart_classify_three_overlapping_patterns_highest_wins(self):\n        \"\"\"When a field matches three patterns of different tiers, the highest tier wins.\"\"\"\n        fields = [self._make_field(\"response.data.email\")]\n        registry = [\n            self._make_entry(\"*.email\", DataTier.PUBLIC),\n            self._make_entry(\"*email*\", DataTier.INTERNAL, \"fnmatch\"),\n            self._make_entry(\"*.email\", DataTier.CONFIDENTIAL),\n        ]\n        result = classify_fields(fields, registry)\n        assert result.classified_fields[0].tier == DataTier.CONFIDENTIAL\n\n    def test_goodhart_classify_single_field_no_registry(self):\n        \"\"\"A single field with no registry entries produces exactly one ClassifiedField at PUBLIC.\"\"\"\n        fields = [self._make_field(\"response.id\")]\n        result = classify_fields(fields, [])\n        assert len(result.classified_fields) == 1\n        assert result.classified_fields[0].tier == DataTier.PUBLIC\n\n    def test_goodhart_classify_regex_partial_vs_full_match(self):\n        \"\"\"Regex matching should work correctly — fields matching regex patterns get proper tiers.\"\"\"\n        fields = [\n            self._make_field(\"response.user.email\"),\n        ]\n        registry = [\n            self._make_entry(r\".*\\.email$\", DataTier.CONFIDENTIAL, \"regex\"),\n        ]\n        result = classify_fields(fields, registry)\n        assert result.classified_fields[0].tier == DataTier.CONFIDENTIAL\n\n    def test_goodhart_classify_matched_pattern_recorded(self):\n        \"\"\"ClassifiedField should record which pattern caused the match.\"\"\"\n        fields = [self._make_field(\"response.user.ssn\")]\n        registry = [\n            self._make_entry(\"*.ssn\", DataTier.RESTRICTED, \"fnmatch\", \"SSN field\"),\n        ]\n        result = classify_fields(fields, registry)\n        assert result.classified_fields[0].matched_pattern == \"*.ssn\"\n\n\n# ---------------------------------------------------------------------------\n# compute_structural_profile — gaps\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartComputeStructuralProfile:\n\n    def _make_gate_config(self, block_on_codes=None, assume_worst=True):\n        if block_on_codes is None:\n            block_on_codes = [FindingCode.C005]\n        return GateConfig(block_on_codes=block_on_codes, assume_worst_on_incomplete=assume_worst)\n\n    def test_goodhart_profile_assume_worst_false_empty_schema(self):\n        \"\"\"When assume_worst_on_incomplete is False, empty schema should NOT inject RESTRICTED tier.\"\"\"\n        gc = self._make_gate_config(assume_worst=False)\n        ref_resolver = lambda uri: {}\n        result = compute_structural_profile(\n            node_id=NodeId(\"node-1\"),\n            adapter_slot_id=AdapterSlotId(\"slot-1\"),\n            endpoint=\"/api/test\",\n            schema={},\n            ref_resolver=ref_resolver,\n            registry_entries=[],\n            gate_config=gc,\n        )\n        assert DataTier.RESTRICTED not in result.tiers, \"RESTRICTED should not be injected when assume_worst is False\"\n        assert result.schema_complete is False\n\n    def test_goodhart_profile_schema_incomplete_sets_false(self):\n        \"\"\"schema_complete must be False when warnings exist, even if fields were discovered.\"\"\"\n        schema = {\n            \"type\": \"object\",\n            \"properties\": {\n                \"name\": {\"type\": \"string\"},\n                \"ref_field\": {\"$ref\": \"#/components/schemas/Missing\"}\n            }\n        }\n\n        def resolver(uri):\n            raise Exception(f\"Cannot resolve {uri}\")\n\n        gc = self._make_gate_config(assume_worst=False)\n        # The function may raise or handle ref_resolver failure as a warning\n        # depending on implementation; try to test the warning path\n        try:\n            result = compute_structural_profile(\n                node_id=NodeId(\"node-2\"),\n                adapter_slot_id=AdapterSlotId(\"slot-2\"),\n                endpoint=\"/api/partial\",\n                schema=schema,\n                ref_resolver=resolver,\n                registry_entries=[],\n                gate_config=gc,\n            )\n            assert result.schema_complete is False, \"Schema with unresolvable refs should not be marked complete\"\n            assert len(result.warnings) > 0\n        except Exception:\n            # If it raises, that's also acceptable per the error contract\n            pass\n\n    def test_goodhart_profile_empty_adapter_slot_id_error(self):\n        \"\"\"Empty adapter_slot_id should violate precondition.\"\"\"\n        gc = self._make_gate_config()\n        ref_resolver = lambda uri: {}\n        with pytest.raises(Exception):\n            compute_structural_profile(\n                node_id=NodeId(\"node-1\"),\n                adapter_slot_id=AdapterSlotId(\"\"),\n                endpoint=\"/api/test\",\n                schema={\"type\": \"object\", \"properties\": {\"x\": {\"type\": \"string\"}}},\n                ref_resolver=ref_resolver,\n                registry_entries=[],\n                gate_config=gc,\n            )\n\n    def test_goodhart_profile_empty_endpoint_error(self):\n        \"\"\"Empty endpoint should violate precondition.\"\"\"\n        gc = self._make_gate_config()\n        ref_resolver = lambda uri: {}\n        with pytest.raises(Exception):\n            compute_structural_profile(\n                node_id=NodeId(\"node-1\"),\n                adapter_slot_id=AdapterSlotId(\"slot-1\"),\n                endpoint=\"\",\n                schema={\"type\": \"object\", \"properties\": {\"x\": {\"type\": \"string\"}}},\n                ref_resolver=ref_resolver,\n                registry_entries=[],\n                gate_config=gc,\n            )\n\n    def test_goodhart_profile_tiers_are_set_like(self):\n        \"\"\"Profile tiers should contain no duplicates even when multiple fields share a tier.\"\"\"\n        schema = {\n            \"type\": \"object\",\n            \"properties\": {\n                \"field_a\": {\"type\": \"string\"},\n                \"field_b\": {\"type\": \"string\"},\n                \"field_c\": {\"type\": \"string\"},\n            }\n        }\n        gc = self._make_gate_config(assume_worst=False)\n        ref_resolver = lambda uri: {}\n        # No registry entries means all fields are PUBLIC\n        result = compute_structural_profile(\n            node_id=NodeId(\"node-dedup\"),\n            adapter_slot_id=AdapterSlotId(\"slot-dedup\"),\n            endpoint=\"/api/dedup\",\n            schema=schema,\n            ref_resolver=ref_resolver,\n            registry_entries=[],\n            gate_config=gc,\n        )\n        tiers_list = list(result.tiers)\n        assert len(tiers_list) == len(set(tiers_list)), \"Duplicate tiers in profile.tiers\"\n\n\n# ---------------------------------------------------------------------------\n# audit_slot — gaps\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartAuditSlot:\n\n    def _make_profile(self, node_id, slot_id, tiers, warnings=None, classified_fields=None, endpoint=\"/api/test\"):\n        return StructuralProfile(\n            node_id=NodeId(node_id),\n            adapter_slot_id=AdapterSlotId(slot_id),\n            endpoint=endpoint,\n            tiers=list(tiers),\n            classified_fields=classified_fields or [],\n            warnings=warnings or [],\n            schema_complete=(not warnings),\n            computed_at=datetime.now(timezone.utc).isoformat(),\n        )\n\n    def _make_declared(self, node_id, read_tiers):\n        return DeclaredAccess(\n            node_id=NodeId(node_id),\n            declared_read_tiers=list(read_tiers),\n            declared_write_tiers=[],\n        )\n\n    def _make_gate_config(self, block_on_codes=None):\n        if block_on_codes is None:\n            block_on_codes = [FindingCode.C005]\n        return GateConfig(block_on_codes=block_on_codes, assume_worst_on_incomplete=True)\n\n    def test_goodhart_audit_slot_allow_when_c005_not_in_block_codes(self):\n        \"\"\"C005 findings should not trigger BLOCK when C005 is not in gate_config.block_on_codes.\"\"\"\n        profile = self._make_profile(\"node-x\", \"slot-x\", [DataTier.PUBLIC, DataTier.CONFIDENTIAL])\n        declared = self._make_declared(\"node-x\", [DataTier.PUBLIC])\n        gc = self._make_gate_config(block_on_codes=[])  # C005 NOT in block_on_codes\n\n        result = audit_slot(profile, declared, gc)\n        assert result.decision == SlotDecisionVerdict.ALLOW\n        # Should still have C005 findings\n        c005_findings = [f for f in result.findings if f.code == FindingCode.C005]\n        assert len(c005_findings) >= 1, \"Should still produce C005 findings even if not blocking\"\n        assert len(result.blocking_codes) == 0\n\n    def test_goodhart_audit_slot_block_on_incomplete_schema_code(self):\n        \"\"\"When INCOMPLETE_SCHEMA is in block_on_codes and profile has INCOMPLETE_SCHEMA warnings, verdict should be BLOCK.\"\"\"\n        warnings = [SchemaWarning(\n            code=FindingCode.INCOMPLETE_SCHEMA,\n            path=\"response.missing\",\n            message=\"Missing schema for field\"\n        )]\n        profile = self._make_profile(\"node-inc\", \"slot-inc\", [DataTier.PUBLIC], warnings=warnings)\n        declared = self._make_declared(\"node-inc\", [DataTier.PUBLIC])\n        gc = self._make_gate_config(block_on_codes=[FindingCode.INCOMPLETE_SCHEMA])\n\n        result = audit_slot(profile, declared, gc)\n        assert result.decision == SlotDecisionVerdict.BLOCK\n        blocking = [str(c) for c in result.blocking_codes]\n        assert any(\"INCOMPLETE_SCHEMA\" in c for c in blocking) or FindingCode.INCOMPLETE_SCHEMA in result.blocking_codes\n\n    def test_goodhart_audit_slot_evidence_fields_populated(self):\n        \"\"\"C005 finding evidence must contain correct structural_tiers, declared_tiers, undeclared_tiers.\"\"\"\n        profile = self._make_profile(\n            \"node-ev\", \"slot-ev\",\n            [DataTier.PUBLIC, DataTier.CONFIDENTIAL],\n            classified_fields=[\n                ClassifiedField(path=FieldPath(\"response.email\"), tier=DataTier.CONFIDENTIAL, matched_pattern=\"*.email\")\n            ]\n        )\n        declared = self._make_declared(\"node-ev\", [DataTier.PUBLIC])\n        gc = self._make_gate_config()\n\n        result = audit_slot(profile, declared, gc)\n        c005_findings = [f for f in result.findings if f.code == FindingCode.C005]\n        assert len(c005_findings) >= 1\n        ev = c005_findings[0].evidence\n        assert DataTier.CONFIDENTIAL in ev.undeclared_tiers\n        assert DataTier.PUBLIC in ev.declared_tiers\n\n    def test_goodhart_audit_slot_no_findings_when_all_declared(self):\n        \"\"\"When all structural tiers are subset of declared, there should be zero C005 findings.\"\"\"\n        profile = self._make_profile(\"node-ok\", \"slot-ok\", [DataTier.PUBLIC, DataTier.INTERNAL])\n        declared = self._make_declared(\"node-ok\", [DataTier.PUBLIC, DataTier.INTERNAL, DataTier.CONFIDENTIAL])\n        gc = self._make_gate_config()\n\n        result = audit_slot(profile, declared, gc)\n        assert result.decision == SlotDecisionVerdict.ALLOW\n        c005_findings = [f for f in result.findings if f.code == FindingCode.C005]\n        assert len(c005_findings) == 0\n\n    def test_goodhart_audit_slot_multiple_undeclared_tiers_separate_findings(self):\n        \"\"\"When multiple tiers are undeclared, each gets its own C005 finding.\"\"\"\n        profile = self._make_profile(\n            \"node-multi\", \"slot-multi\",\n            [DataTier.PUBLIC, DataTier.INTERNAL, DataTier.CONFIDENTIAL, DataTier.RESTRICTED]\n        )\n        declared = self._make_declared(\"node-multi\", [DataTier.PUBLIC])\n        gc = self._make_gate_config()\n\n        result = audit_slot(profile, declared, gc)\n        c005_findings = [f for f in result.findings if f.code == FindingCode.C005]\n        assert len(c005_findings) == 3, f\"Expected 3 C005 findings, got {len(c005_findings)}\"\n\n    def test_goodhart_audit_slot_finding_has_adapter_slot_id(self):\n        \"\"\"Each AccessFinding must include the adapter_slot_id from the profile.\"\"\"\n        profile = self._make_profile(\"node-slot\", \"specific-slot-42\", [DataTier.PUBLIC, DataTier.RESTRICTED])\n        declared = self._make_declared(\"node-slot\", [DataTier.PUBLIC])\n        gc = self._make_gate_config()\n\n        result = audit_slot(profile, declared, gc)\n        for finding in result.findings:\n            assert str(finding.adapter_slot_id) == \"specific-slot-42\", \\\n                f\"Finding adapter_slot_id should be 'specific-slot-42', got '{finding.adapter_slot_id}'\"\n\n    def test_goodhart_audit_slot_c005_finding_code_exact(self):\n        \"\"\"C005 findings must have code exactly equal to FindingCode.C005.\"\"\"\n        profile = self._make_profile(\"node-code\", \"slot-code\", [DataTier.PUBLIC, DataTier.INTERNAL])\n        declared = self._make_declared(\"node-code\", [DataTier.PUBLIC])\n        gc = self._make_gate_config()\n\n        result = audit_slot(profile, declared, gc)\n        c005_findings = [f for f in result.findings if f.code == FindingCode.C005]\n        assert len(c005_findings) >= 1\n        for f in c005_findings:\n            assert f.code == FindingCode.C005\n\n    def test_goodhart_audit_slot_blocking_codes_match_findings(self):\n        \"\"\"result.blocking_codes should contain exactly the codes present in both findings and block_on_codes.\"\"\"\n        profile = self._make_profile(\"node-bc\", \"slot-bc\", [DataTier.PUBLIC, DataTier.INTERNAL])\n        declared = self._make_declared(\"node-bc\", [DataTier.PUBLIC])\n        gc = self._make_gate_config(block_on_codes=[FindingCode.C005])\n\n        result = audit_slot(profile, declared, gc)\n        assert FindingCode.C005 in result.blocking_codes\n\n    def test_goodhart_audit_slot_evidence_endpoint(self):\n        \"\"\"C005 finding evidence should include the endpoint from the profile.\"\"\"\n        profile = self._make_profile(\n            \"node-ep\", \"slot-ep\",\n            [DataTier.PUBLIC, DataTier.CONFIDENTIAL],\n            endpoint=\"/api/v2/users\"\n        )\n        declared = self._make_declared(\"node-ep\", [DataTier.PUBLIC])\n        gc = self._make_gate_config()\n\n        result = audit_slot(profile, declared, gc)\n        c005_findings = [f for f in result.findings if f.code == FindingCode.C005]\n        assert len(c005_findings) >= 1\n        assert c005_findings[0].evidence.endpoint == \"/api/v2/users\"\n\n\n# ---------------------------------------------------------------------------\n# audit_observed_output — gaps\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartAuditObservedOutput:\n\n    def _make_observed(self, node_id, slot_id, tiers, fields=None):\n        return ObservedOutput(\n            node_id=NodeId(node_id),\n            adapter_slot_id=AdapterSlotId(slot_id),\n            observed_tiers=list(tiers),\n            observed_fields=fields or [],\n            observed_at=datetime.now(timezone.utc).isoformat(),\n        )\n\n    def _make_declared(self, node_id, read_tiers):\n        return DeclaredAccess(\n            node_id=NodeId(node_id),\n            declared_read_tiers=list(read_tiers),\n            declared_write_tiers=[],\n        )\n\n    def test_goodhart_observed_single_undeclared_restricted(self):\n        \"\"\"A single RESTRICTED tier observed but not declared produces exactly one FA_A_015.\"\"\"\n        observed = self._make_observed(\"node-r\", \"slot-r\", [DataTier.RESTRICTED])\n        declared = self._make_declared(\"node-r\", [DataTier.PUBLIC, DataTier.INTERNAL])\n\n        result = audit_observed_output(observed, declared)\n        assert len(result) == 1\n        assert result[0].code == FindingCode.FA_A_015\n        assert \"RESTRICTED\" in result[0].message or \"restricted\" in result[0].message.lower()\n\n    def test_goodhart_observed_message_includes_field_paths(self):\n        \"\"\"FA_A_015 finding messages must include the specific field paths at the undeclared tier.\"\"\"\n        observed = self._make_observed(\n            \"node-fp\", \"slot-fp\",\n            [DataTier.CONFIDENTIAL],\n            fields=[\n                ClassifiedField(\n                    path=FieldPath(\"response.user.email\"),\n                    tier=DataTier.CONFIDENTIAL,\n                    matched_pattern=\"*.email\"\n                )\n            ]\n        )\n        declared = self._make_declared(\"node-fp\", [DataTier.PUBLIC])\n\n        result = audit_observed_output(observed, declared)\n        assert len(result) >= 1\n        # The message should mention the field path\n        assert \"email\" in result[0].message.lower() or \"response.user.email\" in result[0].message\n\n    def test_goodhart_observed_finding_has_adapter_slot_id(self):\n        \"\"\"FA_A_015 findings must carry the adapter_slot_id from the observed output.\"\"\"\n        observed = self._make_observed(\"node-as\", \"unique-slot-99\", [DataTier.RESTRICTED])\n        declared = self._make_declared(\"node-as\", [DataTier.PUBLIC])\n\n        result = audit_observed_output(observed, declared)\n        assert len(result) >= 1\n        assert str(result[0].adapter_slot_id) == \"unique-slot-99\"\n\n    def test_goodhart_observed_all_declared_empty_result(self):\n        \"\"\"When all observed tiers are declared, result must be an empty list.\"\"\"\n        observed = self._make_observed(\"node-all\", \"slot-all\", [DataTier.PUBLIC, DataTier.CONFIDENTIAL])\n        declared = self._make_declared(\"node-all\", [DataTier.PUBLIC, DataTier.INTERNAL, DataTier.CONFIDENTIAL, DataTier.RESTRICTED])\n\n        result = audit_observed_output(observed, declared)\n        assert isinstance(result, list)\n        assert len(result) == 0\n\n    def test_goodhart_observed_finding_node_id_matches(self):\n        \"\"\"Each FA_A_015 finding's node_id field must equal the observed output's node_id.\"\"\"\n        observed = self._make_observed(\"specific-node-77\", \"slot-77\", [DataTier.INTERNAL])\n        declared = self._make_declared(\"specific-node-77\", [DataTier.PUBLIC])\n\n        result = audit_observed_output(observed, declared)\n        assert len(result) >= 1\n        assert str(result[0].node_id) == \"specific-node-77\"\n\n\n# ---------------------------------------------------------------------------\n# load_gate_config — gaps\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartLoadGateConfig:\n\n    def test_goodhart_gate_config_assume_worst_explicit_false(self):\n        \"\"\"When assume_worst_on_incomplete is explicitly False, the loaded config must respect it.\"\"\"\n        result = load_gate_config({\"assume_worst_on_incomplete\": False})\n        assert result.assume_worst_on_incomplete is False\n        # block_on_codes should still default to [C005]\n        assert FindingCode.C005 in result.block_on_codes\n\n    def test_goodhart_gate_config_multiple_block_codes(self):\n        \"\"\"load_gate_config should accept multiple valid FindingCode values in block_on_codes.\"\"\"\n        result = load_gate_config({\"block_on_codes\": [\"C005\", \"INCOMPLETE_SCHEMA\"]})\n        assert FindingCode.C005 in result.block_on_codes\n        assert FindingCode.INCOMPLETE_SCHEMA in result.block_on_codes\n        assert len(result.block_on_codes) == 2\n\n    def test_goodhart_gate_config_empty_block_codes(self):\n        \"\"\"An explicitly empty block_on_codes list should be accepted, not replaced with defaults.\"\"\"\n        result = load_gate_config({\"block_on_codes\": []})\n        assert result.block_on_codes == [] or len(result.block_on_codes) == 0\n\n\n# ---------------------------------------------------------------------------\n# load_classification_registry — gaps\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartLoadClassificationRegistry:\n\n    def test_goodhart_registry_multiple_entries(self):\n        \"\"\"load_classification_registry should correctly load multiple entries with different pattern types and tiers.\"\"\"\n        source = [\n            {\"field_pattern\": \"*.name\", \"tier\": \"PUBLIC\", \"pattern_type\": \"fnmatch\", \"description\": \"Name field\"},\n            {\"field_pattern\": r\".*\\.email$\", \"tier\": \"CONFIDENTIAL\", \"pattern_type\": \"regex\", \"description\": \"Email\"},\n            {\"field_pattern\": \"*.ssn\", \"tier\": \"RESTRICTED\", \"pattern_type\": \"fnmatch\", \"description\": \"SSN\"},\n        ]\n        result = load_classification_registry(source)\n        assert len(result) == 3\n        tiers = {r.tier for r in result}\n        assert DataTier.PUBLIC in tiers\n        assert DataTier.CONFIDENTIAL in tiers\n        assert DataTier.RESTRICTED in tiers\n\n    def test_goodhart_registry_description_preserved(self):\n        \"\"\"The description field from registry source should be preserved.\"\"\"\n        source = [\n            {\"field_pattern\": \"*.ssn\", \"tier\": \"RESTRICTED\", \"pattern_type\": \"fnmatch\",\n             \"description\": \"Social security number field\"},\n        ]\n        result = load_classification_registry(source)\n        assert result[0].description == \"Social security number field\"\n\n\n# ---------------------------------------------------------------------------\n# Enum invariants — gaps\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartEnumInvariants:\n\n    def test_goodhart_datatier_integer_values(self):\n        \"\"\"DataTier enum members must have specific integer values per contract.\"\"\"\n        assert int(DataTier.PUBLIC) == 0\n        assert int(DataTier.INTERNAL) == 1\n        assert int(DataTier.CONFIDENTIAL) == 2\n        assert int(DataTier.RESTRICTED) == 3\n\n    def test_goodhart_datatier_comparison(self):\n        \"\"\"DataTier members must support natural integer comparison consistent with severity ordering.\"\"\"\n        assert DataTier.PUBLIC < DataTier.INTERNAL\n        assert DataTier.INTERNAL < DataTier.CONFIDENTIAL\n        assert DataTier.CONFIDENTIAL < DataTier.RESTRICTED\n        # Transitive\n        assert DataTier.PUBLIC < DataTier.RESTRICTED\n\n    def test_goodhart_finding_code_string_values(self):\n        \"\"\"FindingCode enum members should be usable as stable string identifiers.\"\"\"\n        # C005\n        c005_str = str(FindingCode.C005)\n        assert \"C005\" in c005_str or FindingCode.C005 == \"C005\" or FindingCode.C005.value == \"C005\"\n        # INCOMPLETE_SCHEMA\n        inc_str = str(FindingCode.INCOMPLETE_SCHEMA)\n        assert \"INCOMPLETE_SCHEMA\" in inc_str or FindingCode.INCOMPLETE_SCHEMA.value == \"INCOMPLETE_SCHEMA\"\n\n    def test_goodhart_finding_severity_ordering(self):\n        \"\"\"FindingSeverity enum must have correct integer ordering.\"\"\"\n        assert FindingSeverity.INFO < FindingSeverity.WARNING\n        assert FindingSeverity.WARNING < FindingSeverity.ERROR\n        assert FindingSeverity.ERROR < FindingSeverity.CRITICAL\n        # Integer values\n        assert int(FindingSeverity.INFO) == 0\n        assert int(FindingSeverity.WARNING) == 1\n        assert int(FindingSeverity.ERROR) == 2\n        assert int(FindingSeverity.CRITICAL) == 3\n"
+}

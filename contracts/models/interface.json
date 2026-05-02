@@ -1,0 +1,2005 @@
+{
+  "component_id": "models",
+  "name": "Shared Data Models & Enums",
+  "description": "All Pydantic models, enums, and type definitions shared across Arbiter. Pure data definitions with Pydantic validation — no business logic. Organized as arbiter/models/ package with sub-modules: enums.py, types.py, trust.py, graph.py, findings.py, api.py, canary.py, signals.py, and __init__.py re-exports. All structured data boundaries in the system are defined here. Enforces frozen immutability on ledger/finding models, strict extra='forbid' on API inputs, trust/authority separation via module boundaries, and deterministic serialization for JSONL compatibility.",
+  "version": 1,
+  "types": [
+    {
+      "name": "TrustTier",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "PROBATIONARY",
+        "LOW",
+        "ESTABLISHED",
+        "HIGH",
+        "TRUSTED"
+      ],
+      "inner_types": [],
+      "description": "StrEnum for trust classification tiers. No ordering operators — policy must use raw TrustScore, never tier comparisons. Explicit string values for stable serialization."
+    },
+    {
+      "name": "DataTier",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "PUBLIC",
+        "PII",
+        "FINANCIAL",
+        "AUTH",
+        "COMPLIANCE"
+      ],
+      "inner_types": [],
+      "description": "StrEnum for data classification tiers. Determines sensitivity level and handling requirements."
+    },
+    {
+      "name": "BlastTier",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "AUTO_MERGE",
+        "SOAK",
+        "HUMAN_GATE"
+      ],
+      "inner_types": [],
+      "description": "StrEnum for blast-radius classification tiers. Determines rollout strategy for changes."
+    },
+    {
+      "name": "FindingSeverity",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "INFO",
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "CRITICAL"
+      ],
+      "inner_types": [],
+      "description": "StrEnum for finding severity levels in audit results."
+    },
+    {
+      "name": "NodeId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Annotated[str] constrained type alias for node identifiers. Non-empty string, max 255 chars, must match pattern [a-zA-Z0-9._-]+. Transparent to mypy."
+    },
+    {
+      "name": "TrustScore",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Annotated[float] constrained type alias for trust scores. Range [0.0, 1.0] inclusive. Raw IEEE 754 float with no application-level rounding. Policy calculations always use this raw value, never display tiers."
+    },
+    {
+      "name": "Sha256Hex",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Annotated[str] constrained type alias for SHA-256 hex digest strings. Exactly 64 lowercase hex characters. Regex: ^[0-9a-f]{64}$."
+    },
+    {
+      "name": "UtcDatetime",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Annotated[str] constrained type alias for UTC ISO 8601 timestamps. Must end with 'Z' or '+00:00'. Produced via datetime.now(timezone.utc).isoformat(). Stored as string for JSONL round-trip fidelity."
+    },
+    {
+      "name": "AuthorityDomain",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Annotated[str] constrained type alias for authority domain identifiers. Non-empty, max 255 chars, must match pattern [a-zA-Z0-9._/-]+. Authority is declared (from manifests), distinct from trust."
+    },
+    {
+      "name": "SequenceNumber",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Annotated[int] constrained type alias for ledger sequence numbers. Non-negative integer (>= 0). Monotonically increasing within a ledger."
+    },
+    {
+      "name": "TrustEventType",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "AUDIT_PASS",
+        "AUDIT_FAIL",
+        "CONSISTENCY_CHECK",
+        "ACCESS_VIOLATION",
+        "TAINT_DETECTED",
+        "CANARY_TRIGGERED",
+        "MANUAL_OVERRIDE",
+        "DECAY",
+        "INITIAL"
+      ],
+      "inner_types": [],
+      "description": "StrEnum for trust event categories recorded in the ledger."
+    },
+    {
+      "name": "TrustLedgerEntry",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "ts",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the event occurred.",
+          "validators": []
+        },
+        {
+          "name": "node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node this trust event pertains to.",
+          "validators": []
+        },
+        {
+          "name": "event",
+          "type_ref": "TrustEventType",
+          "required": true,
+          "default": "",
+          "description": "Category of the trust event.",
+          "validators": []
+        },
+        {
+          "name": "weight",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Signed weight of this event's impact on trust score. Positive increases trust, negative decreases.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "-1.0 <= value <= 1.0",
+              "error_message": "Event weight must be in range [-1.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "score_before",
+          "type_ref": "TrustScore",
+          "required": true,
+          "default": "",
+          "description": "Trust score of the node immediately before this event was applied.",
+          "validators": []
+        },
+        {
+          "name": "score_after",
+          "type_ref": "TrustScore",
+          "required": true,
+          "default": "",
+          "description": "Trust score of the node immediately after this event was applied.",
+          "validators": []
+        },
+        {
+          "name": "sequence_number",
+          "type_ref": "SequenceNumber",
+          "required": true,
+          "default": "",
+          "description": "Monotonically increasing sequence number within the ledger.",
+          "validators": []
+        },
+        {
+          "name": "detail",
+          "type_ref": "str",
+          "required": true,
+          "default": "\"\"",
+          "description": "Human-readable detail about the event. Must include the specific node, field, or domain that caused it.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single immutable trust event in the append-only ledger. ConfigDict(frozen=True, extra='forbid'). Represents one trust-affecting event for a specific node. The ledger is treated like a financial ledger — no updates, no deletes."
+    },
+    {
+      "name": "LedgerCheckpoint",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "ts",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the checkpoint was created.",
+          "validators": []
+        },
+        {
+          "name": "sequence_number",
+          "type_ref": "SequenceNumber",
+          "required": true,
+          "default": "",
+          "description": "Sequence number of the last entry covered by this checkpoint.",
+          "validators": []
+        },
+        {
+          "name": "checksum",
+          "type_ref": "Sha256Hex",
+          "required": true,
+          "default": "",
+          "description": "SHA-256 hex digest of all ledger entries from the previous checkpoint (or start) up to and including sequence_number.",
+          "validators": []
+        },
+        {
+          "name": "entry_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of entries covered by this checkpoint.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 1",
+              "error_message": "Checkpoint must cover at least one entry."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "SHA-256 checksum line inserted into the JSONL ledger after every N entries. ConfigDict(frozen=True, extra='forbid'). Used for integrity verification of the append-only ledger."
+    },
+    {
+      "name": "LedgerLine",
+      "kind": "union",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "TrustLedgerEntry",
+        "LedgerCheckpoint"
+      ],
+      "description": "Discriminated union of lines that can appear in the JSONL trust ledger. Either a TrustLedgerEntry or a LedgerCheckpoint. Used for typed deserialization of ledger files."
+    },
+    {
+      "name": "AccessGraphNode",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this node in the access graph.",
+          "validators": []
+        },
+        {
+          "name": "data_access",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of DataTier values this node has access to.",
+          "validators": []
+        },
+        {
+          "name": "authority_domains",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of AuthorityDomain values declared for this node (from manifests). Authority is declared, not earned.",
+          "validators": []
+        },
+        {
+          "name": "edges",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of NodeId references to adjacent nodes in the access graph. String-based for adjacency list representation.",
+          "validators": []
+        },
+        {
+          "name": "trust_tier",
+          "type_ref": "TrustTier",
+          "required": false,
+          "default": "\"PROBATIONARY\"",
+          "description": "Current trust tier classification of this node. Display only — policy must use raw TrustScore.",
+          "validators": []
+        },
+        {
+          "name": "metadata",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Optional metadata key-value pairs for this node.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A node in the access graph representing a component/service. ConfigDict(frozen=True, extra='forbid'). Edges are string-based NodeId references (adjacency list) — no circular Pydantic references."
+    },
+    {
+      "name": "AccessGraph",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "nodes",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from NodeId to AccessGraphNode. All edge targets in any node must exist as keys in this dict (enforced by model validator).",
+          "validators": []
+        },
+        {
+          "name": "version",
+          "type_ref": "str",
+          "required": true,
+          "default": "\"1.0\"",
+          "description": "Schema version string for the access graph.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Container for the full access graph. Mutable (not frozen) to allow incremental construction. Has a model validator ensuring referential integrity: all edge targets must exist as keys in nodes dict. Uses dict[NodeId, AccessGraphNode] for O(1) node lookup."
+    },
+    {
+      "name": "ConsistencyFinding",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "ts",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the finding was produced.",
+          "validators": []
+        },
+        {
+          "name": "node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node where inconsistency was detected.",
+          "validators": []
+        },
+        {
+          "name": "severity",
+          "type_ref": "FindingSeverity",
+          "required": true,
+          "default": "",
+          "description": "Severity level of this finding.",
+          "validators": []
+        },
+        {
+          "name": "field",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The specific field that is inconsistent.",
+          "validators": []
+        },
+        {
+          "name": "adapter_value",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The ground-truth value from the adapter layer.",
+          "validators": []
+        },
+        {
+          "name": "claimed_value",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The self-reported value claimed by the node.",
+          "validators": []
+        },
+        {
+          "name": "detail",
+          "type_ref": "str",
+          "required": true,
+          "default": "\"\"",
+          "description": "Human-readable explanation including the specific node, field, or domain.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A finding from consistency analysis between adapter-reported ground truth and node self-reports. ConfigDict(frozen=True, extra='forbid')."
+    },
+    {
+      "name": "AccessFinding",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "ts",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the finding was produced.",
+          "validators": []
+        },
+        {
+          "name": "node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node with the access issue.",
+          "validators": []
+        },
+        {
+          "name": "severity",
+          "type_ref": "FindingSeverity",
+          "required": true,
+          "default": "",
+          "description": "Severity level of this finding.",
+          "validators": []
+        },
+        {
+          "name": "data_tier",
+          "type_ref": "DataTier",
+          "required": true,
+          "default": "",
+          "description": "The data tier involved in the access issue.",
+          "validators": []
+        },
+        {
+          "name": "authority_domain",
+          "type_ref": "AuthorityDomain",
+          "required": true,
+          "default": "",
+          "description": "The authority domain relevant to the finding.",
+          "validators": []
+        },
+        {
+          "name": "violation_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Type of access violation (e.g. 'unauthorized_access', 'excessive_privilege', 'missing_authority').",
+          "validators": []
+        },
+        {
+          "name": "detail",
+          "type_ref": "str",
+          "required": true,
+          "default": "\"\"",
+          "description": "Human-readable explanation including the specific node, field, or domain.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A finding from access audit analysis. ConfigDict(frozen=True, extra='forbid')."
+    },
+    {
+      "name": "TaintFinding",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "ts",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the finding was produced.",
+          "validators": []
+        },
+        {
+          "name": "source_node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node where tainted data originated.",
+          "validators": []
+        },
+        {
+          "name": "sink_node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node where tainted data arrived.",
+          "validators": []
+        },
+        {
+          "name": "severity",
+          "type_ref": "FindingSeverity",
+          "required": true,
+          "default": "",
+          "description": "Severity level of this finding.",
+          "validators": []
+        },
+        {
+          "name": "data_tier",
+          "type_ref": "DataTier",
+          "required": true,
+          "default": "",
+          "description": "The data classification tier of the tainted data.",
+          "validators": []
+        },
+        {
+          "name": "path",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Ordered list of NodeIds representing the taint propagation path from source to sink.",
+          "validators": []
+        },
+        {
+          "name": "detail",
+          "type_ref": "str",
+          "required": true,
+          "default": "\"\"",
+          "description": "Human-readable explanation including the specific nodes, fields, or domains.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A finding from taint/data-flow analysis. ConfigDict(frozen=True, extra='forbid')."
+    },
+    {
+      "name": "ConflictRecord",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "ts",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the conflict was detected.",
+          "validators": []
+        },
+        {
+          "name": "conflict_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this conflict.",
+          "validators": []
+        },
+        {
+          "name": "nodes",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of NodeIds involved in the conflict.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 2",
+              "error_message": "A conflict must involve at least two nodes."
+            }
+          ]
+        },
+        {
+          "name": "authority_domain",
+          "type_ref": "AuthorityDomain",
+          "required": true,
+          "default": "",
+          "description": "The authority domain where the conflict exists.",
+          "validators": []
+        },
+        {
+          "name": "conflict_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Category of conflict (e.g. 'overlapping_authority', 'contradictory_claims').",
+          "validators": []
+        },
+        {
+          "name": "detail",
+          "type_ref": "str",
+          "required": true,
+          "default": "\"\"",
+          "description": "Human-readable description including the specific nodes and domain.",
+          "validators": []
+        },
+        {
+          "name": "resolved",
+          "type_ref": "bool",
+          "required": true,
+          "default": "false",
+          "description": "Whether this conflict has been resolved.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A record of a detected conflict between nodes or authority claims. ConfigDict(frozen=True, extra='forbid')."
+    },
+    {
+      "name": "StigmerySignal",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "ts",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the signal was emitted.",
+          "validators": []
+        },
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this signal.",
+          "validators": []
+        },
+        {
+          "name": "source_node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node that emitted this signal.",
+          "validators": []
+        },
+        {
+          "name": "signal_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Type/category of the stigmergy signal.",
+          "validators": []
+        },
+        {
+          "name": "payload",
+          "type_ref": "dict",
+          "required": true,
+          "default": "{}",
+          "description": "Arbitrary key-value payload for the signal.",
+          "validators": []
+        },
+        {
+          "name": "ttl_seconds",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Time-to-live in seconds for this signal. Must be positive.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 1",
+              "error_message": "TTL must be at least 1 second."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A stigmergic coordination signal for indirect communication between Arbiter components. ConfigDict(frozen=True, extra='forbid')."
+    },
+    {
+      "name": "CanaryRecord",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "ts",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the canary was deployed.",
+          "validators": []
+        },
+        {
+          "name": "canary_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this canary instance.",
+          "validators": []
+        },
+        {
+          "name": "fingerprint",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Canary fingerprint: structurally valid for its data tier but contains embedded UUID making it recognizable as synthetic and impossible in real data. Must match pattern containing a UUID v4 segment.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": ".*[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}.*",
+              "error_message": "Canary fingerprint must contain a valid UUID v4 segment to be recognizable as synthetic."
+            }
+          ]
+        },
+        {
+          "name": "data_tier",
+          "type_ref": "DataTier",
+          "required": true,
+          "default": "",
+          "description": "The data classification tier this canary is designed for.",
+          "validators": []
+        },
+        {
+          "name": "target_node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node where this canary was injected.",
+          "validators": []
+        },
+        {
+          "name": "triggered",
+          "type_ref": "bool",
+          "required": true,
+          "default": "false",
+          "description": "Whether this canary has been triggered (detected at an unexpected location).",
+          "validators": []
+        },
+        {
+          "name": "triggered_at",
+          "type_ref": "str",
+          "required": false,
+          "default": "\"\"",
+          "description": "UTC timestamp when the canary was triggered, empty if not triggered.",
+          "validators": []
+        },
+        {
+          "name": "triggered_by_node",
+          "type_ref": "str",
+          "required": false,
+          "default": "\"\"",
+          "description": "NodeId of the node that triggered the canary, empty if not triggered.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A record of a canary (synthetic test data) injection and its status. ConfigDict(frozen=True, extra='forbid'). Canary fingerprints must be structurally valid for their tier but globally unique per run and impossible in real data (UUID-in-domain-string pattern)."
+    },
+    {
+      "name": "FeedbackReportSection",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "section_name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Name/title of this report section.",
+          "validators": []
+        },
+        {
+          "name": "content",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Textual content of this section.",
+          "validators": []
+        },
+        {
+          "name": "findings_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "0",
+          "description": "Number of findings summarized in this section.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0",
+              "error_message": "Findings count cannot be negative."
+            }
+          ]
+        },
+        {
+          "name": "metadata",
+          "type_ref": "dict",
+          "required": true,
+          "default": "{}",
+          "description": "Optional section metadata.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single section within a feedback report. ConfigDict(frozen=True, extra='forbid')."
+    },
+    {
+      "name": "FeedbackReport",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "ts",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the report was generated.",
+          "validators": []
+        },
+        {
+          "name": "report_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this report.",
+          "validators": []
+        },
+        {
+          "name": "sections",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Ordered list of report sections.",
+          "validators": []
+        },
+        {
+          "name": "total_findings",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total findings across all sections.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0",
+              "error_message": "Total findings cannot be negative."
+            }
+          ]
+        },
+        {
+          "name": "generated_by",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node/component that generated this report.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A complete feedback report containing multiple sections. ConfigDict(frozen=True, extra='forbid')."
+    },
+    {
+      "name": "ErrorResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "error_code",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Machine-readable error code (e.g. 'INVALID_NODE_ID', 'LEDGER_INTEGRITY_ERROR').",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message including the specific node, field, or domain that caused the error.",
+          "validators": []
+        },
+        {
+          "name": "details",
+          "type_ref": "dict",
+          "required": true,
+          "default": "{}",
+          "description": "Optional structured details. Should include 'node', 'field', or 'domain' keys identifying the offending entity.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Standard HTTP API error response. All API error responses use this structure. Machine-readable error_code plus human-readable message plus optional details including the offending node/field/domain."
+    },
+    {
+      "name": "TrustScoreRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node whose trust score is being requested.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "HTTP API request to query a node's trust score. ConfigDict(extra='forbid')."
+    },
+    {
+      "name": "TrustScoreResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node this score pertains to.",
+          "validators": []
+        },
+        {
+          "name": "score",
+          "type_ref": "TrustScore",
+          "required": true,
+          "default": "",
+          "description": "The raw trust score. Policy calculations use this value.",
+          "validators": []
+        },
+        {
+          "name": "tier",
+          "type_ref": "TrustTier",
+          "required": true,
+          "default": "",
+          "description": "Display tier classification. For display only — never use for policy decisions.",
+          "validators": []
+        },
+        {
+          "name": "ledger_sequence",
+          "type_ref": "SequenceNumber",
+          "required": true,
+          "default": "",
+          "description": "The ledger sequence number at which this score was computed.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "HTTP API response containing a node's trust score and tier."
+    },
+    {
+      "name": "BlastRadiusRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node to compute blast radius for.",
+          "validators": []
+        },
+        {
+          "name": "max_depth",
+          "type_ref": "int",
+          "required": false,
+          "default": "10",
+          "description": "Maximum traversal depth for BFS/DFS over access graph edges.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 100",
+              "error_message": "max_depth must be between 1 and 100."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "HTTP API request to compute blast radius for a node. ConfigDict(extra='forbid')."
+    },
+    {
+      "name": "BlastRadiusResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node analyzed.",
+          "validators": []
+        },
+        {
+          "name": "blast_tier",
+          "type_ref": "BlastTier",
+          "required": true,
+          "default": "",
+          "description": "Computed blast tier classification determining rollout strategy.",
+          "validators": []
+        },
+        {
+          "name": "affected_nodes",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of NodeIds reachable within the blast radius.",
+          "validators": []
+        },
+        {
+          "name": "affected_data_tiers",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Data classification tiers reachable in the blast radius.",
+          "validators": []
+        },
+        {
+          "name": "depth_reached",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Actual traversal depth reached.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "HTTP API response containing blast radius analysis results."
+    },
+    {
+      "name": "FindingsRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node",
+          "type_ref": "NodeId",
+          "required": false,
+          "default": "\"\"",
+          "description": "Optional node filter. If provided, only findings for this node are returned.",
+          "validators": []
+        },
+        {
+          "name": "severity_min",
+          "type_ref": "FindingSeverity",
+          "required": false,
+          "default": "\"INFO\"",
+          "description": "Minimum severity to include.",
+          "validators": []
+        },
+        {
+          "name": "limit",
+          "type_ref": "int",
+          "required": false,
+          "default": "100",
+          "description": "Maximum number of findings to return.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 1000",
+              "error_message": "Limit must be between 1 and 1000."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "HTTP API request to query findings. ConfigDict(extra='forbid')."
+    },
+    {
+      "name": "FindingsResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "consistency_findings",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Consistency findings matching the query.",
+          "validators": []
+        },
+        {
+          "name": "access_findings",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Access findings matching the query.",
+          "validators": []
+        },
+        {
+          "name": "taint_findings",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Taint findings matching the query.",
+          "validators": []
+        },
+        {
+          "name": "total_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of findings matching the query (may exceed returned count if limit applied).",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "HTTP API response containing queried findings."
+    },
+    {
+      "name": "HealthResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "status",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Health status: 'healthy' or 'degraded'.",
+          "validators": []
+        },
+        {
+          "name": "version",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Arbiter version string.",
+          "validators": []
+        },
+        {
+          "name": "ledger_sequence",
+          "type_ref": "SequenceNumber",
+          "required": true,
+          "default": "",
+          "description": "Current ledger sequence number.",
+          "validators": []
+        },
+        {
+          "name": "uptime_seconds",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Uptime in seconds since startup.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "HTTP API response for health check endpoint."
+    },
+    {
+      "name": "Claim",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "source_node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node making this claim.",
+          "validators": []
+        },
+        {
+          "name": "claimed_at",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the claim was made.",
+          "validators": []
+        },
+        {
+          "name": "claim_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Type/category of the claim for dispatch.",
+          "validators": []
+        },
+        {
+          "name": "payload",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "The claimed data as a dict. Structure depends on claim_type.",
+          "validators": []
+        },
+        {
+          "name": "verified",
+          "type_ref": "bool",
+          "required": true,
+          "default": "false",
+          "description": "Whether this claim has been verified against adapter ground truth.",
+          "validators": []
+        },
+        {
+          "name": "verification_ts",
+          "type_ref": "str",
+          "required": false,
+          "default": "\"\"",
+          "description": "UTC timestamp of verification, empty if unverified.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Generic wrapper for self-reported data from a node. Marks data as a claim (not ground truth). Trust is earned (computed from ledger), but node self-reports are claims that must be verified against the adapter layer."
+    },
+    {
+      "name": "ClassificationRule",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "field_pattern",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "fnmatch or regex pattern to match field names against.",
+          "validators": []
+        },
+        {
+          "name": "data_tier",
+          "type_ref": "DataTier",
+          "required": true,
+          "default": "",
+          "description": "The data tier to assign when the pattern matches.",
+          "validators": []
+        },
+        {
+          "name": "is_regex",
+          "type_ref": "bool",
+          "required": true,
+          "default": "false",
+          "description": "If true, field_pattern is a regex; if false, it is an fnmatch pattern.",
+          "validators": []
+        },
+        {
+          "name": "description",
+          "type_ref": "str",
+          "required": true,
+          "default": "\"\"",
+          "description": "Human-readable description of what this rule classifies.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A field classification rule from the classification registry. Uses fnmatch or regex patterns. ConfigDict(frozen=True, extra='forbid')."
+    },
+    {
+      "name": "ValidationErrorDetail",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "field",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The field that failed validation.",
+          "validators": []
+        },
+        {
+          "name": "value",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "String representation of the invalid value.",
+          "validators": []
+        },
+        {
+          "name": "constraint",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The constraint that was violated.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Detailed information about a single validation error for structured error reporting."
+    }
+  ],
+  "functions": [
+    {
+      "name": "create_trust_ledger_entry",
+      "description": "Factory function to create a validated TrustLedgerEntry with automatic timestamp. Ensures all invariants are met: score_after must equal score_before + weight clamped to [0.0, 1.0], timestamp is UTC, and detail is non-empty for AUDIT_FAIL and ACCESS_VIOLATION events.",
+      "inputs": [
+        {
+          "name": "node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node this trust event pertains to.",
+          "validators": []
+        },
+        {
+          "name": "event",
+          "type_ref": "TrustEventType",
+          "required": true,
+          "default": "",
+          "description": "Category of the trust event.",
+          "validators": []
+        },
+        {
+          "name": "weight",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Signed weight of this event's impact.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "-1.0 <= value <= 1.0",
+              "error_message": "Weight must be in [-1.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "score_before",
+          "type_ref": "TrustScore",
+          "required": true,
+          "default": "",
+          "description": "Trust score before this event.",
+          "validators": []
+        },
+        {
+          "name": "sequence_number",
+          "type_ref": "SequenceNumber",
+          "required": true,
+          "default": "",
+          "description": "Monotonically increasing sequence number.",
+          "validators": []
+        },
+        {
+          "name": "detail",
+          "type_ref": "str",
+          "required": true,
+          "default": "\"\"",
+          "description": "Human-readable detail. Must include the specific node, field, or domain.",
+          "validators": []
+        }
+      ],
+      "output_type": "TrustLedgerEntry",
+      "error_cases": [
+        {
+          "name": "invalid_node_id",
+          "condition": "node does not match NodeId pattern [a-zA-Z0-9._-]+",
+          "error_type": "ValidationError",
+          "error_data": {
+            "error_code": "INVALID_NODE_ID"
+          }
+        },
+        {
+          "name": "weight_out_of_range",
+          "condition": "weight is outside [-1.0, 1.0]",
+          "error_type": "ValidationError",
+          "error_data": {
+            "error_code": "INVALID_WEIGHT"
+          }
+        },
+        {
+          "name": "score_out_of_range",
+          "condition": "score_before is outside [0.0, 1.0]",
+          "error_type": "ValidationError",
+          "error_data": {
+            "error_code": "INVALID_SCORE"
+          }
+        },
+        {
+          "name": "missing_detail_for_critical_event",
+          "condition": "event is AUDIT_FAIL or ACCESS_VIOLATION and detail is empty",
+          "error_type": "ValueError",
+          "error_data": {
+            "error_code": "MISSING_DETAIL"
+          }
+        },
+        {
+          "name": "negative_sequence",
+          "condition": "sequence_number < 0",
+          "error_type": "ValidationError",
+          "error_data": {
+            "error_code": "INVALID_SEQUENCE"
+          }
+        }
+      ],
+      "preconditions": [
+        "score_before is a valid TrustScore in [0.0, 1.0]",
+        "sequence_number >= 0",
+        "weight is in [-1.0, 1.0]",
+        "For AUDIT_FAIL and ACCESS_VIOLATION events, detail must be non-empty"
+      ],
+      "postconditions": [
+        "Returned entry.score_after == clamp(score_before + weight, 0.0, 1.0)",
+        "Returned entry.ts is a valid UTC ISO 8601 timestamp",
+        "Returned entry is frozen (immutable)",
+        "Returned entry.sequence_number == input sequence_number"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": ""
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 1,
+        "max_memory_mb": null,
+        "complexity": "O(1)"
+      }
+    },
+    {
+      "name": "create_ledger_checkpoint",
+      "description": "Factory function to create a validated LedgerCheckpoint. Computes no checksum itself — caller must provide the pre-computed SHA-256 checksum. Validates all fields and returns a frozen instance.",
+      "inputs": [
+        {
+          "name": "sequence_number",
+          "type_ref": "SequenceNumber",
+          "required": true,
+          "default": "",
+          "description": "Sequence number of the last entry covered.",
+          "validators": []
+        },
+        {
+          "name": "checksum",
+          "type_ref": "Sha256Hex",
+          "required": true,
+          "default": "",
+          "description": "SHA-256 hex digest of covered entries.",
+          "validators": []
+        },
+        {
+          "name": "entry_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of entries covered.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 1",
+              "error_message": "Must cover at least one entry."
+            }
+          ]
+        }
+      ],
+      "output_type": "LedgerCheckpoint",
+      "error_cases": [
+        {
+          "name": "invalid_checksum_format",
+          "condition": "checksum does not match ^[0-9a-f]{64}$",
+          "error_type": "ValidationError",
+          "error_data": {
+            "error_code": "INVALID_CHECKSUM"
+          }
+        },
+        {
+          "name": "zero_entry_count",
+          "condition": "entry_count < 1",
+          "error_type": "ValidationError",
+          "error_data": {
+            "error_code": "INVALID_ENTRY_COUNT"
+          }
+        },
+        {
+          "name": "negative_sequence",
+          "condition": "sequence_number < 0",
+          "error_type": "ValidationError",
+          "error_data": {
+            "error_code": "INVALID_SEQUENCE"
+          }
+        }
+      ],
+      "preconditions": [
+        "sequence_number >= 0",
+        "checksum is a valid 64-character lowercase hex string",
+        "entry_count >= 1"
+      ],
+      "postconditions": [
+        "Returned checkpoint is frozen (immutable)",
+        "Returned checkpoint.ts is a valid UTC ISO 8601 timestamp"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": ""
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 1,
+        "max_memory_mb": null,
+        "complexity": "O(1)"
+      }
+    },
+    {
+      "name": "build_access_graph",
+      "description": "Constructs a validated AccessGraph from a dict of AccessGraphNode instances. Performs referential integrity validation: all edge targets in every node must exist as keys in the nodes dict. Returns an AccessGraph or raises on integrity violation.",
+      "inputs": [
+        {
+          "name": "nodes",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from NodeId string to AccessGraphNode instance.",
+          "validators": []
+        }
+      ],
+      "output_type": "AccessGraph",
+      "error_cases": [
+        {
+          "name": "dangling_edge",
+          "condition": "A node's edge list contains a NodeId that does not exist in the nodes dict",
+          "error_type": "ValueError",
+          "error_data": {
+            "error_code": "DANGLING_EDGE"
+          }
+        },
+        {
+          "name": "id_key_mismatch",
+          "condition": "A node's id field does not match its key in the dict",
+          "error_type": "ValueError",
+          "error_data": {
+            "error_code": "ID_KEY_MISMATCH"
+          }
+        },
+        {
+          "name": "invalid_node_id",
+          "condition": "A key in the dict is not a valid NodeId",
+          "error_type": "ValidationError",
+          "error_data": {
+            "error_code": "INVALID_NODE_ID"
+          }
+        },
+        {
+          "name": "empty_graph",
+          "condition": "nodes dict is empty",
+          "error_type": "ValueError",
+          "error_data": {
+            "error_code": "EMPTY_GRAPH"
+          }
+        }
+      ],
+      "preconditions": [
+        "All keys in nodes are valid NodeIds",
+        "Each node's id field matches its key in the dict",
+        "All edge targets in every node reference keys that exist in nodes"
+      ],
+      "postconditions": [
+        "Returned AccessGraph passes referential integrity: for all nodes, all edges point to existing nodes",
+        "Returned AccessGraph.nodes has same cardinality as input",
+        "Each node's id matches its dict key"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": ""
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 50,
+        "max_memory_mb": 256,
+        "complexity": "O(n + e)"
+      }
+    },
+    {
+      "name": "parse_ledger_line",
+      "description": "Parses a single JSONL line from the trust ledger into the appropriate LedgerLine variant (TrustLedgerEntry or LedgerCheckpoint). Uses discriminated union deserialization. The line must be valid JSON and conform to one of the two schemas.",
+      "inputs": [
+        {
+          "name": "line",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "A single JSON line from the JSONL ledger file.",
+          "validators": []
+        }
+      ],
+      "output_type": "LedgerLine",
+      "error_cases": [
+        {
+          "name": "invalid_json",
+          "condition": "line is not valid JSON",
+          "error_type": "ValueError",
+          "error_data": {
+            "error_code": "INVALID_JSON"
+          }
+        },
+        {
+          "name": "unknown_schema",
+          "condition": "JSON does not match TrustLedgerEntry or LedgerCheckpoint schema",
+          "error_type": "ValidationError",
+          "error_data": {
+            "error_code": "UNKNOWN_LEDGER_LINE_SCHEMA"
+          }
+        },
+        {
+          "name": "empty_line",
+          "condition": "line is empty or whitespace-only",
+          "error_type": "ValueError",
+          "error_data": {
+            "error_code": "EMPTY_LINE"
+          }
+        },
+        {
+          "name": "validation_failure",
+          "condition": "JSON matches a schema but field values fail validation",
+          "error_type": "ValidationError",
+          "error_data": {
+            "error_code": "FIELD_VALIDATION_FAILED"
+          }
+        }
+      ],
+      "preconditions": [
+        "line is a non-empty string",
+        "line is valid JSON"
+      ],
+      "postconditions": [
+        "Returned value is either a TrustLedgerEntry or LedgerCheckpoint",
+        "All fields pass Pydantic validation",
+        "Float trust scores round-trip exactly (IEEE 754 fidelity)"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": ""
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 1,
+        "max_memory_mb": 1,
+        "complexity": "O(f)"
+      }
+    },
+    {
+      "name": "serialize_ledger_line",
+      "description": "Serializes a LedgerLine (TrustLedgerEntry or LedgerCheckpoint) to a JSON string suitable for appending to a JSONL file. Ensures deterministic serialization order and IEEE 754 float fidelity for trust scores.",
+      "inputs": [
+        {
+          "name": "entry",
+          "type_ref": "LedgerLine",
+          "required": true,
+          "default": "",
+          "description": "The ledger line to serialize.",
+          "validators": []
+        }
+      ],
+      "output_type": "str",
+      "error_cases": [
+        {
+          "name": "invalid_entry_type",
+          "condition": "entry is not a TrustLedgerEntry or LedgerCheckpoint",
+          "error_type": "TypeError",
+          "error_data": {
+            "error_code": "INVALID_ENTRY_TYPE"
+          }
+        }
+      ],
+      "preconditions": [
+        "entry is a valid TrustLedgerEntry or LedgerCheckpoint"
+      ],
+      "postconditions": [
+        "Output is a single-line valid JSON string (no embedded newlines)",
+        "parse_ledger_line(serialize_ledger_line(entry)) produces a value equal to entry",
+        "Float values have full IEEE 754 round-trip fidelity",
+        "JSON keys are in deterministic (sorted) order"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": ""
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 1,
+        "max_memory_mb": null,
+        "complexity": "O(f)"
+      }
+    },
+    {
+      "name": "create_error_response",
+      "description": "Factory function to create a standardized ErrorResponse. Ensures error messages include the specific node, field, or domain that caused the error as required by project standards.",
+      "inputs": [
+        {
+          "name": "error_code",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Machine-readable error code.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable message. Must reference the offending entity.",
+          "validators": []
+        },
+        {
+          "name": "node",
+          "type_ref": "str",
+          "required": false,
+          "default": "\"\"",
+          "description": "Optional: the offending node ID.",
+          "validators": []
+        },
+        {
+          "name": "field",
+          "type_ref": "str",
+          "required": false,
+          "default": "\"\"",
+          "description": "Optional: the offending field name.",
+          "validators": []
+        },
+        {
+          "name": "domain",
+          "type_ref": "str",
+          "required": false,
+          "default": "\"\"",
+          "description": "Optional: the offending authority domain.",
+          "validators": []
+        }
+      ],
+      "output_type": "ErrorResponse",
+      "error_cases": [
+        {
+          "name": "empty_error_code",
+          "condition": "error_code is empty",
+          "error_type": "ValueError",
+          "error_data": {
+            "error_code": "EMPTY_ERROR_CODE"
+          }
+        },
+        {
+          "name": "empty_message",
+          "condition": "message is empty",
+          "error_type": "ValueError",
+          "error_data": {
+            "error_code": "EMPTY_MESSAGE"
+          }
+        }
+      ],
+      "preconditions": [
+        "error_code is non-empty",
+        "message is non-empty",
+        "At least one of node, field, or domain should be provided for specificity"
+      ],
+      "postconditions": [
+        "Returned ErrorResponse.error_code == input error_code",
+        "Returned ErrorResponse.details contains non-empty 'node', 'field', and/or 'domain' keys for any provided values",
+        "Returned ErrorResponse.message is non-empty"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": ""
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "validate_canary_fingerprint",
+      "description": "Validates that a canary fingerprint contains an embedded UUID v4, making it recognizable as synthetic data that is impossible in real data. Returns True if valid, raises ValueError otherwise.",
+      "inputs": [
+        {
+          "name": "fingerprint",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The canary fingerprint string to validate.",
+          "validators": []
+        }
+      ],
+      "output_type": "bool",
+      "error_cases": [
+        {
+          "name": "missing_uuid",
+          "condition": "fingerprint does not contain a UUID v4 segment",
+          "error_type": "ValueError",
+          "error_data": {
+            "error_code": "INVALID_CANARY_FINGERPRINT"
+          }
+        },
+        {
+          "name": "empty_fingerprint",
+          "condition": "fingerprint is empty",
+          "error_type": "ValueError",
+          "error_data": {
+            "error_code": "EMPTY_FINGERPRINT"
+          }
+        }
+      ],
+      "preconditions": [
+        "fingerprint is a non-empty string"
+      ],
+      "postconditions": [
+        "Returns True only if fingerprint contains a valid UUID v4 segment matching [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": ""
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 1,
+        "max_memory_mb": null,
+        "complexity": "O(n)"
+      }
+    },
+    {
+      "name": "score_to_tier",
+      "description": "Converts a raw TrustScore to its display TrustTier. This is for display/reporting ONLY — all policy calculations must use the raw score, never the tier. Tier boundaries: [0.0, 0.2) -> PROBATIONARY, [0.2, 0.4) -> LOW, [0.4, 0.6) -> ESTABLISHED, [0.6, 0.8) -> HIGH, [0.8, 1.0] -> TRUSTED.",
+      "inputs": [
+        {
+          "name": "score",
+          "type_ref": "TrustScore",
+          "required": true,
+          "default": "",
+          "description": "Raw trust score in [0.0, 1.0].",
+          "validators": []
+        }
+      ],
+      "output_type": "TrustTier",
+      "error_cases": [
+        {
+          "name": "score_out_of_range",
+          "condition": "score < 0.0 or score > 1.0",
+          "error_type": "ValueError",
+          "error_data": {
+            "error_code": "INVALID_SCORE"
+          }
+        }
+      ],
+      "preconditions": [
+        "score is in [0.0, 1.0]"
+      ],
+      "postconditions": [
+        "Returned tier corresponds to the correct bracket for the input score",
+        "This function is deterministic: same input always yields same output"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": ""
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 1,
+        "max_memory_mb": null,
+        "complexity": "O(1)"
+      }
+    },
+    {
+      "name": "classify_field",
+      "description": "Classifies a field name against a list of ClassificationRule instances, returning the matching DataTier. Uses fnmatch or regex depending on the rule's is_regex flag. Returns the first matching rule's data_tier. If no rule matches, returns DataTier.PUBLIC as the default.",
+      "inputs": [
+        {
+          "name": "field_name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The field name to classify.",
+          "validators": []
+        },
+        {
+          "name": "rules",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Ordered list of ClassificationRule instances to match against.",
+          "validators": []
+        }
+      ],
+      "output_type": "DataTier",
+      "error_cases": [
+        {
+          "name": "empty_field_name",
+          "condition": "field_name is empty",
+          "error_type": "ValueError",
+          "error_data": {
+            "error_code": "EMPTY_FIELD_NAME"
+          }
+        },
+        {
+          "name": "invalid_regex_pattern",
+          "condition": "A rule with is_regex=True has an invalid regex pattern",
+          "error_type": "ValueError",
+          "error_data": {
+            "error_code": "INVALID_REGEX_PATTERN"
+          }
+        }
+      ],
+      "preconditions": [
+        "field_name is a non-empty string",
+        "rules is a list (may be empty)"
+      ],
+      "postconditions": [
+        "If any rule matches, returns the data_tier of the first matching rule",
+        "If no rule matches, returns DataTier.PUBLIC",
+        "Rules are evaluated in order; first match wins"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": ""
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 5,
+        "max_memory_mb": 1,
+        "complexity": "O(r)"
+      }
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "All models with frozen=True config are immutable after construction — no attribute reassignment allowed",
+    "All models with extra='forbid' reject unexpected fields during construction",
+    "Trust is earned (computed from ledger via TrustScore), authority is declared (from manifests via AuthorityDomain) — these are distinct type aliases and never conflated",
+    "The trust ledger is append-only: TrustLedgerEntry and LedgerCheckpoint are frozen, no update or delete operations exist",
+    "All policy calculations use raw TrustScore (float), never TrustTier — tier is for display only",
+    "TrustScore values are raw IEEE 754 floats in [0.0, 1.0] with no application-level rounding",
+    "All timestamps are UTC ISO 8601 strings ending with 'Z' or '+00:00' — no local times",
+    "AccessGraph referential integrity: every edge target in every node must exist as a key in AccessGraph.nodes",
+    "Canary fingerprints must contain a UUID v4 segment making them recognizable as synthetic and impossible in real data",
+    "Error messages and ErrorResponse instances must include the specific node, field, or domain that caused the error",
+    "LedgerLine is a discriminated union: every JSONL line is exactly one of TrustLedgerEntry or LedgerCheckpoint",
+    "Sequence numbers are monotonically increasing within a ledger — never reused or decremented",
+    "Node self-reports are claims (Claim type), the adapter layer is ground truth — these are structurally distinct",
+    "ClassificationRule evaluation is order-dependent: first matching rule wins",
+    "All enum types use StrEnum with explicit string values for stable serialization across versions"
+  ],
+  "requires": [
+    "pydantic>=2.0",
+    "python>=3.12"
+  ],
+  "processing_register": "rigorous-analytical"
+}

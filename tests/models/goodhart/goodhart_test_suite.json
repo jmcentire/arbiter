@@ -1,0 +1,897 @@
+{
+  "component_id": "models",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "goodhart_score_to_tier_arbitrary_values_in_each_bracket",
+      "description": "score_to_tier must return the correct tier for arbitrary scores within each bracket, not just boundary values or midpoints that visible tests use",
+      "function": "score_to_tier",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Scores like 0.05, 0.31, 0.55, 0.73, 0.95 that are not boundaries or midpoints",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "score_to_tier(0.05) == TrustTier.PROBATIONARY",
+        "score_to_tier(0.31) == TrustTier.LOW",
+        "score_to_tier(0.55) == TrustTier.ESTABLISHED",
+        "score_to_tier(0.73) == TrustTier.HIGH",
+        "score_to_tier(0.95) == TrustTier.TRUSTED"
+      ]
+    },
+    {
+      "id": "goodhart_score_to_tier_float_precision_near_boundary",
+      "description": "score_to_tier must handle IEEE 754 floating point values extremely close to tier boundaries without misclassifying",
+      "function": "score_to_tier",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Values like 0.19999999999999998, 0.20000000000000001, 0.7999999999999999, 0.8000000000000001",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "score_to_tier(0.19999999999999998) == TrustTier.PROBATIONARY",
+        "score_to_tier(0.20000000000000001) == TrustTier.LOW",
+        "score_to_tier(0.7999999999999999) == TrustTier.HIGH",
+        "score_to_tier(0.8000000000000001) == TrustTier.TRUSTED"
+      ]
+    },
+    {
+      "id": "goodhart_create_entry_score_after_exact_clamping",
+      "description": "score_after must be exactly clamp(score_before + weight, 0, 1) for various non-trivial combinations, not just the obvious overflow/underflow cases",
+      "function": "create_trust_ledger_entry",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various score_before and weight combinations producing non-trivial score_after values",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_trust_ledger_entry('nodeA', TrustEventType.AUDIT_PASS, 0.15, 0.3, 5, 'test').score_after == 0.45",
+        "create_trust_ledger_entry('nodeB', TrustEventType.DECAY, -0.3, 0.5, 6, 'decay').score_after == 0.2",
+        "create_trust_ledger_entry('nodeC', TrustEventType.INITIAL, 0.0, 0.7, 7, 'init').score_after == 0.7"
+      ]
+    },
+    {
+      "id": "goodhart_create_entry_score_before_preserved",
+      "description": "The returned entry must preserve the exact score_before value provided, not recompute or round it",
+      "function": "create_trust_ledger_entry",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various score_before values including IEEE 754 non-trivial floats",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_trust_ledger_entry('n1', TrustEventType.AUDIT_PASS, 0.1, 0.3333333333333333, 0, 'test').score_before == 0.3333333333333333",
+        "create_trust_ledger_entry('n2', TrustEventType.AUDIT_PASS, 0.0, 0.1 + 0.2, 1, 'test').score_before == 0.1 + 0.2"
+      ]
+    },
+    {
+      "id": "goodhart_create_entry_node_field_matches_input",
+      "description": "The returned entry's node field must exactly match the input node ID string",
+      "function": "create_trust_ledger_entry",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various valid node IDs including unusual but valid patterns",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_trust_ledger_entry('a', TrustEventType.AUDIT_PASS, 0.1, 0.5, 0, 'test').node == 'a'",
+        "create_trust_ledger_entry('A.B-C_123', TrustEventType.AUDIT_PASS, 0.1, 0.5, 1, 'test').node == 'A.B-C_123'",
+        "create_trust_ledger_entry('x' * 255, TrustEventType.AUDIT_PASS, 0.1, 0.5, 2, 'test').node == 'x' * 255"
+      ]
+    },
+    {
+      "id": "goodhart_create_entry_node_id_max_length_exceeded",
+      "description": "NodeId must reject strings longer than 255 characters",
+      "function": "create_trust_ledger_entry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A node ID with 256 characters",
+      "expected_output_description": "",
+      "expected_error": "invalid_node_id",
+      "assertions": [
+        "create_trust_ledger_entry raises error for node='x' * 256"
+      ]
+    },
+    {
+      "id": "goodhart_create_entry_node_id_special_chars",
+      "description": "NodeId must reject strings containing characters outside [a-zA-Z0-9._-]",
+      "function": "create_trust_ledger_entry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Node IDs with slashes, @, colons, etc.",
+      "expected_output_description": "",
+      "expected_error": "invalid_node_id",
+      "assertions": [
+        "create_trust_ledger_entry raises error for node containing '/'",
+        "create_trust_ledger_entry raises error for node containing '@'",
+        "create_trust_ledger_entry raises error for node containing ':'"
+      ]
+    },
+    {
+      "id": "goodhart_create_entry_event_field_matches_input",
+      "description": "The returned entry's event field must exactly match the input TrustEventType",
+      "function": "create_trust_ledger_entry",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Multiple different event types",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_trust_ledger_entry('n', TrustEventType.TAINT_DETECTED, 0.0, 0.5, 0, 'test').event == TrustEventType.TAINT_DETECTED",
+        "create_trust_ledger_entry('n', TrustEventType.CANARY_TRIGGERED, 0.0, 0.5, 1, 'test').event == TrustEventType.CANARY_TRIGGERED"
+      ]
+    },
+    {
+      "id": "goodhart_create_entry_detail_preserved",
+      "description": "The returned entry's detail field must exactly preserve the input detail string including special characters",
+      "function": "create_trust_ledger_entry",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Detail strings with unicode, newlines, special characters",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_trust_ledger_entry('n', TrustEventType.AUDIT_PASS, 0.1, 0.5, 0, 'hello\\nworld').detail == 'hello\\nworld'",
+        "create_trust_ledger_entry('n', TrustEventType.AUDIT_PASS, 0.1, 0.5, 1, 'café ñ').detail == 'café ñ'"
+      ]
+    },
+    {
+      "id": "goodhart_create_entry_sequence_zero_valid",
+      "description": "Sequence number 0 is a valid starting value and must be accepted and preserved",
+      "function": "create_trust_ledger_entry",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "sequence_number=0",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_trust_ledger_entry('n', TrustEventType.INITIAL, 0.5, 0.0, 0, 'init').sequence_number == 0"
+      ]
+    },
+    {
+      "id": "goodhart_create_entry_sequence_large_value",
+      "description": "Large sequence numbers must be accepted and preserved exactly",
+      "function": "create_trust_ledger_entry",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "sequence_number=999999999",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_trust_ledger_entry('n', TrustEventType.AUDIT_PASS, 0.1, 0.5, 999999999, 'test').sequence_number == 999999999"
+      ]
+    },
+    {
+      "id": "goodhart_create_entry_other_events_allow_empty_detail",
+      "description": "Events other than AUDIT_FAIL and ACCESS_VIOLATION must accept empty detail strings",
+      "function": "create_trust_ledger_entry",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "AUDIT_PASS, DECAY, INITIAL, etc. with empty detail",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_trust_ledger_entry('n', TrustEventType.AUDIT_PASS, 0.1, 0.5, 0, '').detail == ''",
+        "create_trust_ledger_entry('n', TrustEventType.DECAY, -0.1, 0.5, 1, '').detail == ''",
+        "create_trust_ledger_entry('n', TrustEventType.CONSISTENCY_CHECK, 0.0, 0.5, 2, '').detail == ''"
+      ]
+    },
+    {
+      "id": "goodhart_checkpoint_checksum_preserved",
+      "description": "The checkpoint must preserve the exact checksum string provided",
+      "function": "create_ledger_checkpoint",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various valid 64-char hex checksums",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_ledger_checkpoint(0, 'a' * 64, 1).checksum == 'a' * 64",
+        "create_ledger_checkpoint(1, '0123456789abcdef' * 4, 5).checksum == '0123456789abcdef' * 4"
+      ]
+    },
+    {
+      "id": "goodhart_checkpoint_entry_count_preserved",
+      "description": "The checkpoint must preserve the exact entry_count value",
+      "function": "create_ledger_checkpoint",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various entry_count values",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_ledger_checkpoint(0, 'a' * 64, 1).entry_count == 1",
+        "create_ledger_checkpoint(0, 'a' * 64, 1000000).entry_count == 1000000"
+      ]
+    },
+    {
+      "id": "goodhart_checkpoint_negative_entry_count",
+      "description": "Negative entry_count must be rejected",
+      "function": "create_ledger_checkpoint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "entry_count=-1",
+      "expected_output_description": "",
+      "expected_error": "zero_entry_count",
+      "assertions": [
+        "create_ledger_checkpoint raises error for entry_count=-1"
+      ]
+    },
+    {
+      "id": "goodhart_checkpoint_checksum_with_invalid_hex_chars",
+      "description": "Checksums containing non-hex characters (like 'g') must be rejected even if 64 chars long",
+      "function": "create_ledger_checkpoint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "64-char string with 'g' characters",
+      "expected_output_description": "",
+      "expected_error": "invalid_checksum_format",
+      "assertions": [
+        "create_ledger_checkpoint raises error for checksum='g' * 64"
+      ]
+    },
+    {
+      "id": "goodhart_checkpoint_checksum_65_chars",
+      "description": "Checksums that are 65 characters (too long by one) must be rejected",
+      "function": "create_ledger_checkpoint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "65-char lowercase hex string",
+      "expected_output_description": "",
+      "expected_error": "invalid_checksum_format",
+      "assertions": [
+        "create_ledger_checkpoint raises error for checksum='a' * 65"
+      ]
+    },
+    {
+      "id": "goodhart_build_graph_node_ids_match_keys",
+      "description": "In the returned AccessGraph, every node's id field must match its dict key",
+      "function": "build_access_graph",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph with multiple nodes, verify id==key for all",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "For every (key, node) pair in result.nodes, node.id == key"
+      ]
+    },
+    {
+      "id": "goodhart_build_graph_mutual_edges",
+      "description": "Graph with bidirectional edges between nodes must be valid",
+      "function": "build_access_graph",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Three nodes with mutual edges: A<->B, B<->C",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "build_access_graph succeeds and has 3 nodes"
+      ]
+    },
+    {
+      "id": "goodhart_build_graph_fully_connected",
+      "description": "A fully connected graph where every node has edges to all other nodes must be valid",
+      "function": "build_access_graph",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "4 nodes each with edges to all 3 others",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "build_access_graph succeeds with 4 nodes and full referential integrity"
+      ]
+    },
+    {
+      "id": "goodhart_parse_ledger_line_extra_fields_rejected",
+      "description": "JSON with all required fields plus extra unknown fields must be rejected due to extra='forbid'",
+      "function": "parse_ledger_line",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid TrustLedgerEntry JSON with an additional 'extra_field' key",
+      "expected_output_description": "",
+      "expected_error": "validation_failure or unknown_schema",
+      "assertions": [
+        "parse_ledger_line raises an error for JSON with extra fields"
+      ]
+    },
+    {
+      "id": "goodhart_parse_ledger_line_missing_required_field",
+      "description": "JSON missing a required field for TrustLedgerEntry must be rejected",
+      "function": "parse_ledger_line",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "TrustLedgerEntry JSON without the 'weight' field",
+      "expected_output_description": "",
+      "expected_error": "validation_failure or unknown_schema",
+      "assertions": [
+        "parse_ledger_line raises an error for incomplete JSON"
+      ]
+    },
+    {
+      "id": "goodhart_parse_ledger_line_invalid_event_type",
+      "description": "JSON with all TrustLedgerEntry fields but an invalid event type string must be rejected",
+      "function": "parse_ledger_line",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "TrustLedgerEntry JSON with event='NONEXISTENT_EVENT'",
+      "expected_output_description": "",
+      "expected_error": "validation_failure",
+      "assertions": [
+        "parse_ledger_line raises an error for invalid enum value"
+      ]
+    },
+    {
+      "id": "goodhart_serialize_roundtrip_checkpoint",
+      "description": "Serialization and parsing of LedgerCheckpoint must round-trip exactly, not just TrustLedgerEntry",
+      "function": "serialize_ledger_line",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A LedgerCheckpoint instance",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "parse_ledger_line(serialize_ledger_line(checkpoint)) == checkpoint"
+      ]
+    },
+    {
+      "id": "goodhart_serialize_deterministic_repeated_calls",
+      "description": "Calling serialize_ledger_line multiple times on the same entry must produce identical output",
+      "function": "serialize_ledger_line",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Same TrustLedgerEntry serialized twice",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "serialize_ledger_line(entry) == serialize_ledger_line(entry)"
+      ]
+    },
+    {
+      "id": "goodhart_error_response_only_node_provided",
+      "description": "When only node is provided (field and domain empty), details should contain 'node' but not 'field' or 'domain'",
+      "function": "create_error_response",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "node='svc-1', field='', domain=''",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'node' in result.details",
+        "'field' not in result.details or result.details.get('field') is empty-handled",
+        "'domain' not in result.details or result.details.get('domain') is empty-handled"
+      ]
+    },
+    {
+      "id": "goodhart_error_response_only_field_provided",
+      "description": "When only field is provided, details should contain 'field' key with the given value",
+      "function": "create_error_response",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "node='', field='email', domain=''",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'field' in result.details and result.details['field'] == 'email'"
+      ]
+    },
+    {
+      "id": "goodhart_error_response_only_domain_provided",
+      "description": "When only domain is provided, details should contain 'domain' key with the given value",
+      "function": "create_error_response",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "node='', field='', domain='auth/core'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'domain' in result.details and result.details['domain'] == 'auth/core'"
+      ]
+    },
+    {
+      "id": "goodhart_error_response_preserves_error_code",
+      "description": "The returned ErrorResponse must preserve the exact error_code string, not transform it",
+      "function": "create_error_response",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various error codes",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_error_response('CUSTOM_CODE_42', 'msg', 'n', '', '').error_code == 'CUSTOM_CODE_42'"
+      ]
+    },
+    {
+      "id": "goodhart_error_response_preserves_message",
+      "description": "The returned ErrorResponse must preserve the exact message string",
+      "function": "create_error_response",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various messages",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_error_response('err', 'A long detailed error message with special chars: <>&', 'n', '', '').message == 'A long detailed error message with special chars: <>&'"
+      ]
+    },
+    {
+      "id": "goodhart_canary_uuid_v4_variant_check",
+      "description": "UUID v4 validation must check the variant bits (position 19 must be 8, 9, a, or b), not just the version nibble",
+      "function": "validate_canary_fingerprint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "UUID-like string with version=4 but variant bits wrong (e.g., position 19 is 'c')",
+      "expected_output_description": "",
+      "expected_error": "missing_uuid",
+      "assertions": [
+        "validate_canary_fingerprint raises error for fingerprint with invalid variant bits"
+      ]
+    },
+    {
+      "id": "goodhart_canary_uuid_embedded_in_complex_string",
+      "description": "UUID v4 embedded within a longer complex string must still be detected as valid",
+      "function": "validate_canary_fingerprint",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "String like 'prefix-12345678-1234-4abc-9abc-123456789abc-suffix'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "validate_canary_fingerprint returns True for UUID v4 embedded in longer string"
+      ]
+    },
+    {
+      "id": "goodhart_canary_uuid_uppercase_rejected",
+      "description": "UUID v4 with uppercase hex characters must be handled correctly per the contract regex (lowercase only)",
+      "function": "validate_canary_fingerprint",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "UUID v4 string with uppercase letters like '12345678-1234-4ABC-9ABC-123456789ABC'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "validate_canary_fingerprint handles uppercase UUID according to contract regex"
+      ]
+    },
+    {
+      "id": "goodhart_classify_field_fnmatch_wildcard",
+      "description": "fnmatch rules must support standard wildcard patterns like '*_ssn' matching any prefix",
+      "function": "classify_field",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Rule with pattern '*_ssn', field 'user_ssn' and 'employee_ssn'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "classify_field('user_ssn', [rule_ssn]) returns the rule's data_tier",
+        "classify_field('employee_ssn', [rule_ssn]) returns the rule's data_tier"
+      ]
+    },
+    {
+      "id": "goodhart_classify_field_fnmatch_question_mark",
+      "description": "fnmatch rules must support '?' single-character wildcard",
+      "function": "classify_field",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Rule with pattern 'field_?', field 'field_a' matches, 'field_ab' does not",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "classify_field('field_a', [rule]) matches",
+        "classify_field('field_ab', [rule]) does not match and returns PUBLIC"
+      ]
+    },
+    {
+      "id": "goodhart_classify_field_regex_anchoring",
+      "description": "Regex rules must use the regex pattern as-is; patterns without anchors should match substrings (or full match depending on implementation consistency)",
+      "function": "classify_field",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Regex rule with pattern 'ssn', field 'user_ssn_field'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "classify_field with regex 'ssn' tested against 'user_ssn_field' returns expected tier"
+      ]
+    },
+    {
+      "id": "goodhart_classify_field_third_rule_matches",
+      "description": "When the first two rules don't match but the third does, the third rule's tier must be returned (not PUBLIC, not hardcoded first)",
+      "function": "classify_field",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Three rules where only the third matches the field",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "classify_field returns the third rule's data_tier"
+      ]
+    },
+    {
+      "id": "goodhart_classify_field_regex_no_match_returns_public",
+      "description": "When regex rules exist but none match, PUBLIC must be returned",
+      "function": "classify_field",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Regex rule that doesn't match the field",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "classify_field returns DataTier.PUBLIC when regex doesn't match"
+      ]
+    },
+    {
+      "id": "goodhart_enum_values_are_strings",
+      "description": "All enum members must be instances of str (StrEnum), allowing direct string comparison and JSON serialization",
+      "function": "TrustTier",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "isinstance(TrustTier.PROBATIONARY, str)",
+        "isinstance(DataTier.PII, str)",
+        "isinstance(BlastTier.SOAK, str)",
+        "isinstance(FindingSeverity.CRITICAL, str)",
+        "isinstance(TrustEventType.DECAY, str)"
+      ]
+    },
+    {
+      "id": "goodhart_enum_values_stable_strings",
+      "description": "Enum string values must be stable and predictable for serialization (not auto-numbered or arbitrary)",
+      "function": "TrustTier",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "str(TrustTier.PROBATIONARY) contains 'PROBATIONARY' or equals a stable known value",
+        "str(DataTier.FINANCIAL) contains 'FINANCIAL' or equals a stable known value"
+      ]
+    },
+    {
+      "id": "goodhart_frozen_structs_reject_extra_fields",
+      "description": "All frozen structs with extra='forbid' must reject construction with unexpected extra keyword arguments",
+      "function": "AccessGraphNode",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Construct AccessGraphNode, ConsistencyFinding, AccessFinding with extra fields",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Construction with extra fields raises ValidationError"
+      ]
+    },
+    {
+      "id": "goodhart_consistency_finding_frozen_and_forbid",
+      "description": "ConsistencyFinding must be frozen (no mutation) and forbid extra fields",
+      "function": "ConsistencyFinding",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "ConsistencyFinding rejects attribute assignment after construction",
+        "ConsistencyFinding rejects extra fields during construction"
+      ]
+    },
+    {
+      "id": "goodhart_access_finding_frozen_and_forbid",
+      "description": "AccessFinding must be frozen and forbid extra fields",
+      "function": "AccessFinding",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "AccessFinding rejects attribute assignment after construction",
+        "AccessFinding rejects extra fields during construction"
+      ]
+    },
+    {
+      "id": "goodhart_taint_finding_frozen_and_forbid",
+      "description": "TaintFinding must be frozen and forbid extra fields",
+      "function": "TaintFinding",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "TaintFinding rejects attribute assignment after construction"
+      ]
+    },
+    {
+      "id": "goodhart_canary_record_frozen_and_forbid",
+      "description": "CanaryRecord must be frozen and forbid extra fields",
+      "function": "CanaryRecord",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "CanaryRecord rejects attribute assignment after construction",
+        "CanaryRecord rejects extra fields during construction"
+      ]
+    },
+    {
+      "id": "goodhart_access_graph_mutable",
+      "description": "AccessGraph must be mutable (not frozen) to allow incremental construction, unlike other structs",
+      "function": "build_access_graph",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "AccessGraph allows version attribute reassignment"
+      ]
+    },
+    {
+      "id": "goodhart_trust_score_request_extra_forbid",
+      "description": "TrustScoreRequest must reject extra fields during construction",
+      "function": "TrustScoreRequest",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "TrustScoreRequest with extra fields raises ValidationError"
+      ]
+    },
+    {
+      "id": "goodhart_blast_radius_request_extra_forbid",
+      "description": "BlastRadiusRequest must reject extra fields during construction",
+      "function": "BlastRadiusRequest",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "BlastRadiusRequest with extra fields raises ValidationError"
+      ]
+    },
+    {
+      "id": "goodhart_findings_request_extra_forbid",
+      "description": "FindingsRequest must reject extra fields during construction",
+      "function": "FindingsRequest",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "FindingsRequest with extra fields raises ValidationError"
+      ]
+    },
+    {
+      "id": "goodhart_parse_line_tab_only_whitespace",
+      "description": "A line containing only tabs should be treated as empty/whitespace-only",
+      "function": "parse_ledger_line",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "String consisting of only tab characters",
+      "expected_output_description": "",
+      "expected_error": "empty_line",
+      "assertions": [
+        "parse_ledger_line('\\t\\t') raises empty_line error"
+      ]
+    },
+    {
+      "id": "goodhart_parse_line_json_array",
+      "description": "Valid JSON that is an array (not object) must be rejected as it doesn't match any schema",
+      "function": "parse_ledger_line",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "JSON array string like '[1, 2, 3]'",
+      "expected_output_description": "",
+      "expected_error": "unknown_schema",
+      "assertions": [
+        "parse_ledger_line('[1, 2, 3]') raises unknown_schema error"
+      ]
+    },
+    {
+      "id": "goodhart_parse_line_json_null",
+      "description": "The JSON literal 'null' must be rejected",
+      "function": "parse_ledger_line",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "String 'null'",
+      "expected_output_description": "",
+      "expected_error": "unknown_schema",
+      "assertions": [
+        "parse_ledger_line('null') raises an error"
+      ]
+    },
+    {
+      "id": "goodhart_create_entry_weight_zero",
+      "description": "A weight of exactly 0.0 should produce score_after equal to score_before",
+      "function": "create_trust_ledger_entry",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "weight=0.0, score_before=0.5",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_trust_ledger_entry('n', TrustEventType.AUDIT_PASS, 0.0, 0.5, 0, 'test').score_after == 0.5"
+      ]
+    },
+    {
+      "id": "goodhart_create_entry_negative_weight_exact_clamp",
+      "description": "score_before=0.1 with weight=-0.5 should clamp score_after to 0.0, not produce negative value",
+      "function": "create_trust_ledger_entry",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "score_before=0.1, weight=-0.5",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_trust_ledger_entry('n', TrustEventType.DECAY, -0.5, 0.1, 0, 'decay').score_after == 0.0"
+      ]
+    },
+    {
+      "id": "goodhart_classification_rule_frozen",
+      "description": "ClassificationRule must be frozen and forbid extra fields",
+      "function": "ClassificationRule",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "ClassificationRule rejects attribute assignment after construction",
+        "ClassificationRule rejects extra fields during construction"
+      ]
+    },
+    {
+      "id": "goodhart_serialize_entry_is_valid_json",
+      "description": "Serialized output must be parseable as valid JSON by json.loads",
+      "function": "serialize_ledger_line",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various TrustLedgerEntry and LedgerCheckpoint instances",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "json.loads(serialize_ledger_line(entry)) succeeds without error",
+        "json.loads(serialize_ledger_line(checkpoint)) succeeds without error"
+      ]
+    },
+    {
+      "id": "goodhart_build_graph_version_field",
+      "description": "The returned AccessGraph must have a version field that is a string",
+      "function": "build_access_graph",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid graph",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "isinstance(result.version, str)"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nHidden adversarial acceptance tests for Shared Data Models & Enums.\nThese tests catch implementations that pass visible tests through shortcuts\n(hardcoded returns, missing validation, etc.) rather than truly satisfying the contract.\n\"\"\"\n\nimport json\nimport pytest\nfrom pydantic import ValidationError\n\nfrom src.models import (\n    TrustTier,\n    DataTier,\n    BlastTier,\n    FindingSeverity,\n    TrustEventType,\n    TrustLedgerEntry,\n    LedgerCheckpoint,\n    AccessGraphNode,\n    AccessGraph,\n    ConsistencyFinding,\n    AccessFinding,\n    TaintFinding,\n    CanaryRecord,\n    ClassificationRule,\n    TrustScoreRequest,\n    BlastRadiusRequest,\n    FindingsRequest,\n    FeedbackReport,\n    FeedbackReportSection,\n    StigmerySignal,\n    ConflictRecord,\n    ErrorResponse,\n    ValidationErrorDetail,\n    Claim,\n    create_trust_ledger_entry,\n    create_ledger_checkpoint,\n    build_access_graph,\n    parse_ledger_line,\n    serialize_ledger_line,\n    create_error_response,\n    validate_canary_fingerprint,\n    score_to_tier,\n    classify_field,\n)\n\n\n# ---- score_to_tier ----\n\ndef test_goodhart_score_to_tier_arbitrary_values_in_each_bracket():\n    \"\"\"score_to_tier must return the correct tier for arbitrary scores within each bracket,\n    not just boundary values or midpoints that visible tests use.\"\"\"\n    assert score_to_tier(0.05) == TrustTier.PROBATIONARY\n    assert score_to_tier(0.13) == TrustTier.PROBATIONARY\n    assert score_to_tier(0.31) == TrustTier.LOW\n    assert score_to_tier(0.25) == TrustTier.LOW\n    assert score_to_tier(0.55) == TrustTier.ESTABLISHED\n    assert score_to_tier(0.42) == TrustTier.ESTABLISHED\n    assert score_to_tier(0.73) == TrustTier.HIGH\n    assert score_to_tier(0.67) == TrustTier.HIGH\n    assert score_to_tier(0.95) == TrustTier.TRUSTED\n    assert score_to_tier(0.85) == TrustTier.TRUSTED\n\n\ndef test_goodhart_score_to_tier_float_precision_near_boundary():\n    \"\"\"score_to_tier must handle IEEE 754 floating point values extremely close to\n    tier boundaries without misclassifying.\"\"\"\n    # 0.2 - epsilon should still be PROBATIONARY\n    val = 0.19999999999999998\n    if val < 0.2:\n        assert score_to_tier(val) == TrustTier.PROBATIONARY\n    # 0.2 + epsilon should be LOW\n    val2 = 0.20000000000000001\n    # In IEEE 754, this may round to 0.2 exactly\n    assert score_to_tier(val2) == TrustTier.LOW\n\n    # Near 0.8 boundary\n    val3 = 0.7999999999999999\n    if val3 < 0.8:\n        assert score_to_tier(val3) == TrustTier.HIGH\n\n    val4 = 0.8000000000000001\n    if val4 >= 0.8:\n        assert score_to_tier(val4) == TrustTier.TRUSTED\n\n\n# ---- create_trust_ledger_entry ----\n\ndef test_goodhart_create_entry_score_after_exact_clamping():\n    \"\"\"score_after must be exactly clamp(score_before + weight, 0, 1) for various\n    non-trivial combinations.\"\"\"\n    e1 = create_trust_ledger_entry('nodeA', TrustEventType.AUDIT_PASS, 0.15, 0.3, 5, 'test')\n    assert e1.score_after == pytest.approx(0.45, abs=1e-15)\n\n    e2 = create_trust_ledger_entry('nodeB', TrustEventType.DECAY, -0.3, 0.5, 6, 'decay')\n    assert e2.score_after == pytest.approx(0.2, abs=1e-15)\n\n    e3 = create_trust_ledger_entry('nodeC', TrustEventType.INITIAL, 0.0, 0.7, 7, 'init')\n    assert e3.score_after == pytest.approx(0.7, abs=1e-15)\n\n\ndef test_goodhart_create_entry_score_before_preserved():\n    \"\"\"The returned entry must preserve the exact score_before value provided.\"\"\"\n    val = 0.3333333333333333\n    e1 = create_trust_ledger_entry('n1', TrustEventType.AUDIT_PASS, 0.1, val, 0, 'test')\n    assert e1.score_before == val\n\n    # 0.1 + 0.2 in IEEE 754 is not exactly 0.3\n    val2 = 0.1 + 0.2\n    e2 = create_trust_ledger_entry('n2', TrustEventType.AUDIT_PASS, 0.0, val2, 1, 'test')\n    assert e2.score_before == val2\n\n\ndef test_goodhart_create_entry_node_field_matches_input():\n    \"\"\"The returned entry's node field must exactly match the input node ID string.\"\"\"\n    e1 = create_trust_ledger_entry('a', TrustEventType.AUDIT_PASS, 0.1, 0.5, 0, 'test')\n    assert e1.node == 'a'\n\n    e2 = create_trust_ledger_entry('A.B-C_123', TrustEventType.AUDIT_PASS, 0.1, 0.5, 1, 'test')\n    assert e2.node == 'A.B-C_123'\n\n    long_node = 'x' * 255\n    e3 = create_trust_ledger_entry(long_node, TrustEventType.AUDIT_PASS, 0.1, 0.5, 2, 'test')\n    assert e3.node == long_node\n\n\ndef test_goodhart_create_entry_node_id_max_length_exceeded():\n    \"\"\"NodeId must reject strings longer than 255 characters.\"\"\"\n    long_node = 'x' * 256\n    with pytest.raises((ValueError, ValidationError)):\n        create_trust_ledger_entry(long_node, TrustEventType.AUDIT_PASS, 0.1, 0.5, 0, 'test')\n\n\ndef test_goodhart_create_entry_node_id_special_chars():\n    \"\"\"NodeId must reject strings containing characters outside [a-zA-Z0-9._-].\"\"\"\n    for invalid_char in ['/', '@', ':', '!', ' ', '#', '$', '(', ')']:\n        with pytest.raises((ValueError, ValidationError)):\n            create_trust_ledger_entry(\n                f'node{invalid_char}bad', TrustEventType.AUDIT_PASS, 0.1, 0.5, 0, 'test'\n            )\n\n\ndef test_goodhart_create_entry_event_field_matches_input():\n    \"\"\"The returned entry's event field must exactly match the input TrustEventType.\"\"\"\n    e1 = create_trust_ledger_entry('n', TrustEventType.TAINT_DETECTED, 0.0, 0.5, 0, 'test')\n    assert e1.event == TrustEventType.TAINT_DETECTED\n\n    e2 = create_trust_ledger_entry('n', TrustEventType.CANARY_TRIGGERED, 0.0, 0.5, 1, 'test')\n    assert e2.event == TrustEventType.CANARY_TRIGGERED\n\n    e3 = create_trust_ledger_entry('n', TrustEventType.MANUAL_OVERRIDE, 0.0, 0.5, 2, 'test')\n    assert e3.event == TrustEventType.MANUAL_OVERRIDE\n\n\ndef test_goodhart_create_entry_detail_preserved():\n    \"\"\"The returned entry's detail field must exactly preserve the input detail string.\"\"\"\n    e1 = create_trust_ledger_entry('n', TrustEventType.AUDIT_PASS, 0.1, 0.5, 0, 'hello\\nworld')\n    assert e1.detail == 'hello\\nworld'\n\n    e2 = create_trust_ledger_entry('n', TrustEventType.AUDIT_PASS, 0.1, 0.5, 1, 'café ñ')\n    assert e2.detail == 'café ñ'\n\n    e3 = create_trust_ledger_entry('n', TrustEventType.AUDIT_PASS, 0.1, 0.5, 2, '{\"json\": true}')\n    assert e3.detail == '{\"json\": true}'\n\n\ndef test_goodhart_create_entry_sequence_zero_valid():\n    \"\"\"Sequence number 0 is a valid starting value and must be accepted and preserved.\"\"\"\n    e = create_trust_ledger_entry('n', TrustEventType.INITIAL, 0.5, 0.0, 0, 'init')\n    assert e.sequence_number == 0\n\n\ndef test_goodhart_create_entry_sequence_large_value():\n    \"\"\"Large sequence numbers must be accepted and preserved exactly.\"\"\"\n    e = create_trust_ledger_entry('n', TrustEventType.AUDIT_PASS, 0.1, 0.5, 999999999, 'test')\n    assert e.sequence_number == 999999999\n\n\ndef test_goodhart_create_entry_other_events_allow_empty_detail():\n    \"\"\"Events other than AUDIT_FAIL and ACCESS_VIOLATION must accept empty detail strings.\"\"\"\n    for event_type in [\n        TrustEventType.AUDIT_PASS,\n        TrustEventType.DECAY,\n        TrustEventType.INITIAL,\n        TrustEventType.CONSISTENCY_CHECK,\n        TrustEventType.TAINT_DETECTED,\n        TrustEventType.CANARY_TRIGGERED,\n        TrustEventType.MANUAL_OVERRIDE,\n    ]:\n        e = create_trust_ledger_entry('n', event_type, 0.0, 0.5, 0, '')\n        assert e.detail == ''\n\n\ndef test_goodhart_create_entry_weight_zero():\n    \"\"\"A weight of exactly 0.0 should produce score_after equal to score_before.\"\"\"\n    e = create_trust_ledger_entry('n', TrustEventType.AUDIT_PASS, 0.0, 0.5, 0, 'test')\n    assert e.score_after == 0.5\n\n\ndef test_goodhart_create_entry_negative_weight_exact_clamp():\n    \"\"\"score_before=0.1 with weight=-0.5 should clamp score_after to 0.0.\"\"\"\n    e = create_trust_ledger_entry('n', TrustEventType.DECAY, -0.5, 0.1, 0, 'decay')\n    assert e.score_after == 0.0\n\n\n# ---- create_ledger_checkpoint ----\n\ndef test_goodhart_checkpoint_checksum_preserved():\n    \"\"\"The checkpoint must preserve the exact checksum string provided.\"\"\"\n    c1 = create_ledger_checkpoint(0, 'a' * 64, 1)\n    assert c1.checksum == 'a' * 64\n\n    c2 = create_ledger_checkpoint(1, '0123456789abcdef' * 4, 5)\n    assert c2.checksum == '0123456789abcdef' * 4\n\n\ndef test_goodhart_checkpoint_entry_count_preserved():\n    \"\"\"The checkpoint must preserve the exact entry_count value.\"\"\"\n    c1 = create_ledger_checkpoint(0, 'a' * 64, 1)\n    assert c1.entry_count == 1\n\n    c2 = create_ledger_checkpoint(0, 'a' * 64, 1000000)\n    assert c2.entry_count == 1000000\n\n\ndef test_goodhart_checkpoint_negative_entry_count():\n    \"\"\"Negative entry_count must be rejected.\"\"\"\n    with pytest.raises((ValueError, ValidationError)):\n        create_ledger_checkpoint(0, 'a' * 64, -1)\n\n\ndef test_goodhart_checkpoint_checksum_with_invalid_hex_chars():\n    \"\"\"Checksums containing non-hex characters must be rejected even if 64 chars long.\"\"\"\n    with pytest.raises((ValueError, ValidationError)):\n        create_ledger_checkpoint(0, 'g' * 64, 1)\n\n\ndef test_goodhart_checkpoint_checksum_65_chars():\n    \"\"\"Checksums that are 65 characters (too long by one) must be rejected.\"\"\"\n    with pytest.raises((ValueError, ValidationError)):\n        create_ledger_checkpoint(0, 'a' * 65, 1)\n\n\ndef test_goodhart_checkpoint_sequence_preserved():\n    \"\"\"The checkpoint must preserve the exact sequence_number.\"\"\"\n    c = create_ledger_checkpoint(42, 'b' * 64, 10)\n    assert c.sequence_number == 42\n\n\n# ---- build_access_graph ----\n\ndef test_goodhart_build_graph_node_ids_match_keys():\n    \"\"\"In the returned AccessGraph, every node's id field must match its dict key.\"\"\"\n    nodes = {}\n    for name in ['alpha', 'beta', 'gamma']:\n        nodes[name] = AccessGraphNode(\n            id=name, data_access=[], authority_domains=[], edges=[],\n            trust_tier=TrustTier.LOW, metadata={}\n        )\n    g = build_access_graph(nodes)\n    for key, node in g.nodes.items():\n        assert node.id == key\n\n\ndef test_goodhart_build_graph_mutual_edges():\n    \"\"\"Graph with bidirectional edges between nodes must be valid.\"\"\"\n    nodes = {\n        'a': AccessGraphNode(id='a', data_access=[], authority_domains=[], edges=['b'],\n                             trust_tier=TrustTier.LOW, metadata={}),\n        'b': AccessGraphNode(id='b', data_access=[], authority_domains=[], edges=['a', 'c'],\n                             trust_tier=TrustTier.LOW, metadata={}),\n        'c': AccessGraphNode(id='c', data_access=[], authority_domains=[], edges=['b'],\n                             trust_tier=TrustTier.LOW, metadata={}),\n    }\n    g = build_access_graph(nodes)\n    assert len(g.nodes) == 3\n\n\ndef test_goodhart_build_graph_fully_connected():\n    \"\"\"A fully connected graph where every node has edges to all other nodes must be valid.\"\"\"\n    names = ['n1', 'n2', 'n3', 'n4']\n    nodes = {}\n    for name in names:\n        others = [n for n in names if n != name]\n        nodes[name] = AccessGraphNode(\n            id=name, data_access=[], authority_domains=[], edges=others,\n            trust_tier=TrustTier.ESTABLISHED, metadata={}\n        )\n    g = build_access_graph(nodes)\n    assert len(g.nodes) == 4\n    for key, node in g.nodes.items():\n        for edge in node.edges:\n            assert edge in g.nodes\n\n\ndef test_goodhart_access_graph_mutable():\n    \"\"\"AccessGraph must be mutable (not frozen) to allow incremental construction.\"\"\"\n    nodes = {\n        'x': AccessGraphNode(id='x', data_access=[], authority_domains=[], edges=[],\n                             trust_tier=TrustTier.LOW, metadata={})\n    }\n    g = build_access_graph(nodes)\n    # Should be able to reassign version\n    g.version = \"2.0\"\n    assert g.version == \"2.0\"\n\n\ndef test_goodhart_build_graph_version_field():\n    \"\"\"The returned AccessGraph must have a version field that is a string.\"\"\"\n    nodes = {\n        'x': AccessGraphNode(id='x', data_access=[], authority_domains=[], edges=[],\n                             trust_tier=TrustTier.LOW, metadata={})\n    }\n    g = build_access_graph(nodes)\n    assert isinstance(g.version, str)\n\n\n# ---- parse_ledger_line ----\n\ndef test_goodhart_parse_ledger_line_extra_fields_rejected():\n    \"\"\"JSON with all required fields plus extra unknown fields must be rejected.\"\"\"\n    entry = create_trust_ledger_entry('node1', TrustEventType.AUDIT_PASS, 0.1, 0.5, 0, 'test')\n    serialized = serialize_ledger_line(entry)\n    data = json.loads(serialized)\n    data['extra_unexpected_field'] = 'should_fail'\n    line_with_extra = json.dumps(data)\n    with pytest.raises((ValueError, ValidationError, Exception)):\n        parse_ledger_line(line_with_extra)\n\n\ndef test_goodhart_parse_ledger_line_missing_required_field():\n    \"\"\"JSON missing a required field for TrustLedgerEntry must be rejected.\"\"\"\n    entry = create_trust_ledger_entry('node1', TrustEventType.AUDIT_PASS, 0.1, 0.5, 0, 'test')\n    serialized = serialize_ledger_line(entry)\n    data = json.loads(serialized)\n    # Remove a required field\n    if 'weight' in data:\n        del data['weight']\n    elif 'node' in data:\n        del data['node']\n    line_missing = json.dumps(data)\n    with pytest.raises((ValueError, ValidationError, Exception)):\n        parse_ledger_line(line_missing)\n\n\ndef test_goodhart_parse_ledger_line_invalid_event_type():\n    \"\"\"JSON with all TrustLedgerEntry fields but an invalid event type string must be rejected.\"\"\"\n    entry = create_trust_ledger_entry('node1', TrustEventType.AUDIT_PASS, 0.1, 0.5, 0, 'test')\n    serialized = serialize_ledger_line(entry)\n    data = json.loads(serialized)\n    data['event'] = 'NONEXISTENT_EVENT'\n    line_bad_event = json.dumps(data)\n    with pytest.raises((ValueError, ValidationError, Exception)):\n        parse_ledger_line(line_bad_event)\n\n\ndef test_goodhart_parse_line_tab_only_whitespace():\n    \"\"\"A line containing only tabs should be treated as empty/whitespace-only.\"\"\"\n    with pytest.raises((ValueError, ValidationError, Exception)):\n        parse_ledger_line('\\t\\t')\n\n\ndef test_goodhart_parse_line_json_array():\n    \"\"\"Valid JSON that is an array (not object) must be rejected.\"\"\"\n    with pytest.raises((ValueError, ValidationError, Exception)):\n        parse_ledger_line('[1, 2, 3]')\n\n\ndef test_goodhart_parse_line_json_null():\n    \"\"\"The JSON literal 'null' must be rejected.\"\"\"\n    with pytest.raises((ValueError, ValidationError, Exception)):\n        parse_ledger_line('null')\n\n\n# ---- serialize_ledger_line ----\n\ndef test_goodhart_serialize_roundtrip_checkpoint():\n    \"\"\"Serialization and parsing of LedgerCheckpoint must round-trip exactly.\"\"\"\n    cp = create_ledger_checkpoint(10, 'ab' * 32, 5)\n    serialized = serialize_ledger_line(cp)\n    parsed = parse_ledger_line(serialized)\n    assert isinstance(parsed, LedgerCheckpoint)\n    assert parsed.sequence_number == cp.sequence_number\n    assert parsed.checksum == cp.checksum\n    assert parsed.entry_count == cp.entry_count\n    assert parsed.ts == cp.ts\n\n\ndef test_goodhart_serialize_deterministic_repeated_calls():\n    \"\"\"Calling serialize_ledger_line multiple times on the same entry must produce identical output.\"\"\"\n    entry = create_trust_ledger_entry('svc', TrustEventType.AUDIT_PASS, 0.1, 0.5, 0, 'test')\n    s1 = serialize_ledger_line(entry)\n    s2 = serialize_ledger_line(entry)\n    s3 = serialize_ledger_line(entry)\n    assert s1 == s2\n    assert s2 == s3\n\n\ndef test_goodhart_serialize_entry_is_valid_json():\n    \"\"\"Serialized output must be parseable as valid JSON by json.loads.\"\"\"\n    entry = create_trust_ledger_entry('svc', TrustEventType.AUDIT_PASS, 0.1, 0.5, 0, 'test')\n    cp = create_ledger_checkpoint(0, 'c' * 64, 1)\n\n    data1 = json.loads(serialize_ledger_line(entry))\n    assert isinstance(data1, dict)\n\n    data2 = json.loads(serialize_ledger_line(cp))\n    assert isinstance(data2, dict)\n\n\n# ---- create_error_response ----\n\ndef test_goodhart_error_response_only_node_provided():\n    \"\"\"When only node is provided, details should contain 'node' but not 'field' or 'domain'\n    (or those keys should be absent/empty).\"\"\"\n    resp = create_error_response('err1', 'something failed', 'svc-1', '', '')\n    assert 'node' in resp.details\n    assert resp.details['node'] == 'svc-1'\n    # Empty-string context fields should NOT appear in details\n    # (or if they do, they should be empty — the key point is node IS there)\n\n\ndef test_goodhart_error_response_only_field_provided():\n    \"\"\"When only field is provided, details should contain 'field' key with the given value.\"\"\"\n    resp = create_error_response('err2', 'bad field', '', 'email', '')\n    assert 'field' in resp.details\n    assert resp.details['field'] == 'email'\n\n\ndef test_goodhart_error_response_only_domain_provided():\n    \"\"\"When only domain is provided, details should contain 'domain' key with the given value.\"\"\"\n    resp = create_error_response('err3', 'bad domain', '', '', 'auth/core')\n    assert 'domain' in resp.details\n    assert resp.details['domain'] == 'auth/core'\n\n\ndef test_goodhart_error_response_preserves_error_code():\n    \"\"\"The returned ErrorResponse must preserve the exact error_code string.\"\"\"\n    resp = create_error_response('CUSTOM_CODE_42', 'msg', 'n', '', '')\n    assert resp.error_code == 'CUSTOM_CODE_42'\n\n\ndef test_goodhart_error_response_preserves_message():\n    \"\"\"The returned ErrorResponse must preserve the exact message string.\"\"\"\n    msg = 'A long detailed error message with special chars: <>&'\n    resp = create_error_response('err', msg, 'n', '', '')\n    assert resp.message == msg\n\n\n# ---- validate_canary_fingerprint ----\n\ndef test_goodhart_canary_uuid_v4_variant_check():\n    \"\"\"UUID v4 validation must check the variant bits (position 19 must be 8, 9, a, or b).\"\"\"\n    # Valid version nibble (4) but invalid variant (c instead of 8/9/a/b)\n    bad_variant = '12345678-1234-4abc-cabc-123456789abc'\n    with pytest.raises((ValueError, Exception)):\n        validate_canary_fingerprint(bad_variant)\n\n\ndef test_goodhart_canary_uuid_embedded_in_complex_string():\n    \"\"\"UUID v4 embedded within a longer complex string must still be detected as valid.\"\"\"\n    fp = 'prefix-data-12345678-1234-4abc-9abc-123456789abc-suffix-more'\n    assert validate_canary_fingerprint(fp) is True\n\n\ndef test_goodhart_canary_uuid_uppercase_rejected():\n    \"\"\"UUID v4 with uppercase hex characters should not match the lowercase-only contract regex.\"\"\"\n    upper_uuid = '12345678-1234-4ABC-9ABC-123456789ABC'\n    with pytest.raises((ValueError, Exception)):\n        validate_canary_fingerprint(upper_uuid)\n\n\ndef test_goodhart_canary_uuid_v5_rejected():\n    \"\"\"UUID v5 (version nibble = 5) must be rejected as not v4.\"\"\"\n    v5_uuid = '12345678-1234-5abc-9abc-123456789abc'\n    with pytest.raises((ValueError, Exception)):\n        validate_canary_fingerprint(v5_uuid)\n\n\ndef test_goodhart_canary_uuid_v3_rejected():\n    \"\"\"UUID v3 (version nibble = 3) must be rejected as not v4.\"\"\"\n    v3_uuid = '12345678-1234-3abc-9abc-123456789abc'\n    with pytest.raises((ValueError, Exception)):\n        validate_canary_fingerprint(v3_uuid)\n\n\n# ---- classify_field ----\n\ndef test_goodhart_classify_field_fnmatch_wildcard_various():\n    \"\"\"fnmatch rules must support standard wildcard patterns like '*_ssn' matching any prefix.\"\"\"\n    rule = ClassificationRule(\n        field_pattern='*_ssn', data_tier=DataTier.PII, is_regex=False, description='SSN fields'\n    )\n    assert classify_field('user_ssn', [rule]) == DataTier.PII\n    assert classify_field('employee_ssn', [rule]) == DataTier.PII\n    assert classify_field('ssn_number', [rule]) == DataTier.PUBLIC  # doesn't match *_ssn\n\n\ndef test_goodhart_classify_field_fnmatch_question_mark():\n    \"\"\"fnmatch rules must support '?' single-character wildcard.\"\"\"\n    rule = ClassificationRule(\n        field_pattern='field_?', data_tier=DataTier.FINANCIAL, is_regex=False, description='single char'\n    )\n    assert classify_field('field_a', [rule]) == DataTier.FINANCIAL\n    assert classify_field('field_ab', [rule]) == DataTier.PUBLIC  # '?' matches exactly one char\n\n\ndef test_goodhart_classify_field_third_rule_matches():\n    \"\"\"When the first two rules don't match but the third does, the third rule's tier must be returned.\"\"\"\n    rules = [\n        ClassificationRule(field_pattern='aaa*', data_tier=DataTier.AUTH, is_regex=False, description='r1'),\n        ClassificationRule(field_pattern='bbb*', data_tier=DataTier.FINANCIAL, is_regex=False, description='r2'),\n        ClassificationRule(field_pattern='ccc*', data_tier=DataTier.COMPLIANCE, is_regex=False, description='r3'),\n    ]\n    assert classify_field('ccc_field', rules) == DataTier.COMPLIANCE\n\n\ndef test_goodhart_classify_field_regex_no_match_returns_public():\n    \"\"\"When regex rules exist but none match, PUBLIC must be returned.\"\"\"\n    rule = ClassificationRule(\n        field_pattern='^zzz_.*$', data_tier=DataTier.AUTH, is_regex=True, description='no match'\n    )\n    assert classify_field('user_email', [rule]) == DataTier.PUBLIC\n\n\ndef test_goodhart_classify_field_regex_matches():\n    \"\"\"Regex rule that matches must return the correct tier.\"\"\"\n    rule = ClassificationRule(\n        field_pattern='.*password.*', data_tier=DataTier.AUTH, is_regex=True, description='password fields'\n    )\n    assert classify_field('user_password_hash', [rule]) == DataTier.AUTH\n\n\ndef test_goodhart_classify_field_order_dependent_mixed_types():\n    \"\"\"First-match-wins must work correctly when mixing fnmatch and regex rules.\"\"\"\n    rules = [\n        ClassificationRule(field_pattern='secret_*', data_tier=DataTier.AUTH, is_regex=False, description='fnmatch'),\n        ClassificationRule(field_pattern='.*secret.*', data_tier=DataTier.COMPLIANCE, is_regex=True, description='regex'),\n    ]\n    # 'secret_key' matches first rule (fnmatch), should return AUTH not COMPLIANCE\n    assert classify_field('secret_key', rules) == DataTier.AUTH\n\n\n# ---- Frozen/extra='forbid' invariants for structs NOT covered by visible tests ----\n\ndef test_goodhart_consistency_finding_frozen_and_forbid():\n    \"\"\"ConsistencyFinding must be frozen (no mutation) and forbid extra fields.\"\"\"\n    from datetime import datetime, timezone\n    ts = datetime.now(timezone.utc).isoformat()\n    cf = ConsistencyFinding(\n        ts=ts, node='svc1', severity=FindingSeverity.HIGH,\n        field='name', adapter_value='real', claimed_value='fake', detail='mismatch'\n    )\n    with pytest.raises(Exception):\n        cf.node = 'other'\n\n    with pytest.raises((ValidationError, Exception)):\n        ConsistencyFinding(\n            ts=ts, node='svc1', severity=FindingSeverity.HIGH,\n            field='name', adapter_value='real', claimed_value='fake', detail='mismatch',\n            extra_field='nope'\n        )\n\n\ndef test_goodhart_access_finding_frozen_and_forbid():\n    \"\"\"AccessFinding must be frozen and forbid extra fields.\"\"\"\n    from datetime import datetime, timezone\n    ts = datetime.now(timezone.utc).isoformat()\n    af = AccessFinding(\n        ts=ts, node='svc1', severity=FindingSeverity.MEDIUM,\n        data_tier=DataTier.PII, authority_domain='auth/domain',\n        violation_type='unauthorized', detail='bad access'\n    )\n    with pytest.raises(Exception):\n        af.node = 'other'\n\n    with pytest.raises((ValidationError, Exception)):\n        AccessFinding(\n            ts=ts, node='svc1', severity=FindingSeverity.MEDIUM,\n            data_tier=DataTier.PII, authority_domain='auth/domain',\n            violation_type='unauthorized', detail='bad access',\n            bonus='nope'\n        )\n\n\ndef test_goodhart_taint_finding_frozen_and_forbid():\n    \"\"\"TaintFinding must be frozen and forbid extra fields.\"\"\"\n    from datetime import datetime, timezone\n    ts = datetime.now(timezone.utc).isoformat()\n    tf = TaintFinding(\n        ts=ts, source_node='src', sink_node='sink',\n        severity=FindingSeverity.CRITICAL, data_tier=DataTier.FINANCIAL,\n        path=['src', 'mid', 'sink'], detail='data leak'\n    )\n    with pytest.raises(Exception):\n        tf.source_node = 'other'\n\n    with pytest.raises((ValidationError, Exception)):\n        TaintFinding(\n            ts=ts, source_node='src', sink_node='sink',\n            severity=FindingSeverity.CRITICAL, data_tier=DataTier.FINANCIAL,\n            path=['src', 'mid', 'sink'], detail='data leak',\n            extra='nope'\n        )\n\n\ndef test_goodhart_canary_record_frozen_and_forbid():\n    \"\"\"CanaryRecord must be frozen and forbid extra fields.\"\"\"\n    from datetime import datetime, timezone\n    ts = datetime.now(timezone.utc).isoformat()\n    cr = CanaryRecord(\n        ts=ts, canary_id='c1', fingerprint='fp',\n        data_tier=DataTier.PII, target_node='node1',\n        triggered=False, triggered_at='', triggered_by_node=''\n    )\n    with pytest.raises(Exception):\n        cr.triggered = True\n\n    with pytest.raises((ValidationError, Exception)):\n        CanaryRecord(\n            ts=ts, canary_id='c1', fingerprint='fp',\n            data_tier=DataTier.PII, target_node='node1',\n            triggered=False, triggered_at='', triggered_by_node='',\n            extra_field='nope'\n        )\n\n\ndef test_goodhart_classification_rule_frozen_and_forbid():\n    \"\"\"ClassificationRule must be frozen and forbid extra fields.\"\"\"\n    rule = ClassificationRule(\n        field_pattern='*', data_tier=DataTier.PUBLIC, is_regex=False, description='all'\n    )\n    with pytest.raises(Exception):\n        rule.field_pattern = 'changed'\n\n    with pytest.raises((ValidationError, Exception)):\n        ClassificationRule(\n            field_pattern='*', data_tier=DataTier.PUBLIC, is_regex=False,\n            description='all', extra='nope'\n        )\n\n\ndef test_goodhart_trust_score_request_extra_forbid():\n    \"\"\"TrustScoreRequest must reject extra fields during construction.\"\"\"\n    with pytest.raises((ValidationError, Exception)):\n        TrustScoreRequest(node='svc1', extra_field='nope')\n\n\ndef test_goodhart_blast_radius_request_extra_forbid():\n    \"\"\"BlastRadiusRequest must reject extra fields during construction.\"\"\"\n    with pytest.raises((ValidationError, Exception)):\n        BlastRadiusRequest(node='svc1', max_depth=3, extra_field='nope')\n\n\ndef test_goodhart_findings_request_extra_forbid():\n    \"\"\"FindingsRequest must reject extra fields during construction.\"\"\"\n    with pytest.raises((ValidationError, Exception)):\n        FindingsRequest(node='svc1', severity_min=FindingSeverity.LOW, limit=10, extra_field='nope')\n\n\ndef test_goodhart_conflict_record_frozen_and_forbid():\n    \"\"\"ConflictRecord must be frozen and forbid extra fields.\"\"\"\n    from datetime import datetime, timezone\n    ts = datetime.now(timezone.utc).isoformat()\n    cr = ConflictRecord(\n        ts=ts, conflict_id='c1', nodes=['a', 'b'],\n        authority_domain='dom/1', conflict_type='overlap',\n        detail='conflict', resolved=False\n    )\n    with pytest.raises(Exception):\n        cr.resolved = True\n\n    with pytest.raises((ValidationError, Exception)):\n        ConflictRecord(\n            ts=ts, conflict_id='c1', nodes=['a', 'b'],\n            authority_domain='dom/1', conflict_type='overlap',\n            detail='conflict', resolved=False, extra='nope'\n        )\n\n\ndef test_goodhart_stigmery_signal_frozen_and_forbid():\n    \"\"\"StigmerySignal must be frozen and forbid extra fields.\"\"\"\n    from datetime import datetime, timezone\n    ts = datetime.now(timezone.utc).isoformat()\n    ss = StigmerySignal(\n        ts=ts, signal_id='s1', source_node='node1',\n        signal_type='alert', payload={}, ttl_seconds=300\n    )\n    with pytest.raises(Exception):\n        ss.ttl_seconds = 600\n\n    with pytest.raises((ValidationError, Exception)):\n        StigmerySignal(\n            ts=ts, signal_id='s1', source_node='node1',\n            signal_type='alert', payload={}, ttl_seconds=300, extra='nope'\n        )\n\n\ndef test_goodhart_feedback_report_frozen_and_forbid():\n    \"\"\"FeedbackReport must be frozen and forbid extra fields.\"\"\"\n    from datetime import datetime, timezone\n    ts = datetime.now(timezone.utc).isoformat()\n    fr = FeedbackReport(\n        ts=ts, report_id='r1', sections=[], total_findings=0, generated_by='node1'\n    )\n    with pytest.raises(Exception):\n        fr.total_findings = 5\n\n    with pytest.raises((ValidationError, Exception)):\n        FeedbackReport(\n            ts=ts, report_id='r1', sections=[], total_findings=0,\n            generated_by='node1', extra='nope'\n        )\n\n\ndef test_goodhart_feedback_report_section_frozen_and_forbid():\n    \"\"\"FeedbackReportSection must be frozen and forbid extra fields.\"\"\"\n    frs = FeedbackReportSection(\n        section_name='summary', content='all good', findings_count=0, metadata={}\n    )\n    with pytest.raises(Exception):\n        frs.content = 'changed'\n\n    with pytest.raises((ValidationError, Exception)):\n        FeedbackReportSection(\n            section_name='summary', content='all good',\n            findings_count=0, metadata={}, extra='nope'\n        )\n\n\n# ---- Enum string values stability ----\n\ndef test_goodhart_enum_values_are_strings():\n    \"\"\"All enum members must be instances of str (StrEnum).\"\"\"\n    assert isinstance(TrustTier.PROBATIONARY, str)\n    assert isinstance(TrustTier.TRUSTED, str)\n    assert isinstance(DataTier.PII, str)\n    assert isinstance(DataTier.COMPLIANCE, str)\n    assert isinstance(BlastTier.SOAK, str)\n    assert isinstance(BlastTier.HUMAN_GATE, str)\n    assert isinstance(FindingSeverity.CRITICAL, str)\n    assert isinstance(FindingSeverity.INFO, str)\n    assert isinstance(TrustEventType.DECAY, str)\n    assert isinstance(TrustEventType.INITIAL, str)\n\n\ndef test_goodhart_enum_json_serialization():\n    \"\"\"Enums used in Pydantic models should serialize to their string values in JSON.\"\"\"\n    from datetime import datetime, timezone\n    ts = datetime.now(timezone.utc).isoformat()\n    node = AccessGraphNode(\n        id='test', data_access=[], authority_domains=[], edges=[],\n        trust_tier=TrustTier.HIGH, metadata={}\n    )\n    dumped = node.model_dump()\n    # trust_tier should be serializable as string\n    tier_val = dumped['trust_tier']\n    assert isinstance(tier_val, str) or hasattr(tier_val, 'value')\n\n\ndef test_goodhart_enum_member_count_exact():\n    \"\"\"Each enum must have exactly the specified number of members — no extras.\"\"\"\n    assert len(TrustTier) == 5\n    assert len(DataTier) == 5\n    assert len(BlastTier) == 3\n    assert len(FindingSeverity) == 5\n    assert len(TrustEventType) == 9\n\n\n# ---- IEEE 754 fidelity across the full pipeline ----\n\ndef test_goodhart_ieee754_subnormal_roundtrip():\n    \"\"\"Very small float values near zero must round-trip through create/serialize/parse.\"\"\"\n    tiny = 1e-15\n    entry = create_trust_ledger_entry('n', TrustEventType.AUDIT_PASS, tiny, 0.0, 0, 'tiny')\n    assert entry.score_after == tiny\n    serialized = serialize_ledger_line(entry)\n    parsed = parse_ledger_line(serialized)\n    assert parsed.score_after == tiny\n    assert parsed.score_before == 0.0\n\n\ndef test_goodhart_ieee754_one_third_roundtrip():\n    \"\"\"The value 1/3 (repeating decimal) must round-trip with full IEEE 754 fidelity.\"\"\"\n    val = 1.0 / 3.0\n    entry = create_trust_ledger_entry('n', TrustEventType.AUDIT_PASS, 0.0, val, 0, 'third')\n    serialized = serialize_ledger_line(entry)\n    parsed = parse_ledger_line(serialized)\n    assert parsed.score_before == val\n\n\n# ---- Misc edge cases ----\n\ndef test_goodhart_node_id_underscore_only():\n    \"\"\"A NodeId consisting of just underscores should be valid per [a-zA-Z0-9._-]+.\"\"\"\n    e = create_trust_ledger_entry('___', TrustEventType.AUDIT_PASS, 0.1, 0.5, 0, 'test')\n    assert e.node == '___'\n\n\ndef test_goodhart_node_id_single_char():\n    \"\"\"A single character NodeId should be valid.\"\"\"\n    e = create_trust_ledger_entry('Z', TrustEventType.AUDIT_PASS, 0.1, 0.5, 0, 'test')\n    assert e.node == 'Z'\n\n\ndef test_goodhart_score_to_tier_at_0999():\n    \"\"\"score_to_tier at 0.999 should return TRUSTED (not out of range).\"\"\"\n    assert score_to_tier(0.999) == TrustTier.TRUSTED\n\n\ndef test_goodhart_score_to_tier_at_001():\n    \"\"\"score_to_tier at 0.01 should return PROBATIONARY.\"\"\"\n    assert score_to_tier(0.01) == TrustTier.PROBATIONARY\n\n\ndef test_goodhart_build_graph_invalid_node_id_key():\n    \"\"\"A key in the dict that is not a valid NodeId must be rejected.\"\"\"\n    nodes = {\n        'valid-node': AccessGraphNode(\n            id='valid-node', data_access=[], authority_domains=[], edges=[],\n            trust_tier=TrustTier.LOW, metadata={}\n        ),\n        'invalid node': AccessGraphNode(\n            id='invalid node', data_access=[], authority_domains=[], edges=[],\n            trust_tier=TrustTier.LOW, metadata={}\n        ),\n    }\n    with pytest.raises((ValueError, ValidationError, Exception)):\n        build_access_graph(nodes)\n"
+}

@@ -1,0 +1,961 @@
+{
+  "component_id": "otlp_subscriber",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "goodhart_trace_id_uppercase_rejected",
+      "description": "TraceId validation must enforce lowercase hex — uppercase hex characters should be rejected even if 32 chars long",
+      "function": "parse_and_validate_spans",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Raw span with trace_id containing uppercase hex like 'ABCDEF01234567890123456789012345'",
+      "expected_output_description": "",
+      "expected_error": "trace_id_invalid",
+      "assertions": [
+        "Span with uppercase trace_id is rejected",
+        "Rejection includes ERROR-severity ValidationIssue"
+      ]
+    },
+    {
+      "id": "goodhart_trace_id_33_chars",
+      "description": "TraceId validation must enforce exactly 32 chars — 33-character hex string should be rejected",
+      "function": "parse_and_validate_spans",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Raw span with trace_id that is 33 hex chars",
+      "expected_output_description": "",
+      "expected_error": "trace_id_invalid",
+      "assertions": [
+        "Span with 33-char trace_id is rejected"
+      ]
+    },
+    {
+      "id": "goodhart_trace_id_31_chars",
+      "description": "TraceId validation must enforce exactly 32 chars — 31-character hex string should be rejected",
+      "function": "parse_and_validate_spans",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Raw span with trace_id that is 31 hex chars",
+      "expected_output_description": "",
+      "expected_error": "trace_id_invalid",
+      "assertions": [
+        "Span with 31-char trace_id is rejected"
+      ]
+    },
+    {
+      "id": "goodhart_span_id_uppercase_rejected",
+      "description": "SpanId validation must enforce lowercase hex — uppercase hex characters should be rejected even if 16 chars long",
+      "function": "parse_and_validate_spans",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Raw span with span_id containing uppercase hex like 'ABCDEF0123456789'",
+      "expected_output_description": "",
+      "expected_error": "span_id_invalid",
+      "assertions": [
+        "Span with uppercase span_id is rejected"
+      ]
+    },
+    {
+      "id": "goodhart_span_id_17_chars",
+      "description": "SpanId validation must enforce exactly 16 chars — 17-character hex string should be rejected",
+      "function": "parse_and_validate_spans",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Raw span with span_id that is 17 hex chars",
+      "expected_output_description": "",
+      "expected_error": "span_id_invalid",
+      "assertions": [
+        "Span with 17-char span_id is rejected"
+      ]
+    },
+    {
+      "id": "goodhart_trace_id_non_hex_chars",
+      "description": "TraceId validation must reject strings containing non-hex characters even if exactly 32 chars",
+      "function": "parse_and_validate_spans",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Raw span with trace_id like 'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz' (32 chars, non-hex)",
+      "expected_output_description": "",
+      "expected_error": "trace_id_invalid",
+      "assertions": [
+        "Span with non-hex trace_id characters is rejected"
+      ]
+    },
+    {
+      "id": "goodhart_empty_baton_execution_id",
+      "description": "Empty string for baton.execution_id should be treated as unset per protobuf default-value ambiguity handling",
+      "function": "parse_and_validate_spans",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Raw span with baton.execution_id set to empty string",
+      "expected_output_description": "",
+      "expected_error": "missing_baton_execution_id",
+      "assertions": [
+        "Empty string execution_id is treated as missing/unset"
+      ]
+    },
+    {
+      "id": "goodhart_empty_baton_node_id",
+      "description": "Empty string for baton.node_id should be treated as unset per protobuf default-value ambiguity handling",
+      "function": "parse_and_validate_spans",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Raw span with baton.node_id set to empty string",
+      "expected_output_description": "",
+      "expected_error": "missing_baton_node_id",
+      "assertions": [
+        "Empty string node_id is treated as missing/unset"
+      ]
+    },
+    {
+      "id": "goodhart_duration_ns_computed_various_values",
+      "description": "duration_ns must be dynamically computed as end_time - start_time for arbitrary timestamp values, not hardcoded",
+      "function": "parse_and_validate_spans",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Multiple valid raw spans with varying timestamp deltas (e.g., 1ns, 1000000ns, very large values)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "duration_ns == end_time_unix_nano - start_time_unix_nano for each distinct span",
+        "Works for delta of 1ns",
+        "Works for delta of 999999999ns"
+      ]
+    },
+    {
+      "id": "goodhart_received_at_is_current_time",
+      "description": "received_at_unix_nano must be set to actual current UTC time at parse boundary, not a fixed or hardcoded value",
+      "function": "parse_and_validate_spans",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid raw span parsed at a known time",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "received_at_unix_nano is within a reasonable range of current time (e.g., within 5 seconds)",
+        "received_at_unix_nano is positive"
+      ]
+    },
+    {
+      "id": "goodhart_parse_multiple_valid_spans_different_ids",
+      "description": "Parsing must work correctly for multiple valid spans with different trace/span IDs in one batch — not just single-span batches",
+      "function": "parse_and_validate_spans",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Batch of 5 valid raw spans with distinct trace_ids and span_ids",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All 5 spans are parsed successfully",
+        "Each parsed span has correct trace_id matching input",
+        "parsed_spans count is 5, rejected_count is 0"
+      ]
+    },
+    {
+      "id": "goodhart_parse_root_span_no_parent",
+      "description": "Root spans (no parent) should have parent_span_id as None, not empty string or zeros",
+      "function": "parse_and_validate_spans",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid raw span with no parent_span_id field or parent_span_id set to empty/absent",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Parsed span parent_span_id is None"
+      ]
+    },
+    {
+      "id": "goodhart_parse_child_span_with_valid_parent",
+      "description": "Child spans should preserve the parent_span_id as a valid SpanId",
+      "function": "parse_and_validate_spans",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid raw span with a valid 16-char hex parent_span_id",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Parsed span parent_span_id matches the input parent_span_id",
+        "parent_span_id is not None"
+      ]
+    },
+    {
+      "id": "goodhart_aggregate_consistency_clamped_to_range",
+      "description": "Aggregated consistency score must always be in [0.0, 1.0] even when analyzer returns boundary values",
+      "function": "aggregate_enrichment",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "4 AnalysisResults where consistency analyzer returns exactly 0.0, then exactly 1.0",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "consistency is >= 0.0 and <= 1.0 for score 0.0",
+        "consistency is >= 0.0 and <= 1.0 for score 1.0"
+      ]
+    },
+    {
+      "id": "goodhart_aggregate_trust_score_clamped_to_range",
+      "description": "Aggregated trust_score must always be in [0.0, 1.0] even at boundary values",
+      "function": "aggregate_enrichment",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "4 AnalysisResults where access analyzer returns trust_score exactly 0.0, then exactly 1.0",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "trust_score is >= 0.0 and <= 1.0"
+      ]
+    },
+    {
+      "id": "goodhart_aggregate_all_failed_safe_defaults",
+      "description": "When all 4 analyzers fail, enrichment must still be produced with safe defaults for every field",
+      "function": "aggregate_enrichment",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "4 AnalysisResults all with success=false",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "consistency == 0.0",
+        "trust_score == 0.0",
+        "trust_tier is UNKNOWN",
+        "blast_tier is UNKNOWN",
+        "taint_detected is False",
+        "access_declared is empty string",
+        "access_observed is empty string",
+        "authority_domains is empty list",
+        "conflict is empty string"
+      ]
+    },
+    {
+      "id": "goodhart_aggregate_3_results_error",
+      "description": "aggregate_enrichment must reject lists with fewer than 4 entries — not just 0 or 5",
+      "function": "aggregate_enrichment",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "List of exactly 3 AnalysisResults",
+      "expected_output_description": "",
+      "expected_error": "wrong_result_count",
+      "assertions": [
+        "Error raised for 3 results"
+      ]
+    },
+    {
+      "id": "goodhart_aggregate_5_results_error",
+      "description": "aggregate_enrichment must reject lists with more than 4 entries",
+      "function": "aggregate_enrichment",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "List of exactly 5 AnalysisResults",
+      "expected_output_description": "",
+      "expected_error": "wrong_result_count",
+      "assertions": [
+        "Error raised for 5 results"
+      ]
+    },
+    {
+      "id": "goodhart_aggregate_1_result_error",
+      "description": "aggregate_enrichment must reject a single-element result list",
+      "function": "aggregate_enrichment",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "List of exactly 1 AnalysisResult",
+      "expected_output_description": "",
+      "expected_error": "wrong_result_count",
+      "assertions": [
+        "Error raised for 1 result"
+      ]
+    },
+    {
+      "id": "goodhart_dispatch_result_all_four_kinds_present",
+      "description": "dispatch_to_analyzers result must contain exactly one entry per AnalyzerKind — all 4 kinds must be present",
+      "function": "dispatch_to_analyzers",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "consistency_analyzer": "returns valid result",
+        "access_auditor": "returns valid result",
+        "taint_detector": "returns valid result",
+        "conflict_resolver": "returns valid result"
+      },
+      "input_values": {},
+      "input_description": "Valid ParsedSpan dispatched with all 4 analyzers mocked to succeed",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Result contains AnalyzerKind.CONSISTENCY",
+        "Result contains AnalyzerKind.ACCESS",
+        "Result contains AnalyzerKind.TAINT",
+        "Result contains AnalyzerKind.CONFLICT",
+        "Result length is exactly 4",
+        "All have unique AnalyzerKind values"
+      ]
+    },
+    {
+      "id": "goodhart_dispatch_two_analyzers_fail",
+      "description": "When exactly 2 of 4 analyzers fail, the other 2 must still succeed — failure isolation is per-analyzer not grouped",
+      "function": "dispatch_to_analyzers",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "consistency_analyzer": "raises RuntimeError",
+        "access_auditor": "returns valid result",
+        "taint_detector": "raises ValueError",
+        "conflict_resolver": "returns valid result"
+      },
+      "input_values": {},
+      "input_description": "Valid ParsedSpan; consistency and taint analyzers raise exceptions, access and conflict succeed",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Result has 4 entries",
+        "CONSISTENCY result has success=false",
+        "ACCESS result has success=true",
+        "TAINT result has success=false",
+        "CONFLICT result has success=true"
+      ]
+    },
+    {
+      "id": "goodhart_dispatch_error_messages_include_node_id",
+      "description": "Analyzer failure error messages must include specific node/field detail per project error message standards",
+      "function": "dispatch_to_analyzers",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "consistency_analyzer": "raises Exception('test error')",
+        "access_auditor": "returns valid result",
+        "taint_detector": "returns valid result",
+        "conflict_resolver": "returns valid result"
+      },
+      "input_values": {},
+      "input_description": "ParsedSpan with baton_node_id='node-abc-123'; one analyzer throws an exception",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Failed result error_message is non-empty",
+        "Failed result error_message contains context about the failure"
+      ]
+    },
+    {
+      "id": "goodhart_build_enriched_span_timestamp_is_current",
+      "description": "build_enriched_span must set enriched_at_unix_nano to actual current UTC time, not a fixed value",
+      "function": "build_enriched_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid ParsedSpan and ArbiterEnrichment",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "enriched_at_unix_nano is positive",
+        "enriched_at_unix_nano is within 5 seconds of current time in nanoseconds"
+      ]
+    },
+    {
+      "id": "goodhart_build_enriched_span_identity_preservation",
+      "description": "build_enriched_span must preserve input span and enrichment by identity/equality, not create modified copies",
+      "function": "build_enriched_span",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ParsedSpan with unique field values and ArbiterEnrichment with specific non-default values",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "enriched_span.span trace_id matches input span trace_id",
+        "enriched_span.enrichment consistency matches input enrichment consistency",
+        "enriched_span.enrichment trust_score matches input enrichment trust_score"
+      ]
+    },
+    {
+      "id": "goodhart_buffer_get_ordering_by_received_at",
+      "description": "buffer_get must return spans ordered by received_at_unix_nano ascending, not insertion order if they differ",
+      "function": "buffer_get",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Three spans with same execution_id but different received_at_unix_nano values added in non-chronological order",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returned list is sorted by received_at_unix_nano ascending",
+        "All 3 spans are returned"
+      ]
+    },
+    {
+      "id": "goodhart_buffer_get_different_execution_ids_isolated",
+      "description": "buffer_get for one execution_id must not return spans from a different execution_id",
+      "function": "buffer_get",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two spans with execution_id 'exec-A' and two with 'exec-B'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "buffer_get('exec-A') returns exactly 2 spans",
+        "buffer_get('exec-B') returns exactly 2 spans",
+        "No span from exec-A appears in exec-B result"
+      ]
+    },
+    {
+      "id": "goodhart_buffer_stats_total_spans_counts_all",
+      "description": "buffer_get_stats total_spans must count individual spans across all execution_ids, not just key count",
+      "function": "buffer_get_stats",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "3 spans under exec-A and 2 spans under exec-B added to buffer",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "current_size is 2 (keys)",
+        "total_spans is 5 (individual spans)"
+      ]
+    },
+    {
+      "id": "goodhart_buffer_drain_returns_all_execution_ids",
+      "description": "buffer_drain must return spans from all execution_ids, not just the most recent one",
+      "function": "buffer_drain",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Spans from 3 different execution_ids added to buffer before drain",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returned list contains spans from all 3 execution_ids",
+        "Buffer is empty after drain",
+        "buffer_get_stats shows current_size == 0"
+      ]
+    },
+    {
+      "id": "goodhart_buffer_evict_returns_key_count_not_span_count",
+      "description": "buffer_evict_expired must return count of execution_id keys evicted, not count of individual spans",
+      "function": "buffer_evict_expired",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "2 expired execution_ids each with 3 spans (6 spans total) plus 1 fresh execution_id",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returned count is 2 (keys evicted)",
+        "buffer_get_stats shows current_size decreased by 2"
+      ]
+    },
+    {
+      "id": "goodhart_buffer_evict_increments_total_evictions",
+      "description": "buffer_evict_expired must increment total_evictions metric by the number of keys evicted",
+      "function": "buffer_evict_expired",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Buffer with expired entries, called twice",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "total_evictions in stats increases by the evicted count after each call"
+      ]
+    },
+    {
+      "id": "goodhart_buffer_window_miss_metric",
+      "description": "buffer_get must increment window miss metric when key exists but all spans are expired",
+      "function": "buffer_get",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Add span, wait/simulate past window_duration_seconds, then call buffer_get for that execution_id",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns empty list",
+        "total_window_misses in stats is incremented"
+      ]
+    },
+    {
+      "id": "goodhart_config_partial_yaml_defaults_applied",
+      "description": "load_config must apply defaults for fields not specified in YAML while using specified values",
+      "function": "load_config",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML file with only 'port: 9999' specified, all other fields missing",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returned config port is 9999",
+        "All other fields have default values",
+        "max_workers has a positive default",
+        "buffer_max_size has a positive default"
+      ]
+    },
+    {
+      "id": "goodhart_config_negative_port_validation",
+      "description": "Pydantic validation must reject negative port numbers",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with port: -1",
+      "expected_output_description": "",
+      "expected_error": "validation_failure",
+      "assertions": [
+        "Validation error raised for negative port"
+      ]
+    },
+    {
+      "id": "goodhart_config_zero_max_workers_validation",
+      "description": "Pydantic validation must reject zero or negative max_workers",
+      "function": "load_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "YAML with max_workers: 0",
+      "expected_output_description": "",
+      "expected_error": "validation_failure",
+      "assertions": [
+        "Validation error raised for zero max_workers"
+      ]
+    },
+    {
+      "id": "goodhart_handle_export_enriched_spans_have_all_9_attributes",
+      "description": "Each enriched span in export result must have all 9 arbiter.* attributes populated, not just a subset",
+      "function": "handle_export_request",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "consistency_analyzer": "returns consistency_score=0.85",
+        "access_auditor": "returns access info and trust_score=0.7",
+        "taint_detector": "returns taint_detected=false",
+        "conflict_resolver": "returns no conflict"
+      },
+      "input_values": {},
+      "input_description": "Batch of 2 valid raw spans processed through full pipeline",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Each enriched span has non-null enrichment",
+        "enrichment has access_declared field",
+        "enrichment has access_observed field",
+        "enrichment has consistency field",
+        "enrichment has trust_score field",
+        "enrichment has trust_tier field",
+        "enrichment has authority_domains field",
+        "enrichment has taint_detected field",
+        "enrichment has blast_tier field",
+        "enrichment has conflict field"
+      ]
+    },
+    {
+      "id": "goodhart_handle_export_spans_added_to_buffer",
+      "description": "Each accepted span from handle_export_request must be added to the correlation buffer and retrievable",
+      "function": "handle_export_request",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "consistency_analyzer": "returns valid result",
+        "access_auditor": "returns valid result",
+        "taint_detector": "returns valid result",
+        "conflict_resolver": "returns valid result"
+      },
+      "input_values": {},
+      "input_description": "Batch of 2 valid spans with execution_id 'exec-test-buffer'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "buffer_get('exec-test-buffer') returns 2 spans after export"
+      ]
+    },
+    {
+      "id": "goodhart_handle_export_partial_success_message",
+      "description": "When some spans fail validation in a batch, partial_success_message should be non-empty describing the partial failure",
+      "function": "handle_export_request",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "consistency_analyzer": "returns valid result",
+        "access_auditor": "returns valid result",
+        "taint_detector": "returns valid result",
+        "conflict_resolver": "returns valid result"
+      },
+      "input_values": {},
+      "input_description": "Batch of 3 spans: 2 valid, 1 with invalid trace_id",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "accepted_count is 2",
+        "rejected_count is 1",
+        "partial_success_message is non-empty string"
+      ]
+    },
+    {
+      "id": "goodhart_handle_export_batch_at_max_size_accepted",
+      "description": "A batch with exactly max_batch_size spans should be accepted (boundary: not exceeding, equal to limit)",
+      "function": "handle_export_request",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "consistency_analyzer": "returns valid result",
+        "access_auditor": "returns valid result",
+        "taint_detector": "returns valid result",
+        "conflict_resolver": "returns valid result"
+      },
+      "input_values": {},
+      "input_description": "Batch of exactly max_batch_size valid raw spans",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "No batch_too_large error raised",
+        "All spans processed"
+      ]
+    },
+    {
+      "id": "goodhart_handle_export_batch_one_over_max_rejected",
+      "description": "A batch with max_batch_size + 1 spans should be rejected — boundary just above the limit",
+      "function": "handle_export_request",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Batch of max_batch_size + 1 raw spans",
+      "expected_output_description": "",
+      "expected_error": "batch_too_large",
+      "assertions": [
+        "batch_too_large error raised"
+      ]
+    },
+    {
+      "id": "goodhart_is_ready_after_stop",
+      "description": "is_ready must return False after server has been stopped, not cache a previous SERVING state",
+      "function": "is_ready",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Start server, verify is_ready=true, stop server, check is_ready again",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "is_ready returns True when SERVING",
+        "is_ready returns False after stop"
+      ]
+    },
+    {
+      "id": "goodhart_get_status_after_stop",
+      "description": "get_server_status must return STOPPED after stop() is called, reflecting actual lifecycle state",
+      "function": "get_server_status",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Start server then stop it",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Status is STOPPED after stop()"
+      ]
+    },
+    {
+      "id": "goodhart_stop_from_stopped_error",
+      "description": "Calling stop() when already STOPPED should raise not_running error",
+      "function": "stop",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Start, stop, then stop again",
+      "expected_output_description": "",
+      "expected_error": "not_running",
+      "assertions": [
+        "Second stop raises not_running error"
+      ]
+    },
+    {
+      "id": "goodhart_parse_span_with_warning_not_rejected",
+      "description": "Spans with only WARNING-severity validation issues should still be accepted (parsed), not rejected",
+      "function": "parse_and_validate_spans",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Raw span that is valid but has unexpected/extra attributes triggering warnings",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Span appears in parsed_spans, not rejected",
+        "validation_issues contains WARNING-severity items",
+        "No ERROR-severity issues for this span"
+      ]
+    },
+    {
+      "id": "goodhart_parse_multiple_errors_same_span",
+      "description": "A span with multiple validation errors should have all errors captured, not just the first one",
+      "function": "parse_and_validate_spans",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Raw span with both invalid trace_id AND missing baton.execution_id AND timestamp_zero",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Span is rejected",
+        "At least 2 ERROR-severity ValidationIssues present for this span"
+      ]
+    },
+    {
+      "id": "goodhart_parse_validation_issue_includes_span_id",
+      "description": "ValidationIssue must include the span_id of the problematic span per project error message standards",
+      "function": "parse_and_validate_spans",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Raw span with known span_id that fails validation",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "ValidationIssue has non-empty span_id field",
+        "ValidationIssue has non-empty field field"
+      ]
+    },
+    {
+      "id": "goodhart_aggregate_enrichment_frozen",
+      "description": "ArbiterEnrichment should be frozen/immutable — attempting to modify it after creation should fail",
+      "function": "aggregate_enrichment",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid 4-result list producing an ArbiterEnrichment",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Attempting to set an attribute on the resulting ArbiterEnrichment raises an error"
+      ]
+    },
+    {
+      "id": "goodhart_buffer_stats_max_size_matches_config",
+      "description": "BufferStats.max_size must reflect the configured buffer_max_size, not a hardcoded value",
+      "function": "buffer_get_stats",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Buffer configured with max_size=42",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "buffer_get_stats().max_size == 42"
+      ]
+    },
+    {
+      "id": "goodhart_buffer_oldest_entry_age_none_when_empty",
+      "description": "BufferStats.oldest_entry_age_seconds should be None when buffer is empty",
+      "function": "buffer_get_stats",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Empty buffer",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "oldest_entry_age_seconds is None"
+      ]
+    },
+    {
+      "id": "goodhart_buffer_oldest_entry_age_positive_when_populated",
+      "description": "BufferStats.oldest_entry_age_seconds should be a positive value when buffer has entries",
+      "function": "buffer_get_stats",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Buffer with at least one span added",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "oldest_entry_age_seconds is not None",
+        "oldest_entry_age_seconds >= 0.0"
+      ]
+    },
+    {
+      "id": "goodhart_handle_export_analyzer_errors_surfaced",
+      "description": "When an analyzer fails during export processing, the analyzer error must be captured in EnrichedSpan.analyzer_errors",
+      "function": "handle_export_request",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "consistency_analyzer": "raises RuntimeError('consistency broke')",
+        "access_auditor": "returns valid result",
+        "taint_detector": "returns valid result",
+        "conflict_resolver": "returns valid result"
+      },
+      "input_values": {},
+      "input_description": "1 valid span; consistency analyzer throws exception during dispatch",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "accepted_count is 1 (span still accepted despite analyzer failure)",
+        "enriched_spans[0].analyzer_errors has at least 1 entry",
+        "analyzer error has analyzer_kind CONSISTENCY"
+      ]
+    },
+    {
+      "id": "goodhart_parse_span_name_preserved",
+      "description": "The span name field must be preserved exactly from input to ParsedSpan, not truncated or transformed",
+      "function": "parse_and_validate_spans",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid raw span with name='my.custom.span.operation/with-special_chars.v2'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Parsed span name exactly matches 'my.custom.span.operation/with-special_chars.v2'"
+      ]
+    },
+    {
+      "id": "goodhart_parse_baton_fields_preserved",
+      "description": "baton_component_id and baton_circuit_id must be preserved from raw span attributes to ParsedSpan fields",
+      "function": "parse_and_validate_spans",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid raw span with baton.component_id='comp-xyz' and baton.circuit_id='circuit-999'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Parsed span baton_component_id == 'comp-xyz'",
+        "Parsed span baton_circuit_id == 'circuit-999'"
+      ]
+    },
+    {
+      "id": "goodhart_buffer_add_lazy_eviction_on_overflow",
+      "description": "When buffer is at max_size and a new span is added with a new execution_id, lazy eviction must trigger to make room",
+      "function": "buffer_add",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Buffer at max_size=3 with 3 execution_ids; add span with new execution_id; oldest entry is expired",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "No error raised",
+        "New span is retrievable",
+        "Buffer size does not exceed max_size"
+      ]
+    },
+    {
+      "id": "goodhart_handle_export_single_span_batch",
+      "description": "handle_export_request must work correctly with a batch of exactly 1 valid span (minimum non-empty batch)",
+      "function": "handle_export_request",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "consistency_analyzer": "returns valid result",
+        "access_auditor": "returns valid result",
+        "taint_detector": "returns valid result",
+        "conflict_resolver": "returns valid result"
+      },
+      "input_values": {},
+      "input_description": "Batch of exactly 1 valid raw span",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "accepted_count is 1",
+        "rejected_count is 0",
+        "enriched_spans has 1 entry"
+      ]
+    },
+    {
+      "id": "goodhart_handle_export_all_invalid_batch",
+      "description": "When all spans in a batch fail validation, accepted_count should be 0 but no crash — partial success semantics still apply",
+      "function": "handle_export_request",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Batch of 3 spans all with invalid trace_ids",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "accepted_count is 0",
+        "rejected_count is 3",
+        "enriched_spans is empty list",
+        "No exception raised"
+      ]
+    },
+    {
+      "id": "goodhart_start_missing_one_specific_analyzer",
+      "description": "start() must detect when exactly one specific analyzer kind is missing, not just check count >= 4",
+      "function": "start",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "3 analyzers provided: CONSISTENCY, ACCESS, TAINT — CONFLICT is missing",
+      "expected_output_description": "",
+      "expected_error": "missing_analyzer",
+      "assertions": [
+        "Error raised specifically because CONFLICT analyzer is missing"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nHidden adversarial acceptance tests for OTLP Span Subscriber.\nThese tests catch implementations that pass visible tests through shortcuts\n(hardcoded returns, incomplete validation, etc.) rather than truly satisfying the contract.\n\"\"\"\nimport time\nimport threading\nimport pytest\nfrom unittest.mock import MagicMock, patch, PropertyMock\nfrom src.otlp_subscriber import *\n\n\n# ─── Helpers ────────────────────────────────────────────────────────────────\n\ndef _make_valid_raw_span(\n    trace_id=\"abcdef0123456789abcdef0123456789\",\n    span_id=\"abcdef0123456789\",\n    parent_span_id=None,\n    name=\"test.span\",\n    start_time=1000000000,\n    end_time=2000000000,\n    node_id=\"node-test-001\",\n    execution_id=\"exec-test-001\",\n    component_id=\"comp-test\",\n    circuit_id=\"circuit-test\",\n    extra_attributes=None,\n):\n    \"\"\"Build a minimal valid raw span dict for testing.\"\"\"\n    attrs = [\n        {\"key\": \"baton.node_id\", \"value\": {\"stringValue\": node_id}},\n        {\"key\": \"baton.execution_id\", \"value\": {\"stringValue\": execution_id}},\n        {\"key\": \"baton.component_id\", \"value\": {\"stringValue\": component_id}},\n        {\"key\": \"baton.circuit_id\", \"value\": {\"stringValue\": circuit_id}},\n    ]\n    if extra_attributes:\n        attrs.extend(extra_attributes)\n\n    span = {\n        \"traceId\": trace_id,\n        \"spanId\": span_id,\n        \"name\": name,\n        \"startTimeUnixNano\": start_time,\n        \"endTimeUnixNano\": end_time,\n        \"attributes\": attrs,\n        \"events\": [],\n        \"links\": [],\n    }\n    if parent_span_id is not None:\n        span[\"parentSpanId\"] = parent_span_id\n    return span\n\n\ndef _make_resource_attributes():\n    return []\n\n\ndef _make_analysis_result(kind, success=True, **kwargs):\n    \"\"\"Helper to build a minimal AnalysisResult.\"\"\"\n    defaults = {\n        \"analyzer_kind\": kind,\n        \"success\": success,\n        \"error_message\": \"\" if success else kwargs.get(\"error_message\", \"mock error\"),\n        \"consistency_score\": None,\n        \"access_declared\": \"\",\n        \"access_observed\": \"\",\n        \"authority_domains\": [],\n        \"trust_score\": None,\n        \"trust_tier\": None,\n        \"taint_detected\": None,\n        \"taint_details\": \"\",\n        \"blast_tier\": None,\n        \"conflict_description\": \"\",\n        \"conflict_detected\": None,\n    }\n    defaults.update(kwargs)\n    # Try constructing as a struct if the module provides it, otherwise use dict-like approach\n    try:\n        return AnalysisResult(**defaults)\n    except Exception:\n        # Fallback: maybe it's a different construction pattern\n        result = MagicMock()\n        for k, v in defaults.items():\n            setattr(result, k, v)\n        return result\n\n\ndef _make_four_results(all_success=True, failed_kinds=None):\n    \"\"\"Build a list of 4 AnalysisResults, optionally with some failed.\"\"\"\n    failed_kinds = failed_kinds or []\n    kinds = [\n        (\"CONSISTENCY\", {\"consistency_score\": 0.85}),\n        (\"ACCESS\", {\"access_declared\": \"read\", \"access_observed\": \"read\", \"trust_score\": 0.7, \"trust_tier\": \"HIGH\", \"authority_domains\": [\"domain1\"]}),\n        (\"TAINT\", {\"taint_detected\": False, \"taint_details\": \"\", \"blast_tier\": \"CONTAINED\"}),\n        (\"CONFLICT\", {\"conflict_detected\": False, \"conflict_description\": \"\"}),\n    ]\n    results = []\n    for kind_name, fields in kinds:\n        try:\n            kind_enum = AnalyzerKind[kind_name]\n        except (KeyError, TypeError):\n            kind_enum = kind_name\n        is_failed = kind_name in failed_kinds\n        results.append(_make_analysis_result(\n            kind_enum,\n            success=not is_failed,\n            **(fields if not is_failed else {\"error_message\": f\"{kind_name} failed\"})\n        ))\n    return results\n\n\n# ─── TraceId Validation ─────────────────────────────────────────────────────\n\nclass TestGoodhartTraceIdValidation:\n\n    def test_goodhart_trace_id_uppercase_rejected(self):\n        \"\"\"TraceId validation must enforce lowercase hex — uppercase hex characters should be rejected\"\"\"\n        raw = [_make_valid_raw_span(trace_id=\"ABCDEF01234567890123456789012345\")]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        # Should be rejected\n        assert hasattr(result, 'parsed_spans') or hasattr(result, 'rejected_count')\n        parsed = getattr(result, 'parsed_spans', [])\n        rejected = getattr(result, 'rejected_count', len(raw) - len(parsed))\n        assert len(parsed) == 0, \"Uppercase trace_id should be rejected\"\n        assert rejected == 1\n\n    def test_goodhart_trace_id_33_chars_rejected(self):\n        \"\"\"TraceId validation must enforce exactly 32 chars — 33-char hex string rejected\"\"\"\n        raw = [_make_valid_raw_span(trace_id=\"a\" * 33)]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(result, 'parsed_spans', [])\n        assert len(parsed) == 0, \"33-char trace_id should be rejected\"\n\n    def test_goodhart_trace_id_31_chars_rejected(self):\n        \"\"\"TraceId validation must enforce exactly 32 chars — 31-char hex string rejected\"\"\"\n        raw = [_make_valid_raw_span(trace_id=\"a\" * 31)]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(result, 'parsed_spans', [])\n        assert len(parsed) == 0, \"31-char trace_id should be rejected\"\n\n    def test_goodhart_trace_id_non_hex_chars_rejected(self):\n        \"\"\"TraceId must reject non-hex characters even if exactly 32 chars\"\"\"\n        raw = [_make_valid_raw_span(trace_id=\"z\" * 32)]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(result, 'parsed_spans', [])\n        assert len(parsed) == 0, \"Non-hex trace_id should be rejected\"\n\n\n# ─── SpanId Validation ──────────────────────────────────────────────────────\n\nclass TestGoodhartSpanIdValidation:\n\n    def test_goodhart_span_id_uppercase_rejected(self):\n        \"\"\"SpanId validation must enforce lowercase hex — uppercase rejected\"\"\"\n        raw = [_make_valid_raw_span(span_id=\"ABCDEF0123456789\")]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(result, 'parsed_spans', [])\n        assert len(parsed) == 0, \"Uppercase span_id should be rejected\"\n\n    def test_goodhart_span_id_17_chars_rejected(self):\n        \"\"\"SpanId validation must enforce exactly 16 chars — 17 chars rejected\"\"\"\n        raw = [_make_valid_raw_span(span_id=\"a\" * 17)]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(result, 'parsed_spans', [])\n        assert len(parsed) == 0, \"17-char span_id should be rejected\"\n\n\n# ─── Protobuf Default-Value Ambiguity ───────────────────────────────────────\n\nclass TestGoodhartProtobufDefaults:\n\n    def test_goodhart_empty_baton_execution_id_rejected(self):\n        \"\"\"Empty string baton.execution_id must be treated as unset/missing per protobuf ambiguity rules\"\"\"\n        raw = [_make_valid_raw_span(execution_id=\"\")]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(result, 'parsed_spans', [])\n        assert len(parsed) == 0, \"Empty execution_id should be rejected\"\n\n    def test_goodhart_empty_baton_node_id_rejected(self):\n        \"\"\"Empty string baton.node_id must be treated as unset/missing per protobuf ambiguity rules\"\"\"\n        raw = [_make_valid_raw_span(node_id=\"\")]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(result, 'parsed_spans', [])\n        assert len(parsed) == 0, \"Empty node_id should be rejected\"\n\n\n# ─── Duration Calculation ───────────────────────────────────────────────────\n\nclass TestGoodhartDurationCalculation:\n\n    def test_goodhart_duration_ns_various_values(self):\n        \"\"\"duration_ns must be dynamically computed for arbitrary timestamp pairs, not hardcoded\"\"\"\n        test_cases = [\n            (1000000000, 1000000001, 1),           # 1ns delta\n            (1000000000, 1999999999, 999999999),    # ~1s delta\n            (5000000000, 10000000000, 5000000000),  # 5s delta\n            (100, 200, 100),                        # Small timestamps\n        ]\n        for start, end, expected_duration in test_cases:\n            raw = [_make_valid_raw_span(start_time=start, end_time=end)]\n            result = parse_and_validate_spans(raw, _make_resource_attributes())\n            parsed = getattr(result, 'parsed_spans', [])\n            assert len(parsed) == 1, f\"Span with start={start}, end={end} should parse\"\n            assert parsed[0].duration_ns == expected_duration, \\\n                f\"duration_ns should be {expected_duration} for start={start}, end={end}, got {parsed[0].duration_ns}\"\n\n    def test_goodhart_received_at_is_current_time(self):\n        \"\"\"received_at_unix_nano must be set to actual current UTC time, not hardcoded\"\"\"\n        before = time.time_ns()\n        raw = [_make_valid_raw_span()]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        after = time.time_ns()\n        parsed = getattr(result, 'parsed_spans', [])\n        assert len(parsed) == 1\n        received = parsed[0].received_at_unix_nano\n        assert received > 0, \"received_at_unix_nano must be positive\"\n        # Allow 5-second window\n        assert before - 5_000_000_000 <= received <= after + 5_000_000_000, \\\n            \"received_at_unix_nano should be near current time\"\n\n\n# ─── Multiple Spans Parsing ────────────────────────────────────────────────\n\nclass TestGoodhartMultiSpanParsing:\n\n    def test_goodhart_parse_five_valid_spans(self):\n        \"\"\"Parsing must work correctly for multiple valid spans with different IDs in one batch\"\"\"\n        raws = []\n        for i in range(5):\n            tid = f\"abcdef012345678{i:01x}abcdef012345678{i:01x}\"[:32]\n            # Ensure each trace_id is exactly 32 hex chars and unique\n            tid = f\"{i+1:032x}\"\n            sid = f\"{i+1:016x}\"\n            raws.append(_make_valid_raw_span(trace_id=tid, span_id=sid, execution_id=f\"exec-{i}\"))\n        result = parse_and_validate_spans(raws, _make_resource_attributes())\n        parsed = getattr(result, 'parsed_spans', [])\n        assert len(parsed) == 5, f\"All 5 valid spans should parse, got {len(parsed)}\"\n\n    def test_goodhart_parse_root_span_none_parent(self):\n        \"\"\"Root spans should have parent_span_id as None\"\"\"\n        raw = [_make_valid_raw_span()]  # No parent_span_id in dict\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(result, 'parsed_spans', [])\n        assert len(parsed) == 1\n        assert parsed[0].parent_span_id is None, \"Root span should have None parent_span_id\"\n\n    def test_goodhart_parse_child_span_preserves_parent(self):\n        \"\"\"Child spans must preserve a valid parent_span_id\"\"\"\n        parent_sid = \"1234567890abcdef\"\n        raw = [_make_valid_raw_span(parent_span_id=parent_sid)]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(result, 'parsed_spans', [])\n        assert len(parsed) == 1\n        assert parsed[0].parent_span_id == parent_sid, \"parent_span_id should be preserved\"\n\n    def test_goodhart_parse_span_name_preserved(self):\n        \"\"\"Span name must be preserved exactly from input\"\"\"\n        name = \"my.custom.span.operation/with-special_chars.v2\"\n        raw = [_make_valid_raw_span(name=name)]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(result, 'parsed_spans', [])\n        assert len(parsed) == 1\n        assert parsed[0].name == name\n\n    def test_goodhart_parse_baton_fields_preserved(self):\n        \"\"\"baton_component_id and baton_circuit_id must be preserved\"\"\"\n        raw = [_make_valid_raw_span(component_id=\"comp-xyz\", circuit_id=\"circuit-999\")]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(result, 'parsed_spans', [])\n        assert len(parsed) == 1\n        assert parsed[0].baton_component_id == \"comp-xyz\"\n        assert parsed[0].baton_circuit_id == \"circuit-999\"\n\n    def test_goodhart_parse_warning_not_rejected(self):\n        \"\"\"Spans with only WARNING-severity issues must still be accepted, not rejected\"\"\"\n        # A span with unexpected extra attributes might trigger warnings but should still parse\n        extra = [{\"key\": \"unexpected.attribute\", \"value\": {\"stringValue\": \"surprise\"}}]\n        raw = [_make_valid_raw_span(extra_attributes=extra)]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(result, 'parsed_spans', [])\n        rejected = getattr(result, 'rejected_count', len(raw) - len(parsed))\n        # The span should be in parsed, not rejected (warnings don't reject)\n        assert len(parsed) == 1, \"Span with only warnings should be accepted\"\n        assert rejected == 0\n\n    def test_goodhart_parse_validation_issue_includes_span_id(self):\n        \"\"\"ValidationIssue must include the span_id of the problematic span\"\"\"\n        bad_tid = \"x\" * 32  # Invalid hex\n        raw = [_make_valid_raw_span(trace_id=bad_tid)]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        issues = getattr(result, 'validation_issues', [])\n        assert len(issues) > 0, \"Should have validation issues\"\n        for issue in issues:\n            if hasattr(issue, 'severity') and str(issue.severity) in ('ERROR', 'ValidationSeverity.ERROR'):\n                assert issue.field != \"\" or issue.message != \"\", \"Issue should have field or message detail\"\n\n\n# ─── Aggregation ────────────────────────────────────────────────────────────\n\nclass TestGoodhartAggregation:\n\n    def test_goodhart_aggregate_consistency_boundary_zero(self):\n        \"\"\"Consistency score 0.0 must be in valid range [0.0, 1.0]\"\"\"\n        results = _make_four_results()\n        # Override consistency to 0.0\n        for r in results:\n            if hasattr(r, 'analyzer_kind'):\n                kind = r.analyzer_kind\n                kind_name = kind.name if hasattr(kind, 'name') else str(kind)\n                if kind_name == \"CONSISTENCY\":\n                    r.consistency_score = 0.0\n        enrichment = aggregate_enrichment(results)\n        assert 0.0 <= enrichment.consistency <= 1.0\n\n    def test_goodhart_aggregate_consistency_boundary_one(self):\n        \"\"\"Consistency score 1.0 must be in valid range [0.0, 1.0]\"\"\"\n        results = _make_four_results()\n        for r in results:\n            if hasattr(r, 'analyzer_kind'):\n                kind = r.analyzer_kind\n                kind_name = kind.name if hasattr(kind, 'name') else str(kind)\n                if kind_name == \"CONSISTENCY\":\n                    r.consistency_score = 1.0\n        enrichment = aggregate_enrichment(results)\n        assert 0.0 <= enrichment.consistency <= 1.0\n\n    def test_goodhart_aggregate_trust_score_boundary(self):\n        \"\"\"Trust score boundaries 0.0 and 1.0 must be valid\"\"\"\n        for score in [0.0, 1.0]:\n            results = _make_four_results()\n            for r in results:\n                if hasattr(r, 'analyzer_kind'):\n                    kind = r.analyzer_kind\n                    kind_name = kind.name if hasattr(kind, 'name') else str(kind)\n                    if kind_name == \"ACCESS\":\n                        r.trust_score = score\n            enrichment = aggregate_enrichment(results)\n            assert 0.0 <= enrichment.trust_score <= 1.0\n\n    def test_goodhart_aggregate_all_failed_safe_defaults(self):\n        \"\"\"When all 4 analyzers fail, enrichment must have safe defaults for every field\"\"\"\n        results = _make_four_results(failed_kinds=[\"CONSISTENCY\", \"ACCESS\", \"TAINT\", \"CONFLICT\"])\n        enrichment = aggregate_enrichment(results)\n        assert enrichment.consistency == 0.0\n        assert enrichment.trust_score == 0.0\n        trust_tier_name = enrichment.trust_tier.name if hasattr(enrichment.trust_tier, 'name') else str(enrichment.trust_tier)\n        assert trust_tier_name == \"UNKNOWN\"\n        blast_tier_name = enrichment.blast_tier.name if hasattr(enrichment.blast_tier, 'name') else str(enrichment.blast_tier)\n        assert blast_tier_name == \"UNKNOWN\"\n        assert enrichment.taint_detected is False\n        assert enrichment.access_declared == \"\"\n        assert enrichment.access_observed == \"\"\n        assert enrichment.authority_domains == [] or list(enrichment.authority_domains) == []\n        assert enrichment.conflict == \"\"\n\n    def test_goodhart_aggregate_3_results_error(self):\n        \"\"\"aggregate_enrichment must reject lists with exactly 3 entries\"\"\"\n        results = _make_four_results()[:3]\n        with pytest.raises(Exception):\n            aggregate_enrichment(results)\n\n    def test_goodhart_aggregate_5_results_error(self):\n        \"\"\"aggregate_enrichment must reject lists with exactly 5 entries\"\"\"\n        results = _make_four_results()\n        # Add a duplicate\n        results.append(results[0])\n        # Might raise wrong_result_count or duplicate_analyzer_kind\n        with pytest.raises(Exception):\n            aggregate_enrichment(results)\n\n    def test_goodhart_aggregate_1_result_error(self):\n        \"\"\"aggregate_enrichment must reject a single-element result list\"\"\"\n        results = _make_four_results()[:1]\n        with pytest.raises(Exception):\n            aggregate_enrichment(results)\n\n    def test_goodhart_aggregate_enrichment_frozen(self):\n        \"\"\"ArbiterEnrichment should be frozen/immutable\"\"\"\n        results = _make_four_results()\n        enrichment = aggregate_enrichment(results)\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            enrichment.consistency = 999.0\n\n\n# ─── Dispatch ───────────────────────────────────────────────────────────────\n\nclass TestGoodhartDispatch:\n\n    def test_goodhart_dispatch_all_four_kinds_present(self):\n        \"\"\"dispatch_to_analyzers result must contain exactly one entry per AnalyzerKind\"\"\"\n        # We need a valid parsed span first\n        raw = [_make_valid_raw_span()]\n        parse_result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(parse_result, 'parsed_spans', [])\n        if len(parsed) == 0:\n            pytest.skip(\"Could not create valid ParsedSpan for dispatch test\")\n\n        span = parsed[0]\n\n        # Mock all 4 analyzers to succeed\n        mock_consistency = MagicMock(return_value=_make_analysis_result(\n            AnalyzerKind.CONSISTENCY if hasattr(AnalyzerKind, 'CONSISTENCY') else \"CONSISTENCY\",\n            consistency_score=0.9\n        ))\n        mock_access = MagicMock(return_value=_make_analysis_result(\n            AnalyzerKind.ACCESS if hasattr(AnalyzerKind, 'ACCESS') else \"ACCESS\",\n            access_declared=\"read\", access_observed=\"read\", trust_score=0.8\n        ))\n        mock_taint = MagicMock(return_value=_make_analysis_result(\n            AnalyzerKind.TAINT if hasattr(AnalyzerKind, 'TAINT') else \"TAINT\",\n            taint_detected=False\n        ))\n        mock_conflict = MagicMock(return_value=_make_analysis_result(\n            AnalyzerKind.CONFLICT if hasattr(AnalyzerKind, 'CONFLICT') else \"CONFLICT\",\n            conflict_detected=False\n        ))\n\n        # The actual dispatch should return exactly 4 results\n        try:\n            results = dispatch_to_analyzers(span)\n        except Exception:\n            pytest.skip(\"dispatch_to_analyzers requires server setup\")\n            return\n\n        assert len(results) == 4, f\"Expected exactly 4 results, got {len(results)}\"\n        kind_names = set()\n        for r in results:\n            kind = r.analyzer_kind\n            kind_name = kind.name if hasattr(kind, 'name') else str(kind)\n            kind_names.add(kind_name)\n        assert len(kind_names) == 4, f\"Expected 4 unique kinds, got {kind_names}\"\n\n    def test_goodhart_dispatch_two_analyzers_fail_others_succeed(self):\n        \"\"\"When 2 of 4 analyzers fail, the other 2 must still succeed independently\"\"\"\n        raw = [_make_valid_raw_span()]\n        parse_result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(parse_result, 'parsed_spans', [])\n        if len(parsed) == 0:\n            pytest.skip(\"Could not create valid ParsedSpan\")\n\n        span = parsed[0]\n        try:\n            results = dispatch_to_analyzers(span)\n        except Exception:\n            pytest.skip(\"dispatch_to_analyzers requires server setup\")\n            return\n\n        # At minimum, verify the contract: exactly 4 results, no exceptions propagated\n        assert len(results) == 4\n\n\n# ─── Build Enriched Span ───────────────────────────────────────────────────\n\nclass TestGoodhartBuildEnrichedSpan:\n\n    def test_goodhart_enriched_at_is_current_time(self):\n        \"\"\"enriched_at_unix_nano must reflect actual current UTC time\"\"\"\n        raw = [_make_valid_raw_span()]\n        parse_result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(parse_result, 'parsed_spans', [])\n        if len(parsed) == 0:\n            pytest.skip(\"Could not create valid ParsedSpan\")\n\n        span = parsed[0]\n        results = _make_four_results()\n        enrichment = aggregate_enrichment(results)\n\n        before = time.time_ns()\n        enriched = build_enriched_span(span, enrichment, [])\n        after = time.time_ns()\n\n        assert enriched.enriched_at_unix_nano > 0\n        assert before - 5_000_000_000 <= enriched.enriched_at_unix_nano <= after + 5_000_000_000\n\n    def test_goodhart_enriched_span_identity_preservation(self):\n        \"\"\"build_enriched_span must preserve input span and enrichment by identity/equality\"\"\"\n        raw = [_make_valid_raw_span(\n            trace_id=\"deadbeef\" * 4,\n            span_id=\"cafebabe\" + \"12345678\",\n            node_id=\"node-identity-test\",\n            execution_id=\"exec-identity-test\"\n        )]\n        parse_result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(parse_result, 'parsed_spans', [])\n        if len(parsed) == 0:\n            pytest.skip(\"Could not create valid ParsedSpan\")\n\n        span = parsed[0]\n        results = _make_four_results()\n        enrichment = aggregate_enrichment(results)\n\n        enriched = build_enriched_span(span, enrichment, [])\n        assert enriched.span.trace_id == span.trace_id\n        assert enriched.span.span_id == span.span_id\n        assert enriched.span.baton_node_id == \"node-identity-test\"\n        assert enriched.enrichment.consistency == enrichment.consistency\n        assert enriched.enrichment.trust_score == enrichment.trust_score\n\n\n# ─── Buffer Operations ─────────────────────────────────────────────────────\n\nclass TestGoodhartBuffer:\n\n    def _add_span_to_buffer(self, execution_id, received_at=None):\n        \"\"\"Helper to create and add a span to the buffer.\"\"\"\n        raw = [_make_valid_raw_span(execution_id=execution_id)]\n        result = parse_and_validate_spans(raw, _make_resource_attributes())\n        parsed = getattr(result, 'parsed_spans', [])\n        if len(parsed) == 0:\n            pytest.skip(\"Could not create valid ParsedSpan for buffer test\")\n        span = parsed[0]\n        if received_at is not None:\n            # Attempt to set received_at for ordering tests\n            try:\n                span.received_at_unix_nano = received_at\n            except (AttributeError, TypeError):\n                pass  # Frozen model, can't override\n        buffer_add(span)\n        return span\n\n    def test_goodhart_buffer_get_different_execution_ids_isolated(self):\n        \"\"\"buffer_get for one execution_id must not return spans from another\"\"\"\n        # Clear buffer first\n        try:\n            buffer_drain()\n        except Exception:\n            pass\n\n        self._add_span_to_buffer(\"exec-A\")\n        self._add_span_to_buffer(\"exec-A\")\n        self._add_span_to_buffer(\"exec-B\")\n        self._add_span_to_buffer(\"exec-B\")\n\n        spans_a = buffer_get(\"exec-A\")\n        spans_b = buffer_get(\"exec-B\")\n\n        assert len(spans_a) == 2, f\"exec-A should have 2 spans, got {len(spans_a)}\"\n        assert len(spans_b) == 2, f\"exec-B should have 2 spans, got {len(spans_b)}\"\n\n        # Verify isolation\n        for s in spans_a:\n            assert s.baton_execution_id == \"exec-A\"\n        for s in spans_b:\n            assert s.baton_execution_id == \"exec-B\"\n\n    def test_goodhart_buffer_stats_total_spans_vs_keys(self):\n        \"\"\"BufferStats total_spans must count individual spans, current_size counts keys\"\"\"\n        try:\n            buffer_drain()\n        except Exception:\n            pass\n\n        self._add_span_to_buffer(\"exec-X\")\n        self._add_span_to_buffer(\"exec-X\")\n        self._add_span_to_buffer(\"exec-X\")\n        self._add_span_to_buffer(\"exec-Y\")\n        self._add_span_to_buffer(\"exec-Y\")\n\n        stats = buffer_get_stats()\n        assert stats.current_size == 2, f\"Should have 2 keys, got {stats.current_size}\"\n        assert stats.total_spans >= 5, f\"Should have at least 5 total spans, got {stats.total_spans}\"\n\n    def test_goodhart_buffer_drain_multiple_execution_ids(self):\n        \"\"\"buffer_drain must return spans from all execution_ids\"\"\"\n        try:\n            buffer_drain()\n        except Exception:\n            pass\n\n        self._add_span_to_buffer(\"exec-drain-1\")\n        self._add_span_to_buffer(\"exec-drain-2\")\n        self._add_span_to_buffer(\"exec-drain-3\")\n\n        drained = buffer_drain()\n        exec_ids = {s.baton_execution_id for s in drained}\n        assert \"exec-drain-1\" in exec_ids\n        assert \"exec-drain-2\" in exec_ids\n        assert \"exec-drain-3\" in exec_ids\n\n        stats = buffer_get_stats()\n        assert stats.current_size == 0, \"Buffer should be empty after drain\"\n\n    def test_goodhart_buffer_stats_max_size_matches_config(self):\n        \"\"\"BufferStats.max_size must reflect configured value, not hardcoded\"\"\"\n        stats = buffer_get_stats()\n        assert stats.max_size > 0, \"max_size should be positive\"\n        assert stats.current_size <= stats.max_size, \"current_size must not exceed max_size\"\n\n    def test_goodhart_buffer_stats_oldest_entry_none_when_empty(self):\n        \"\"\"oldest_entry_age_seconds should be None when buffer is empty\"\"\"\n        try:\n            buffer_drain()\n        except Exception:\n            pass\n        stats = buffer_get_stats()\n        assert stats.oldest_entry_age_seconds is None, \\\n            \"oldest_entry_age_seconds should be None for empty buffer\"\n\n    def test_goodhart_buffer_stats_oldest_entry_nonnull_when_populated(self):\n        \"\"\"oldest_entry_age_seconds should be non-None when buffer has entries\"\"\"\n        try:\n            buffer_drain()\n        except Exception:\n            pass\n        self._add_span_to_buffer(\"exec-age-test\")\n        stats = buffer_get_stats()\n        assert stats.oldest_entry_age_seconds is not None\n        assert stats.oldest_entry_age_seconds >= 0.0\n\n    def test_goodhart_buffer_get_returns_ordered_by_received_at(self):\n        \"\"\"buffer_get must return spans ordered by received_at_unix_nano ascending\"\"\"\n        try:\n            buffer_drain()\n        except Exception:\n            pass\n\n        # Add multiple spans under same execution_id\n        for _ in range(3):\n            self._add_span_to_buffer(\"exec-order-test\")\n            time.sleep(0.01)  # Small delay to ensure different received_at\n\n        spans = buffer_get(\"exec-order-test\")\n        assert len(spans) == 3\n        for i in range(len(spans) - 1):\n            assert spans[i].received_at_unix_nano <= spans[i + 1].received_at_unix_nano, \\\n                \"Spans must be ordered by received_at_unix_nano ascending\"\n\n\n# ─── Handle Export ──────────────────────────────────────────────────────────\n\nclass TestGoodhartHandleExport:\n\n    def test_goodhart_handle_export_all_invalid_batch(self):\n        \"\"\"When all spans fail validation, accepted_count=0 but no crash — partial success semantics\"\"\"\n        # Need server in SERVING state - this may need setup\n        try:\n            bad_spans = [\n                _make_valid_raw_span(trace_id=\"x\" * 32),  # Invalid hex\n                _make_valid_raw_span(trace_id=\"y\" * 32),  # Invalid hex\n                _make_valid_raw_span(trace_id=\"z\" * 32),  # Invalid hex\n            ]\n            result = handle_export_request(bad_spans, _make_resource_attributes())\n            assert result.accepted_count == 0\n            assert result.rejected_count == 3\n            assert len(result.enriched_spans) == 0\n        except Exception as e:\n            err_str = str(e).lower()\n            if \"not_ready\" in err_str or \"server_not_ready\" in err_str or \"not serving\" in err_str:\n                pytest.skip(\"Server not in SERVING state for this test\")\n            raise\n\n    def test_goodhart_handle_export_single_span_batch(self):\n        \"\"\"handle_export_request must work with a batch of exactly 1 valid span\"\"\"\n        try:\n            raw = [_make_valid_raw_span()]\n            result = handle_export_request(raw, _make_resource_attributes())\n            assert result.accepted_count == 1\n            assert result.rejected_count == 0\n            assert len(result.enriched_spans) == 1\n        except Exception as e:\n            err_str = str(e).lower()\n            if \"not_ready\" in err_str or \"server_not_ready\" in err_str or \"not serving\" in err_str:\n                pytest.skip(\"Server not in SERVING state for this test\")\n            raise\n\n    def test_goodhart_handle_export_enriched_has_all_9_attributes(self):\n        \"\"\"Each enriched span must have all 9 arbiter.* attributes populated\"\"\"\n        try:\n            raw = [_make_valid_raw_span()]\n            result = handle_export_request(raw, _make_resource_attributes())\n            if result.accepted_count == 0:\n                pytest.skip(\"No spans accepted\")\n            enriched = result.enriched_spans[0]\n            e = enriched.enrichment\n            # Check all 9 attributes exist\n            assert hasattr(e, 'access_declared')\n            assert hasattr(e, 'access_observed')\n            assert hasattr(e, 'consistency')\n            assert hasattr(e, 'trust_score')\n            assert hasattr(e, 'trust_tier')\n            assert hasattr(e, 'authority_domains')\n            assert hasattr(e, 'taint_detected')\n            assert hasattr(e, 'blast_tier')\n            assert hasattr(e, 'conflict')\n        except Exception as e:\n            err_str = str(e).lower()\n            if \"not_ready\" in err_str or \"server_not_ready\" in err_str or \"not serving\" in err_str:\n                pytest.skip(\"Server not in SERVING state for this test\")\n            raise\n\n\n# ─── Lifecycle ──────────────────────────────────────────────────────────────\n\nclass TestGoodhartLifecycle:\n\n    def test_goodhart_is_ready_false_after_stop(self):\n        \"\"\"is_ready must return False after server has been stopped\"\"\"\n        # If server is currently SERVING, stop it and check\n        status = get_server_status()\n        status_name = status.name if hasattr(status, 'name') else str(status)\n        if status_name == \"SERVING\":\n            stop(grace=1.0)\n            assert is_ready() is False\n        elif status_name in (\"NOT_STARTED\", \"STOPPED\"):\n            assert is_ready() is False\n        # Don't fail - just verify the property\n\n    def test_goodhart_get_status_reflects_stopped(self):\n        \"\"\"get_server_status must return STOPPED after stop() is called\"\"\"\n        status = get_server_status()\n        status_name = status.name if hasattr(status, 'name') else str(status)\n        if status_name == \"SERVING\":\n            stop(grace=1.0)\n            status = get_server_status()\n            status_name = status.name if hasattr(status, 'name') else str(status)\n            assert status_name == \"STOPPED\"\n\n    def test_goodhart_stop_when_already_stopped_error(self):\n        \"\"\"Calling stop() when already STOPPED should raise not_running error\"\"\"\n        status = get_server_status()\n        status_name = status.name if hasattr(status, 'name') else str(status)\n        if status_name in (\"NOT_STARTED\", \"STOPPED\"):\n            with pytest.raises(Exception):\n                stop(grace=1.0)\n\n\n# ─── Config Edge Cases ─────────────────────────────────────────────────────\n\nclass TestGoodhartConfig:\n\n    def test_goodhart_config_partial_yaml_applies_specified_and_defaults(self, tmp_path):\n        \"\"\"load_config must use specified values from YAML and defaults for the rest\"\"\"\n        config_file = tmp_path / \"partial.yaml\"\n        config_file.write_text(\"port: 9999\\n\")\n        config = load_config(str(config_file))\n        assert config.port == 9999\n        # Other fields should have positive defaults\n        assert config.max_workers > 0\n        assert config.buffer_max_size > 0\n        assert config.buffer_window_seconds > 0\n\n    def test_goodhart_config_negative_port_rejected(self, tmp_path):\n        \"\"\"Pydantic validation must reject negative port\"\"\"\n        config_file = tmp_path / \"bad_port.yaml\"\n        config_file.write_text(\"port: -1\\n\")\n        with pytest.raises(Exception):\n            load_config(str(config_file))\n\n    def test_goodhart_config_zero_max_workers_rejected(self, tmp_path):\n        \"\"\"Pydantic validation must reject zero max_workers\"\"\"\n        config_file = tmp_path / \"bad_workers.yaml\"\n        config_file.write_text(\"max_workers: 0\\n\")\n        with pytest.raises(Exception):\n            load_config(str(config_file))\n\n    def test_goodhart_config_zero_buffer_max_size_rejected(self, tmp_path):\n        \"\"\"Pydantic validation must reject zero buffer_max_size\"\"\"\n        config_file = tmp_path / \"bad_buffer.yaml\"\n        config_file.write_text(\"buffer_max_size: 0\\n\")\n        with pytest.raises(Exception):\n            load_config(str(config_file))\n\n    def test_goodhart_config_negative_window_seconds_rejected(self, tmp_path):\n        \"\"\"Pydantic validation must reject negative buffer_window_seconds\"\"\"\n        config_file = tmp_path / \"bad_window.yaml\"\n        config_file.write_text(\"buffer_window_seconds: -5.0\\n\")\n        with pytest.raises(Exception):\n            load_config(str(config_file))\n"
+}

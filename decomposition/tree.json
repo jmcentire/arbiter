@@ -1,0 +1,209 @@
+{
+  "root_id": "root",
+  "nodes": {
+    "models": {
+      "component_id": "models",
+      "name": "Shared Data Models & Enums",
+      "description": "All Pydantic models, enums, and type definitions shared across Arbiter. Includes: TrustTier enum (PROBATIONARY/LOW/ESTABLISHED/HIGH/TRUSTED), DataTier enum (PUBLIC/PII/FINANCIAL/AUTH/COMPLIANCE), BlastTier enum (AUTO_MERGE/SOAK/HUMAN_GATE), FindingSeverity enum, trust event models (TrustLedgerEntry with ts/node/event/weight/score_before/score_after), AccessGraphNode (id, data_access, authority_domains, edges), AccessGraph schema, ConsistencyFinding, AccessFinding, TaintFinding, ConflictRecord, StigmerySignal, CanaryRecord, FeedbackReport sections, and all HTTP request/response models. Every structured data boundary in the system is defined here. No business logic — pure data definitions with Pydantic validation.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "config": {
+      "component_id": "config",
+      "name": "Configuration Loader",
+      "description": "Loads and validates arbiter.yaml via a Pydantic Settings model. Exposes all configurable values: registry.path, registry.append_only, trust.floor (0.10), trust.authority_override_floor (0.40), trust.decay_lambda (0.05), trust.conflict_trust_delta_threshold (0.20), trust.taint_lock_tiers, soak.base_durations (per tier), soak.target_requests (1000), otlp.listen_port (4317), otlp.http_port (4318), api.port (7700), classification_registry path, human_gate.webhook_url, human_gate.block_on_gate, ledger.checksum_interval (100). Provides a global get_config() accessor. Handles default generation for `arbiter init`.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "trust_ledger": {
+      "component_id": "trust_ledger",
+      "name": "Trust Ledger",
+      "description": "Append-only JSONL trust ledger with SHA256 hash chain integrity. Provides: append_entry(entry) with fsync-before-return guarantee (AC025), read_all_entries(), replay_from_scratch(), verify_chain_integrity(). Hash chain: every N entries (default 100, configurable), a checksum line is appended covering all entries since prior checkpoint plus the prior checksum value. File-level locking (fcntl/msvcrt) to handle concurrent CLI + watch process writes (rabbit hole patch). All entries are TrustLedgerEntry Pydantic models serialized to JSONL. Never modifies or deletes existing lines (C006, FA-A-004). Initializes empty ledger file on `arbiter init`.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "registry": {
+      "component_id": "registry",
+      "name": "Access Graph Store & Authority Map",
+      "description": "Manages ingested access_graph.json and the derived authority map. Access graph store: validates and persists the access graph, enforces that no two nodes claim authority for the same domain (C004, FA-A-003). Authority map: exclusive domain-to-node mapping, queryable by domain or node. Validates that classification registry authoritative_node entries match access graph authority declarations (FA-A-030). Provides graph traversal primitives (neighbors, BFS/DFS iterators) for blast radius computation. Handles re-registration by replacing the full graph atomically (with authority exclusivity re-checked). Loads classification registry from classifications.yaml with field_pattern/tier/authoritative_node/canary_pattern entries.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "trust_engine": {
+      "component_id": "trust_engine",
+      "name": "Trust Score Engine",
+      "description": "Computes trust_score(node) = base_weight * age_factor * consistency_factor * taint_factor * review_factor * decay_factor. base_weight=1.0, age_factor=sigmoid on ledger entry count, consistency_factor=consistent/total observations ratio, review_factor=1.0 if no pending reviews else <1.0, decay_factor=exp(-decay_lambda * idle_periods), taint_factor=0.0 on taint escape (overrides floor) else 1.0. Floor is 0.1 for non-tainted nodes, 0.0 for tainted (AS001). Maintains cached scores rebuilt from ledger on startup (cold start <3s for <100K entries via single-pass replay). Writes new trust events (decay, consistency update, taint) to the ledger. Provides trust tier label mapping (display only). reset_taint(node, review_id) clears taint lock and writes ledger entry — rejects if no review_id (FA-A-008).",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "consistency": {
+      "component_id": "consistency",
+      "name": "Consistency Analyzer",
+      "description": "Compares adapter-observed span I/O (ground truth) against node self-reported audit events (claims) per C007. For each span, extracts output field set from adapter observation and compares against the node's audit event field set. Unexplained fields (observed but not declared/claimed) produce INCONSISTENT findings with field details. All observed fields claimed = CONSISTENT. HIGH severity inconsistency during soak is a hard stop. Findings are persisted and queryable by node. Consistency outcomes feed into trust engine (consistency_factor updates). Provides findings list for report generation and CLI `arbiter findings`.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "access_auditor": {
+      "component_id": "access_auditor",
+      "name": "Access Auditor & OpenAPI Integration",
+      "description": "Walks OpenAPI response schemas at adapter slot time, maps each field against the classification registry using fnmatch/regex patterns, and produces a structural access profile (superset of data tiers the node can return). Compares structural profile against the node's declared data_access from the access graph. Flags DECLARATION_GAP if structural profile includes undeclared tiers (C005). Produces BLOCK_SLOT if undeclared tiers are present and block_on_gate is configured. Records access violation findings when observed output tier exceeds declared reads (FA-A-015). Handles missing OpenAPI schemas gracefully by recording an INCOMPLETE_SCHEMA warning (rabbit hole patch).",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "taint": {
+      "component_id": "taint",
+      "name": "Canary & Taint Detection",
+      "description": "Manages canary corpus lifecycle: injection, fingerprint generation, and escape detection. inject(tiers, run_id) generates structurally-valid-but-impossible-in-real-data fingerprinted records (UUIDs in domain-shaped strings) per tier and seeds them via the adapter layer (AS009). Canary corpus is stored per run_id. scan_span(span) checks output fields for canary fingerprints — if detected in an unauthorized node, triggers TAINT_ESCAPE finding and sets taint_factor to 0.0 immediately (C003, FA-A-007). Fingerprints in authorized nodes are ignored (FA-A-017). Provides canary results report per run_id. Writes taint events to trust ledger via trust engine.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "blast": {
+      "component_id": "blast",
+      "name": "Blast Radius & Soak Computation",
+      "description": "Blast radius: BFS/DFS traversal of access graph edges from a changed node, collecting all reachable nodes and their data tiers. Classifies result per rules: PUBLIC-only→AUTO_MERGE, PUBLIC+PII→SOAK, any FINANCIAL/AUTH→HUMAN_GATE, any COMPLIANCE→HUMAN_GATE+legal_flag, unauthorized tier→HUMAN_GATE, LOW_TRUST_AUTHORITATIVE→HUMAN_GATE. Traversal is bounded by visited-set to handle cycles efficiently (rabbit hole patch). Soak computation: soak_duration = base_duration(tier) * (2.0 - trust_score) * max(1.0, sqrt(target_requests / observed_rate_rps)). Monotonic in both trust and volume (FA-A-009, FA-A-010). Fires human gate webhook when HUMAN_GATE triggered.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "conflicts": {
+      "component_id": "conflicts",
+      "name": "Conflict Resolver",
+      "description": "Detects and resolves conflicts following the three-step protocol (C009). Detection: two nodes produce different values for the same field within the same domain during the same circuit execution, identified by correlating OTLP spans by execution ID with buffering/windowing (rabbit hole patch — configurable window timeout). Step 1: authority check — authoritative node wins if trust > authority_override_floor (0.4), else human review. Step 2: trust arbitration — higher-trust node wins if trust delta > threshold (0.2). Step 3: unresolvable — flag to human, emit to Stigmergy as high-weight signal, block deploy if protected tier. Maintains conflict records with resolution status. Provides unresolved conflict list for CLI and report.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "stigmergy": {
+      "component_id": "stigmergy",
+      "name": "Stigmergy Emitter",
+      "description": "Fire-and-forget Signal emission to Stigmergy. Emits Signal objects with source='arbiter' and typed findings: consistency_violation, taint_escape, access_violation, conflict_unresolvable, trust_degradation. Each signal includes actor (node ID), content (finding details), weight, and UTC timestamp. Stigmergy unavailability must never affect Arbiter operation (FA-A-023) — all emissions are wrapped in try/except with short timeouts (rabbit hole patch). Provides emit_signal(signal) as the sole interface. Uses requests library with configurable timeout.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "human_gate": {
+      "component_id": "human_gate",
+      "name": "Human Gate",
+      "description": "Handles human-in-the-loop gating. Sends fire-and-forget webhook POST notifications (AS008) to configured human_gate.webhook_url when gate triggers (FINANCIAL/AUTH/COMPLIANCE tier, LOW_TRUST_AUTHORITATIVE, unresolvable conflict). Request body includes node, finding type, trust score, data tier, required action. Webhook failure is non-fatal. block_on_gate config controls whether deploy is blocked pending approval. Actual approval flows back through reset-taint CLI/API — this component only handles the notification side. Also emits gate events to Stigmergy.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "report": {
+      "component_id": "report",
+      "name": "Feedback Report Generator",
+      "description": "Assembles the full feedback report with all seven required sections (AC026): TRUST SUMMARY (per-node score, tier label, authority domains), CONSISTENCY (pass/warn/fail per node with unexplained field details), ACCESS (pass/warn per node with structural gap details), CONFLICTS (detected conflicts and resolution status), TAINT (canary escape results), BLAST RADIUS (for proposed changes — computed soak duration, human gate status), OVERALL verdict (PROCEED/HOLD/BLOCK with required actions). Report is deterministic — same inputs produce identical output (FA-A-027, AC027). Output is structured JSON. Aggregates data from all analysis engines.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "otlp_subscriber": {
+      "component_id": "otlp_subscriber",
+      "name": "OTLP Span Subscriber",
+      "description": "gRPC server on configured port (default 4317) receiving OTLP spans from Baton's adapter layer. Uses grpcio thread pool (AS002 — threading OK, no asyncio). On span receipt: enriches with arbiter.* attributes (C012 — arbiter.access.declared, arbiter.access.observed, arbiter.consistency, arbiter.trust.score, arbiter.trust.tier, arbiter.authority.domains, arbiter.taint.detected, arbiter.blast.tier, arbiter.conflict), then dispatches to consistency analyzer, access auditor, taint detector, and conflict resolver. Defines expected span schema contract with Baton (rabbit hole patch — validates span structure, logs warnings on unexpected format). Manages execution-ID correlation buffer for conflict detection windowing.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "http_api": {
+      "component_id": "http_api",
+      "name": "HTTP API Server",
+      "description": "JSON HTTP API on configured port (default 7700). Endpoints: POST /register (ingest access_graph.json), POST /blast-radius (compute blast radius), GET /trust/<node_id> (score, tier, last 20 ledger events), POST /trust/reset-taint (clear taint lock with review_id), GET /authority (full authority map), POST /canary/inject (seed canary corpus), GET /canary/results/<run_id> (taint escape report), GET /report/<run_id> (full feedback report), POST /findings (receive OTLP span JSON from Baton adapter). All responses JSON with machine-readable error_code on errors. Uses a lightweight synchronous HTTP server (e.g., Flask or http.server with threading). Delegates all business logic to respective engines.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "cli": {
+      "component_id": "cli",
+      "name": "CLI Entry Point",
+      "description": "Click-based CLI surface for all arbiter commands. `arbiter init` — initialize registry directory, empty trust ledger, default config (FA-A-001). `arbiter register <access_graph.json>` — ingest access graph. `arbiter trust show <node>` — current score and history. `arbiter trust reset-taint <node> --review <id>` — clear taint lock. `arbiter authority show` — full authority map. `arbiter blast-radius <node> <version>` — compute blast radius. `arbiter soak compute <node> <tier>` — compute soak duration. `arbiter report --run <run_id>` — generate feedback report. `arbiter canary inject --tiers <tier>` — seed canary data. `arbiter canary results --run <run_id>` — taint escape report. `arbiter watch` — starts OTLP subscriber + HTTP API in single process. `arbiter findings --node <node>` — consistency findings. `arbiter conflicts --unresolved` — list unresolved. Thin layer — delegates all logic to engines.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "root": {
+      "component_id": "root",
+      "name": "Root",
+      "description": "# Arbiter\n\nAccess auditing, consistency analysis, blast-radius classification, and trust enforcement for the Pact/Baton stack. Arbiter is the trust enforcement layer that sits between Pact-built compo",
+      "depth": 0,
+      "parent_id": "",
+      "children": [
+        "access_auditor",
+        "blast",
+        "cli",
+        "config",
+        "conflicts",
+        "consistency",
+        "http_api",
+        "human_gate",
+        "models",
+        "otlp_subscriber",
+        "registry",
+        "report",
+        "stigmergy",
+        "taint",
+        "trust_engine",
+        "trust_ledger"
+      ],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    }
+  }
+}

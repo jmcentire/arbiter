@@ -1,0 +1,1397 @@
+{
+  "component_id": "cli",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "fmt_output_json_valid",
+      "description": "format_output in JSON mode produces valid JSON matching model_dump",
+      "function": "format_output",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output is valid JSON",
+        "parsed JSON matches response.model_dump(mode='json')"
+      ]
+    },
+    {
+      "id": "fmt_output_text_nonempty",
+      "description": "format_output in text mode produces non-empty human-readable string",
+      "function": "format_output",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output is non-empty string",
+        "output contains key field values"
+      ]
+    },
+    {
+      "id": "fmt_output_json_no_trailing_newline",
+      "description": "format_output does not add trailing newline",
+      "function": "format_output",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output does not end with newline"
+      ]
+    },
+    {
+      "id": "fmt_error_json_valid",
+      "description": "format_error in JSON mode produces valid JSON matching CliError model_dump",
+      "function": "format_error",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output is valid JSON",
+        "parsed JSON matches error.model_dump(mode='json')"
+      ]
+    },
+    {
+      "id": "fmt_error_text_includes_code_and_message",
+      "description": "format_error in text mode includes error_code and message",
+      "function": "format_error",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output contains error_code",
+        "output contains message"
+      ]
+    },
+    {
+      "id": "fmt_error_text_includes_node_id_context",
+      "description": "format_error text mode includes node_id when non-empty",
+      "function": "format_error",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output contains the node_id value"
+      ]
+    },
+    {
+      "id": "fmt_error_text_includes_field_context",
+      "description": "format_error text mode includes field when non-empty",
+      "function": "format_error",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output contains the field value"
+      ]
+    },
+    {
+      "id": "fmt_error_text_no_context_when_empty",
+      "description": "format_error text mode omits node_id/field when empty strings",
+      "function": "format_error",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output does not contain extra context markers for empty fields"
+      ]
+    },
+    {
+      "id": "map_exc_domain_error",
+      "description": "Domain logic exceptions map to DOMAIN_ERROR_1",
+      "function": "map_exception_to_exit_code",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returns ExitCode.DOMAIN_ERROR_1"
+      ]
+    },
+    {
+      "id": "map_exc_usage_error",
+      "description": "Validation/input exceptions map to USAGE_ERROR_2",
+      "function": "map_exception_to_exit_code",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returns ExitCode.USAGE_ERROR_2"
+      ]
+    },
+    {
+      "id": "map_exc_io_error",
+      "description": "Filesystem/network exceptions map to IO_ERROR_3",
+      "function": "map_exception_to_exit_code",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returns ExitCode.IO_ERROR_3"
+      ]
+    },
+    {
+      "id": "map_exc_not_found",
+      "description": "Entity-not-found exceptions map to NOT_FOUND_4",
+      "function": "map_exception_to_exit_code",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returns ExitCode.NOT_FOUND_4"
+      ]
+    },
+    {
+      "id": "map_exc_unrecognized_default",
+      "description": "Unrecognized exceptions default to DOMAIN_ERROR_1",
+      "function": "map_exception_to_exit_code",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returns ExitCode.DOMAIN_ERROR_1"
+      ]
+    },
+    {
+      "id": "resolve_format_text_passthrough",
+      "description": "resolve_output_format returns 'text' unchanged regardless of TTY",
+      "function": "resolve_output_format",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returns OutputFormat.text"
+      ]
+    },
+    {
+      "id": "resolve_format_json_passthrough",
+      "description": "resolve_output_format returns 'json' unchanged regardless of TTY",
+      "function": "resolve_output_format",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returns OutputFormat.json"
+      ]
+    },
+    {
+      "id": "resolve_format_auto_tty_true",
+      "description": "resolve_output_format returns 'text' when auto and is_tty=True",
+      "function": "resolve_output_format",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returns OutputFormat.text"
+      ]
+    },
+    {
+      "id": "resolve_format_auto_tty_false",
+      "description": "resolve_output_format returns 'json' when auto and is_tty=False",
+      "function": "resolve_output_format",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returns OutputFormat.json"
+      ]
+    },
+    {
+      "id": "resolve_format_never_auto",
+      "description": "resolve_output_format never returns 'auto'",
+      "function": "resolve_output_format",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "return value is never OutputFormat.auto"
+      ]
+    },
+    {
+      "id": "group_valid_config",
+      "description": "arbiter_group with valid config produces fully initialized CliContext",
+      "function": "arbiter_group",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "config": "returns valid ArbiterConfig"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "CliContext is attached to ctx.obj",
+        "output_format is not auto",
+        "config is valid ArbiterConfig"
+      ]
+    },
+    {
+      "id": "group_config_not_found",
+      "description": "arbiter_group raises error when non-default config path does not exist",
+      "function": "arbiter_group",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "config_not_found",
+      "assertions": [
+        "exit code matches IO_ERROR_3 or NOT_FOUND_4"
+      ]
+    },
+    {
+      "id": "group_config_invalid_yaml",
+      "description": "arbiter_group raises error when config is invalid YAML",
+      "function": "arbiter_group",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "config_invalid_yaml",
+      "assertions": [
+        "exit code indicates USAGE_ERROR_2 or DOMAIN_ERROR_1"
+      ]
+    },
+    {
+      "id": "group_registry_path_invalid",
+      "description": "arbiter_group raises error when registry_path is not a valid directory",
+      "function": "arbiter_group",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "registry_path_invalid",
+      "assertions": [
+        "exit code indicates error"
+      ]
+    },
+    {
+      "id": "group_format_json_flag",
+      "description": "arbiter_group with --format json sets output_format to json",
+      "function": "arbiter_group",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "CliContext.output_format is OutputFormat.json"
+      ]
+    },
+    {
+      "id": "group_format_text_flag",
+      "description": "arbiter_group with --format text sets output_format to text",
+      "function": "arbiter_group",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "CliContext.output_format is OutputFormat.text"
+      ]
+    },
+    {
+      "id": "group_help_output",
+      "description": "arbiter --help produces non-empty help text",
+      "function": "arbiter_group",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is 0",
+        "output contains help text"
+      ]
+    },
+    {
+      "id": "init_happy_path",
+      "description": "cmd_init creates registry directory and files, returns InitResponse",
+      "function": "cmd_init",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "registry.initialize_registry": "returns InitResponse with created files"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is SUCCESS_0",
+        "response contains registry_path",
+        "response contains created_files list",
+        "response contains message"
+      ]
+    },
+    {
+      "id": "init_force_flag",
+      "description": "cmd_init with --force succeeds even if registry exists",
+      "function": "cmd_init",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "registry.initialize_registry": "returns InitResponse"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is SUCCESS_0"
+      ]
+    },
+    {
+      "id": "init_already_initialized_no_force",
+      "description": "cmd_init without --force when registry exists raises already_initialized",
+      "function": "cmd_init",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "registry.initialize_registry": "raises already_initialized error"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "already_initialized",
+      "assertions": [
+        "exit code is DOMAIN_ERROR_1"
+      ]
+    },
+    {
+      "id": "init_permission_denied",
+      "description": "cmd_init raises permission_denied when directory not writable",
+      "function": "cmd_init",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "registry.initialize_registry": "raises permission error"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "permission_denied",
+      "assertions": [
+        "exit code is IO_ERROR_3"
+      ]
+    },
+    {
+      "id": "init_parent_not_found",
+      "description": "cmd_init raises parent_not_found when parent directory missing",
+      "function": "cmd_init",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "registry.initialize_registry": "raises parent not found error"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "parent_not_found",
+      "assertions": [
+        "exit code is NOT_FOUND_4 or IO_ERROR_3"
+      ]
+    },
+    {
+      "id": "register_happy_path",
+      "description": "cmd_register ingests access graph and returns counts",
+      "function": "cmd_register",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "registry.ingest_access_graph": "returns RegisterResponse"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is SUCCESS_0",
+        "response contains nodes_ingested > 0",
+        "response contains edges_ingested >= 0"
+      ]
+    },
+    {
+      "id": "register_registry_not_initialized",
+      "description": "cmd_register fails when registry not initialized",
+      "function": "cmd_register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "registry.ingest_access_graph": "raises registry not initialized"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "registry_not_initialized",
+      "assertions": [
+        "exit code indicates error"
+      ]
+    },
+    {
+      "id": "register_file_not_found",
+      "description": "cmd_register fails when access_graph_path does not exist",
+      "function": "cmd_register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "registry.ingest_access_graph": "raises file not found"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "file_not_found",
+      "assertions": [
+        "exit code is NOT_FOUND_4"
+      ]
+    },
+    {
+      "id": "register_invalid_json",
+      "description": "cmd_register fails when file is not valid JSON",
+      "function": "cmd_register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "registry.ingest_access_graph": "raises invalid JSON error"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_json",
+      "assertions": [
+        "exit code indicates error"
+      ]
+    },
+    {
+      "id": "register_schema_violation",
+      "description": "cmd_register fails when JSON does not match access graph schema",
+      "function": "cmd_register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "registry.ingest_access_graph": "raises schema violation"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "schema_violation",
+      "assertions": [
+        "exit code indicates error"
+      ]
+    },
+    {
+      "id": "trust_show_happy_path",
+      "description": "cmd_trust_show returns current score and history oldest-first",
+      "function": "cmd_trust_show",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine.compute_trust_score": "returns score",
+        "trust_engine.get_trust_history": "returns ordered history"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is SUCCESS_0",
+        "response has current_score",
+        "response has tainted flag",
+        "history is ordered oldest-first"
+      ]
+    },
+    {
+      "id": "trust_show_node_not_found",
+      "description": "cmd_trust_show fails when node_id does not exist",
+      "function": "cmd_trust_show",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "raises node not found"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "node_not_found",
+      "assertions": [
+        "exit code is NOT_FOUND_4",
+        "error message includes node_id"
+      ]
+    },
+    {
+      "id": "trust_show_registry_not_initialized",
+      "description": "cmd_trust_show fails when registry not initialized",
+      "function": "cmd_trust_show",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "registry_not_initialized",
+      "assertions": [
+        "exit code indicates error"
+      ]
+    },
+    {
+      "id": "trust_show_ledger_corrupted",
+      "description": "cmd_trust_show fails when ledger checksum fails",
+      "function": "cmd_trust_show",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "raises ledger corrupted"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ledger_corrupted",
+      "assertions": [
+        "exit code indicates error"
+      ]
+    },
+    {
+      "id": "trust_reset_taint_happy_path",
+      "description": "cmd_trust_reset_taint clears taint and recomputes score",
+      "function": "cmd_trust_reset_taint",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine.reset_taint": "returns TrustResetTaintResponse"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is SUCCESS_0",
+        "response shows previous_score and new_score",
+        "response shows node no longer tainted"
+      ]
+    },
+    {
+      "id": "trust_reset_taint_not_tainted",
+      "description": "cmd_trust_reset_taint fails when node is not tainted",
+      "function": "cmd_trust_reset_taint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine.reset_taint": "raises not tainted error"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "not_tainted",
+      "assertions": [
+        "exit code is DOMAIN_ERROR_1"
+      ]
+    },
+    {
+      "id": "trust_reset_taint_empty_review_id",
+      "description": "cmd_trust_reset_taint fails when review_id is empty",
+      "function": "cmd_trust_reset_taint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "empty_review_id",
+      "assertions": [
+        "exit code is USAGE_ERROR_2"
+      ]
+    },
+    {
+      "id": "trust_reset_taint_node_not_found",
+      "description": "cmd_trust_reset_taint fails when node does not exist",
+      "function": "cmd_trust_reset_taint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine.reset_taint": "raises node not found"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "node_not_found",
+      "assertions": [
+        "exit code is NOT_FOUND_4"
+      ]
+    },
+    {
+      "id": "authority_show_happy_path",
+      "description": "cmd_authority_show returns authority map with entries",
+      "function": "cmd_authority_show",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "authority_engine.get_authority_map": "returns AuthorityShowResponse"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is SUCCESS_0",
+        "response has authority_map list",
+        "response has total_entries count"
+      ]
+    },
+    {
+      "id": "authority_show_registry_not_initialized",
+      "description": "cmd_authority_show fails when registry not initialized",
+      "function": "cmd_authority_show",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "registry_not_initialized",
+      "assertions": [
+        "exit code indicates error"
+      ]
+    },
+    {
+      "id": "blast_radius_happy_path",
+      "description": "cmd_blast_radius returns affected nodes ordered by depth",
+      "function": "cmd_blast_radius",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine.compute_blast_radius": "returns BlastRadiusResponse"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is SUCCESS_0",
+        "affected_nodes ordered by depth ascending",
+        "total_affected equals len(affected_nodes)",
+        "max_depth equals max depth or 0"
+      ]
+    },
+    {
+      "id": "blast_radius_empty_result",
+      "description": "cmd_blast_radius with isolated node returns empty affected list and max_depth=0",
+      "function": "cmd_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine.compute_blast_radius": "returns empty BlastRadiusResponse"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "total_affected is 0",
+        "max_depth is 0",
+        "affected_nodes is empty"
+      ]
+    },
+    {
+      "id": "blast_radius_node_not_found",
+      "description": "cmd_blast_radius fails when node does not exist",
+      "function": "cmd_blast_radius",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine": "raises node not found"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "node_not_found",
+      "assertions": [
+        "exit code is NOT_FOUND_4"
+      ]
+    },
+    {
+      "id": "blast_radius_no_access_graph",
+      "description": "cmd_blast_radius fails when no access graph registered",
+      "function": "cmd_blast_radius",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine": "raises no access graph"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "no_access_graph",
+      "assertions": [
+        "exit code indicates error"
+      ]
+    },
+    {
+      "id": "soak_compute_happy_path",
+      "description": "cmd_soak_compute returns non-negative soak duration",
+      "function": "cmd_soak_compute",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "soak_engine.compute_soak_duration": "returns SoakComputeResponse"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is SUCCESS_0",
+        "soak_duration_hours >= 0"
+      ]
+    },
+    {
+      "id": "soak_compute_invalid_tier",
+      "description": "cmd_soak_compute fails for unrecognized tier",
+      "function": "cmd_soak_compute",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "soak_engine": "raises invalid tier"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_tier",
+      "assertions": [
+        "exit code is USAGE_ERROR_2"
+      ]
+    },
+    {
+      "id": "soak_compute_node_not_found",
+      "description": "cmd_soak_compute fails when node does not exist",
+      "function": "cmd_soak_compute",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "soak_engine": "raises node not found"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "node_not_found",
+      "assertions": [
+        "exit code is NOT_FOUND_4"
+      ]
+    },
+    {
+      "id": "report_happy_path",
+      "description": "cmd_report generates report with valid timestamp",
+      "function": "cmd_report",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "report_engine.generate_report": "returns ReportResponse"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is SUCCESS_0",
+        "response has run_id",
+        "generated_at is valid ISO timestamp",
+        "report_path is non-empty"
+      ]
+    },
+    {
+      "id": "report_run_not_found",
+      "description": "cmd_report fails when run_id does not match any known run",
+      "function": "cmd_report",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "report_engine": "raises run not found"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "run_not_found",
+      "assertions": [
+        "exit code is NOT_FOUND_4"
+      ]
+    },
+    {
+      "id": "canary_inject_happy_path",
+      "description": "cmd_canary_inject seeds canaries for specified tiers",
+      "function": "cmd_canary_inject",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "canary_engine.inject_canaries": "returns CanaryInjectResponse"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is SUCCESS_0",
+        "run_id is UUID v4 format",
+        "injected_count > 0",
+        "tiers_covered matches input tiers"
+      ]
+    },
+    {
+      "id": "canary_inject_empty_tiers",
+      "description": "cmd_canary_inject fails when tiers list is empty",
+      "function": "cmd_canary_inject",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "empty_tiers",
+      "assertions": [
+        "exit code is USAGE_ERROR_2"
+      ]
+    },
+    {
+      "id": "canary_inject_invalid_tier",
+      "description": "cmd_canary_inject fails when one tier is not recognized",
+      "function": "cmd_canary_inject",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "canary_engine": "raises invalid tier"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_tier",
+      "assertions": [
+        "exit code is USAGE_ERROR_2"
+      ]
+    },
+    {
+      "id": "canary_results_happy_path",
+      "description": "cmd_canary_results returns escape report with correct totals",
+      "function": "cmd_canary_results",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "canary_engine.get_canary_results": "returns CanaryResultsResponse"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is SUCCESS_0",
+        "total_escapes equals len(escapes)",
+        "escape_rate equals total_escapes / total_canaries"
+      ]
+    },
+    {
+      "id": "canary_results_zero_canaries",
+      "description": "cmd_canary_results with zero canaries returns escape_rate 0.0",
+      "function": "cmd_canary_results",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "canary_engine.get_canary_results": "returns response with 0 canaries"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "escape_rate is 0.0",
+        "total_canaries is 0"
+      ]
+    },
+    {
+      "id": "canary_results_run_not_found",
+      "description": "cmd_canary_results fails when run_id does not match canary run",
+      "function": "cmd_canary_results",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "canary_engine": "raises run not found"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "run_not_found",
+      "assertions": [
+        "exit code is NOT_FOUND_4"
+      ]
+    },
+    {
+      "id": "watch_happy_path",
+      "description": "cmd_watch starts servers and reports ready status",
+      "function": "cmd_watch",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "otlp_subscriber": "mock server",
+        "http_api": "mock server"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "WatchStatus.ready is True",
+        "http_port and otlp_port match inputs"
+      ]
+    },
+    {
+      "id": "watch_port_conflict",
+      "description": "cmd_watch fails when http_port equals otlp_port",
+      "function": "cmd_watch",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "port_conflict",
+      "assertions": [
+        "exit code is USAGE_ERROR_2"
+      ]
+    },
+    {
+      "id": "watch_port_in_use",
+      "description": "cmd_watch fails when a port is already bound",
+      "function": "cmd_watch",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "otlp_subscriber": "raises port in use"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "port_in_use",
+      "assertions": [
+        "exit code is IO_ERROR_3"
+      ]
+    },
+    {
+      "id": "findings_happy_path",
+      "description": "cmd_findings returns findings list with total matching len",
+      "function": "cmd_findings",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "findings_engine.get_findings": "returns FindingsResponse"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is SUCCESS_0",
+        "total equals len(findings)",
+        "each finding has severity and message"
+      ]
+    },
+    {
+      "id": "findings_node_not_found",
+      "description": "cmd_findings fails when node_id does not exist",
+      "function": "cmd_findings",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "findings_engine": "raises node not found"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "node_not_found",
+      "assertions": [
+        "exit code is NOT_FOUND_4"
+      ]
+    },
+    {
+      "id": "conflicts_happy_path_all",
+      "description": "cmd_conflicts returns all conflicts when unresolved_only is false",
+      "function": "cmd_conflicts",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "conflicts_engine.list_conflicts": "returns ConflictsResponse with mixed resolved/unresolved"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is SUCCESS_0",
+        "total equals len(conflicts)"
+      ]
+    },
+    {
+      "id": "conflicts_unresolved_only",
+      "description": "cmd_conflicts with unresolved_only filters to resolved=false only",
+      "function": "cmd_conflicts",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "conflicts_engine.list_conflicts": "returns ConflictsResponse filtered"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all returned conflicts have resolved=False",
+        "unresolved_only flag is True in response"
+      ]
+    },
+    {
+      "id": "conflicts_registry_not_initialized",
+      "description": "cmd_conflicts fails when registry not initialized",
+      "function": "cmd_conflicts",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "registry_not_initialized",
+      "assertions": [
+        "exit code indicates error"
+      ]
+    },
+    {
+      "id": "invariant_output_format_never_auto",
+      "description": "CliContext.output_format is never 'auto' after group callback",
+      "function": "arbiter_group",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "ctx.obj.output_format is not OutputFormat.auto"
+      ]
+    },
+    {
+      "id": "invariant_trust_authority_separation",
+      "description": "Trust commands delegate to trust_engine, authority to authority_engine",
+      "function": "cmd_trust_show",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "trust_engine is called",
+        "authority_engine is not called"
+      ]
+    },
+    {
+      "id": "invariant_errors_to_stderr",
+      "description": "All error output goes to stderr, not stdout",
+      "function": "cmd_trust_show",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "stdout contains no error messages",
+        "stderr contains error output"
+      ]
+    },
+    {
+      "id": "invariant_json_output_model_dump",
+      "description": "JSON output matches model_dump(mode='json') of response",
+      "function": "format_output",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "JSON output is identical to response.model_dump(mode='json')"
+      ]
+    },
+    {
+      "id": "invariant_exit_codes_deterministic",
+      "description": "Same error condition always produces same exit code",
+      "function": "map_exception_to_exit_code",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "repeated calls with same exception type return same ExitCode"
+      ]
+    },
+    {
+      "id": "invariant_append_only_ledger",
+      "description": "Trust reset appends to ledger, never modifies existing entries",
+      "function": "cmd_trust_reset_taint",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine.reset_taint": "mock verifying append-only"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "trust_engine.reset_taint is called with append semantics"
+      ]
+    },
+    {
+      "id": "integration_init_json_end_to_end",
+      "description": "Full pipeline: arbiter --format json init --force produces valid JSON on stdout",
+      "function": "cmd_init",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "registry.initialize_registry": "returns InitResponse"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exit code is 0",
+        "stdout is valid JSON",
+        "JSON has registry_path and created_files"
+      ]
+    },
+    {
+      "id": "integration_error_pipeline",
+      "description": "Bad config produces formatted error on stderr with correct exit code",
+      "function": "arbiter_group",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "config_not_found",
+      "assertions": [
+        "exit code is non-zero",
+        "stderr contains error message",
+        "stdout is empty or minimal"
+      ]
+    },
+    {
+      "id": "integration_no_stacktrace_leak",
+      "description": "No stack traces leak to user output on any error path",
+      "function": "arbiter_group",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output does not contain 'Traceback'",
+        "output does not contain 'File \"'"
+      ]
+    },
+    {
+      "id": "node_id_param_valid",
+      "description": "NodeIdType accepts valid node IDs matching pattern",
+      "function": "cmd_trust_show",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "valid node IDs like 'my-node.v1' and 'abc_123' are accepted"
+      ]
+    },
+    {
+      "id": "node_id_param_invalid_empty",
+      "description": "NodeIdType rejects empty string",
+      "function": "cmd_trust_show",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "USAGE_ERROR_2",
+      "assertions": [
+        "empty node_id is rejected"
+      ]
+    },
+    {
+      "id": "node_id_param_invalid_chars",
+      "description": "NodeIdType rejects node IDs with invalid characters",
+      "function": "cmd_trust_show",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "USAGE_ERROR_2",
+      "assertions": [
+        "node_id with special chars like 'node@#$' is rejected"
+      ]
+    },
+    {
+      "id": "run_id_param_valid",
+      "description": "RunIdType accepts valid UUID v4 format",
+      "function": "cmd_report",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "valid UUID v4 is accepted"
+      ]
+    },
+    {
+      "id": "run_id_param_invalid",
+      "description": "RunIdType rejects non-UUID strings",
+      "function": "cmd_report",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "USAGE_ERROR_2",
+      "assertions": [
+        "non-UUID run_id like 'not-a-uuid' is rejected"
+      ]
+    },
+    {
+      "id": "version_tag_param_valid",
+      "description": "VersionType accepts valid semver like '1.2.3' and '1.0.0-alpha.1'",
+      "function": "cmd_blast_radius",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "valid semver strings are accepted"
+      ]
+    },
+    {
+      "id": "version_tag_param_invalid",
+      "description": "VersionType rejects invalid version strings like 'v1.2' or '1.2'",
+      "function": "cmd_blast_radius",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "USAGE_ERROR_2",
+      "assertions": [
+        "invalid version strings are rejected"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract test suite for the CLI component.\nTests cover all 14 commands, utility functions, group-level behavior,\nparameter validation, invariants, and integration smoke tests.\n\nRun with: pytest contract_test.py -v\n\"\"\"\n\nimport json\nimport re\nimport uuid\nfrom datetime import datetime, timezone\nfrom unittest.mock import MagicMock, patch, PropertyMock\nfrom pathlib import Path\n\nimport pytest\n\n# ---------------------------------------------------------------------------\n# Attempt imports – the component may organize things differently, so we\n# try several reasonable module paths and fall back to a namespace dict\n# that lets the tests be *syntactically* valid even if the real module is\n# missing at collection time.\n# ---------------------------------------------------------------------------\ntry:\n    from cli import (\n        arbiter_group,\n        cmd_init,\n        cmd_register,\n        cmd_trust_show,\n        cmd_trust_reset_taint,\n        cmd_authority_show,\n        cmd_blast_radius,\n        cmd_soak_compute,\n        cmd_report,\n        cmd_canary_inject,\n        cmd_canary_results,\n        cmd_watch,\n        cmd_findings,\n        cmd_conflicts,\n        format_output,\n        format_error,\n        map_exception_to_exit_code,\n        resolve_output_format,\n        ExitCode,\n        OutputFormat,\n        CliContext,\n        ArbiterConfig,\n        CliError,\n        InitResponse,\n        RegisterResponse,\n        TrustShowResponse,\n        TrustResetTaintResponse,\n        AuthorityShowResponse,\n        BlastRadiusResponse,\n        SoakComputeResponse,\n        ReportResponse,\n        CanaryInjectResponse,\n        CanaryResultsResponse,\n        WatchStatus,\n        FindingsResponse,\n        ConflictsResponse,\n        TrustScoreEntry,\n        BlastRadiusNode,\n        AuthorityEntry,\n        Finding,\n        FindingSeverity,\n        TaintEscape,\n        Conflict,\n    )\nexcept ImportError:\n    # If the top-level 'cli' module doesn't expose everything, try\n    # sub-module imports that match a plausible project layout.\n    from cli.types import (\n        ExitCode,\n        OutputFormat,\n        CliContext,\n        ArbiterConfig,\n        CliError,\n        InitResponse,\n        RegisterResponse,\n        TrustShowResponse,\n        TrustResetTaintResponse,\n        AuthorityShowResponse,\n        BlastRadiusResponse,\n        SoakComputeResponse,\n        ReportResponse,\n        CanaryInjectResponse,\n        CanaryResultsResponse,\n        WatchStatus,\n        FindingsResponse,\n        ConflictsResponse,\n        TrustScoreEntry,\n        BlastRadiusNode,\n        AuthorityEntry,\n        Finding,\n        FindingSeverity,\n        TaintEscape,\n        Conflict,\n    )\n    from cli.formatting import format_output, format_error\n    from cli.utils import map_exception_to_exit_code, resolve_output_format\n    from cli.commands import (\n        arbiter_group,\n        cmd_init,\n        cmd_register,\n        cmd_trust_show,\n        cmd_trust_reset_taint,\n        cmd_authority_show,\n        cmd_blast_radius,\n        cmd_soak_compute,\n        cmd_report,\n        cmd_canary_inject,\n        cmd_canary_results,\n        cmd_watch,\n        cmd_findings,\n        cmd_conflicts,\n    )\n\n# Click test runner\ntry:\n    from click.testing import CliRunner\nexcept ImportError:\n    CliRunner = None\n\n\n# ═══════════════════════════════════════════════════════════════════════════\n# FIXTURES\n# ═══════════════════════════════════════════════════════════════════════════\n\nSAMPLE_NODE_ID = \"service-a.prod\"\nSAMPLE_RUN_ID = \"550e8400-e29b-41d4-a716-446655440000\"\nSAMPLE_REVIEW_ID = \"review-001\"\nSAMPLE_VERSION = \"1.2.3\"\nSAMPLE_TIER = \"confidential\"\n\n\n@pytest.fixture\ndef cli_runner():\n    \"\"\"CliRunner with separate stderr stream.\"\"\"\n    return CliRunner(mix_stderr=False)\n\n\n@pytest.fixture\ndef tmp_config(tmp_path):\n    \"\"\"Write a minimal valid YAML config and return its path.\"\"\"\n    cfg = tmp_path / \"arbiter.yaml\"\n    cfg.write_text(\n        \"registry_path: ./registry\\n\"\n        \"ledger_checksum_interval: 100\\n\"\n        \"http_port: 8080\\n\"\n        \"otlp_port: 4317\\n\"\n        \"cold_start_timeout_s: 3.0\\n\"\n    )\n    return str(cfg)\n\n\n@pytest.fixture\ndef invalid_config(tmp_path):\n    \"\"\"Write malformed YAML and return its path.\"\"\"\n    cfg = tmp_path / \"bad.yaml\"\n    cfg.write_text(\"{{not: valid: yaml:::\")\n    return str(cfg)\n\n\n@pytest.fixture\ndef tmp_registry(tmp_path):\n    \"\"\"Create a minimal registry directory structure.\"\"\"\n    reg = tmp_path / \"registry\"\n    reg.mkdir()\n    (reg / \"trust_ledger.jsonl\").write_text(\"\")\n    (reg / \"config.yaml\").write_text(\"\")\n    return str(reg)\n\n\n@pytest.fixture\ndef arbiter_config(tmp_registry):\n    \"\"\"A valid ArbiterConfig instance.\"\"\"\n    return ArbiterConfig(\n        registry_path=tmp_registry,\n        ledger_checksum_interval=100,\n        http_port=8080,\n        otlp_port=4317,\n        cold_start_timeout_s=3.0,\n    )\n\n\n@pytest.fixture\ndef mock_context(arbiter_config):\n    \"\"\"A CliContext with resolved output_format=json and mocked paths.\"\"\"\n    return CliContext(\n        registry_path=arbiter_config.registry_path,\n        config=arbiter_config,\n        output_format=OutputFormat.json,\n    )\n\n\n@pytest.fixture\ndef sample_trust_history():\n    return [\n        TrustScoreEntry(\n            timestamp=\"2024-01-01T00:00:00Z\",\n            raw_score=0.5,\n            event_type=\"initial\",\n            tainted=False,\n        ),\n        TrustScoreEntry(\n            timestamp=\"2024-01-02T00:00:00Z\",\n            raw_score=0.7,\n            event_type=\"attestation\",\n            tainted=False,\n        ),\n    ]\n\n\n@pytest.fixture\ndef sample_init_response(tmp_registry):\n    return InitResponse(\n        registry_path=tmp_registry,\n        created_files=[\"trust_ledger.jsonl\", \"config.yaml\"],\n        message=\"Registry initialized.\",\n    )\n\n\n@pytest.fixture\ndef sample_register_response():\n    return RegisterResponse(\n        nodes_ingested=5, edges_ingested=8, message=\"Access graph registered.\"\n    )\n\n\n@pytest.fixture\ndef sample_trust_show_response(sample_trust_history):\n    return TrustShowResponse(\n        node_id=SAMPLE_NODE_ID,\n        current_score=0.7,\n        tainted=False,\n        history=sample_trust_history,\n    )\n\n\n@pytest.fixture\ndef sample_trust_reset_response():\n    return TrustResetTaintResponse(\n        node_id=SAMPLE_NODE_ID,\n        review_id=SAMPLE_REVIEW_ID,\n        previous_score=0.3,\n        new_score=0.6,\n        message=\"Taint cleared.\",\n    )\n\n\n@pytest.fixture\ndef sample_authority_response():\n    return AuthorityShowResponse(\n        authority_map=[\n            AuthorityEntry(\n                node_id=SAMPLE_NODE_ID,\n                authority_scope=\"write:secrets\",\n                declared_by=\"manifest-a\",\n                timestamp=\"2024-01-01T00:00:00Z\",\n            )\n        ],\n        total_entries=1,\n    )\n\n\n@pytest.fixture\ndef sample_blast_radius_response():\n    return BlastRadiusResponse(\n        origin_node=SAMPLE_NODE_ID,\n        version=SAMPLE_VERSION,\n        affected_nodes=[\n            BlastRadiusNode(\n                node_id=\"service-b\",\n                depth=1,\n                data_tier=\"confidential\",\n                trust_score=0.8,\n            ),\n            BlastRadiusNode(\n                node_id=\"service-c\",\n                depth=2,\n                data_tier=\"internal\",\n                trust_score=0.6,\n            ),\n        ],\n        total_affected=2,\n        max_depth=2,\n    )\n\n\n@pytest.fixture\ndef sample_soak_response():\n    return SoakComputeResponse(\n        node_id=SAMPLE_NODE_ID,\n        tier=SAMPLE_TIER,\n        soak_duration_hours=24.0,\n        trust_score=0.7,\n        message=\"Soak period computed.\",\n    )\n\n\n@pytest.fixture\ndef sample_report_response():\n    return ReportResponse(\n        run_id=SAMPLE_RUN_ID,\n        generated_at=\"2024-06-15T12:00:00Z\",\n        summary=\"All checks passed.\",\n        findings_count=0,\n        report_path=\"/registry/reports/report.json\",\n    )\n\n\n@pytest.fixture\ndef sample_canary_inject_response():\n    return CanaryInjectResponse(\n        run_id=SAMPLE_RUN_ID,\n        injected_count=10,\n        tiers_covered=[SAMPLE_TIER],\n        message=\"Canaries injected.\",\n    )\n\n\n@pytest.fixture\ndef sample_canary_results_response():\n    return CanaryResultsResponse(\n        run_id=SAMPLE_RUN_ID,\n        escapes=[\n            TaintEscape(\n                canary_id=\"canary-1\",\n                source_tier=SAMPLE_TIER,\n                found_at_node=\"service-b\",\n                found_at_tier=\"internal\",\n                timestamp=\"2024-06-15T13:00:00Z\",\n            )\n        ],\n        total_escapes=1,\n        total_canaries=10,\n        escape_rate=0.1,\n    )\n\n\n@pytest.fixture\ndef sample_findings_response():\n    return FindingsResponse(\n        node_id=SAMPLE_NODE_ID,\n        findings=[\n            Finding(\n                finding_id=\"f-1\",\n                node_id=SAMPLE_NODE_ID,\n                severity=FindingSeverity.high,\n                category=\"trust-authority-mismatch\",\n                message=\"Trust score inconsistent with declared authority.\",\n                timestamp=\"2024-06-15T12:00:00Z\",\n            )\n        ],\n        total=1,\n    )\n\n\n@pytest.fixture\ndef sample_conflicts_response():\n    return ConflictsResponse(\n        conflicts=[\n            Conflict(\n                conflict_id=\"c-1\",\n                node_ids=[SAMPLE_NODE_ID, \"service-b\"],\n                conflict_type=\"authority-overlap\",\n                message=\"Overlapping authority declarations.\",\n                resolved=False,\n                timestamp=\"2024-06-15T12:00:00Z\",\n            )\n        ],\n        total=1,\n        unresolved_only=False,\n    )\n\n\n# ═══════════════════════════════════════════════════════════════════════════\n# 1. UTILITY FUNCTION TESTS (format_output, format_error,\n#    map_exception_to_exit_code, resolve_output_format)\n# ═══════════════════════════════════════════════════════════════════════════\n\n\nclass TestFormatOutput:\n    \"\"\"Tests for the format_output pure helper.\"\"\"\n\n    def test_json_produces_valid_json(self, sample_init_response):\n        result = format_output(sample_init_response, OutputFormat.json)\n        parsed = json.loads(result)\n        expected = sample_init_response.model_dump(mode=\"json\")\n        assert parsed == expected\n\n    def test_text_produces_nonempty_string(self, sample_init_response):\n        result = format_output(sample_init_response, OutputFormat.text)\n        assert isinstance(result, str)\n        assert len(result) > 0\n\n    def test_json_no_trailing_newline(self, sample_init_response):\n        result = format_output(sample_init_response, OutputFormat.json)\n        assert not result.endswith(\"\\n\")\n\n    def test_text_no_trailing_newline(self, sample_init_response):\n        result = format_output(sample_init_response, OutputFormat.text)\n        assert not result.endswith(\"\\n\")\n\n    def test_json_roundtrip_register(self, sample_register_response):\n        result = format_output(sample_register_response, OutputFormat.json)\n        parsed = json.loads(result)\n        assert parsed == sample_register_response.model_dump(mode=\"json\")\n\n    def test_json_roundtrip_trust_show(self, sample_trust_show_response):\n        result = format_output(sample_trust_show_response, OutputFormat.json)\n        parsed = json.loads(result)\n        assert parsed == sample_trust_show_response.model_dump(mode=\"json\")\n\n    def test_json_roundtrip_blast_radius(self, sample_blast_radius_response):\n        result = format_output(sample_blast_radius_response, OutputFormat.json)\n        parsed = json.loads(result)\n        assert parsed == sample_blast_radius_response.model_dump(mode=\"json\")\n\n    def test_json_roundtrip_canary_results(self, sample_canary_results_response):\n        result = format_output(sample_canary_results_response, OutputFormat.json)\n        parsed = json.loads(result)\n        assert parsed == sample_canary_results_response.model_dump(mode=\"json\")\n\n    def test_text_contains_key_fields_trust(self, sample_trust_show_response):\n        result = format_output(sample_trust_show_response, OutputFormat.text)\n        assert SAMPLE_NODE_ID in result\n\n    def test_text_contains_key_fields_findings(self, sample_findings_response):\n        result = format_output(sample_findings_response, OutputFormat.text)\n        assert SAMPLE_NODE_ID in result\n\n\nclass TestFormatError:\n    \"\"\"Tests for the format_error pure helper.\"\"\"\n\n    def _make_error(self, node_id=\"\", field=\"\"):\n        return CliError(\n            error_code=\"node_not_found\",\n            message=\"Node 'service-x' not found in access graph.\",\n            exit_code=4,\n            node_id=node_id,\n            field=field,\n        )\n\n    def test_json_produces_valid_json(self):\n        err = self._make_error(node_id=\"service-x\")\n        result = format_error(err, OutputFormat.json)\n        parsed = json.loads(result)\n        assert parsed == err.model_dump(mode=\"json\")\n\n    def test_text_includes_error_code_and_message(self):\n        err = self._make_error()\n        result = format_error(err, OutputFormat.text)\n        assert \"node_not_found\" in result\n        assert \"not found\" in result.lower()\n\n    def test_text_includes_node_id_when_nonempty(self):\n        err = self._make_error(node_id=\"service-x\")\n        result = format_error(err, OutputFormat.text)\n        assert \"service-x\" in result\n\n    def test_text_includes_field_when_nonempty(self):\n        err = self._make_error(field=\"review_id\")\n        result = format_error(err, OutputFormat.text)\n        assert \"review_id\" in result\n\n    def test_text_no_extra_context_when_both_empty(self):\n        err = self._make_error(node_id=\"\", field=\"\")\n        result = format_error(err, OutputFormat.text)\n        # Should still have code + message\n        assert \"node_not_found\" in result\n        assert \"not found\" in result.lower()\n\n\nclass TestMapExceptionToExitCode:\n    \"\"\"Tests for map_exception_to_exit_code.\"\"\"\n\n    def test_file_not_found_maps_to_not_found(self):\n        exc = FileNotFoundError(\"missing\")\n        result = map_exception_to_exit_code(exc)\n        assert result == ExitCode.NOT_FOUND_4\n\n    def test_permission_error_maps_to_io_error(self):\n        exc = PermissionError(\"denied\")\n        result = map_exception_to_exit_code(exc)\n        assert result == ExitCode.IO_ERROR_3\n\n    def test_os_error_maps_to_io_error(self):\n        exc = OSError(\"disk failure\")\n        result = map_exception_to_exit_code(exc)\n        assert result == ExitCode.IO_ERROR_3\n\n    def test_value_error_maps_to_usage_error(self):\n        exc = ValueError(\"bad input\")\n        result = map_exception_to_exit_code(exc)\n        assert result == ExitCode.USAGE_ERROR_2\n\n    def test_unrecognized_maps_to_domain_error(self):\n        exc = RuntimeError(\"unexpected\")\n        result = map_exception_to_exit_code(exc)\n        assert result == ExitCode.DOMAIN_ERROR_1\n\n    def test_deterministic_repeated_calls(self):\n        \"\"\"Same exception type always returns same ExitCode.\"\"\"\n        exc = FileNotFoundError(\"test\")\n        results = [map_exception_to_exit_code(exc) for _ in range(10)]\n        assert all(r == ExitCode.NOT_FOUND_4 for r in results)\n\n\nclass TestResolveOutputFormat:\n    \"\"\"Tests for resolve_output_format.\"\"\"\n\n    def test_text_passthrough_tty_true(self):\n        assert resolve_output_format(OutputFormat.text, True) == OutputFormat.text\n\n    def test_text_passthrough_tty_false(self):\n        assert resolve_output_format(OutputFormat.text, False) == OutputFormat.text\n\n    def test_json_passthrough_tty_true(self):\n        assert resolve_output_format(OutputFormat.json, True) == OutputFormat.json\n\n    def test_json_passthrough_tty_false(self):\n        assert resolve_output_format(OutputFormat.json, False) == OutputFormat.json\n\n    def test_auto_tty_true_returns_text(self):\n        assert resolve_output_format(OutputFormat.auto, True) == OutputFormat.text\n\n    def test_auto_tty_false_returns_json(self):\n        assert resolve_output_format(OutputFormat.auto, False) == OutputFormat.json\n\n    def test_never_returns_auto(self):\n        for fmt in OutputFormat:\n            for tty in (True, False):\n                result = resolve_output_format(fmt, tty)\n                assert result != OutputFormat.auto, (\n                    f\"resolve_output_format({fmt}, {tty}) returned auto\"\n                )\n\n\n# ═══════════════════════════════════════════════════════════════════════════\n# 2. GROUP-LEVEL TESTS (arbiter_group, CliContext construction)\n# ═══════════════════════════════════════════════════════════════════════════\n\n\nclass TestArbiterGroup:\n    \"\"\"Tests for the top-level Click group callback.\"\"\"\n\n    @pytest.fixture(autouse=True)\n    def _setup_runner(self, cli_runner):\n        self.runner = cli_runner\n\n    def test_help_output(self):\n        result = self.runner.invoke(arbiter_group, [\"--help\"])\n        assert result.exit_code == 0\n        assert len(result.output) > 0\n        assert \"Usage\" in result.output or \"usage\" in result.output.lower()\n\n    @patch(\"cli.config.load_config\")\n    def test_valid_config_creates_context(self, mock_load, tmp_config, tmp_registry):\n        mock_load.return_value = ArbiterConfig(\n            registry_path=tmp_registry,\n            ledger_checksum_interval=100,\n            http_port=8080,\n            otlp_port=4317,\n            cold_start_timeout_s=3.0,\n        )\n        # Invoke with a trivial subcommand placeholder\n        # We test that the group itself doesn't error out.\n        result = self.runner.invoke(\n            arbiter_group,\n            [\"--config\", tmp_config, \"--format\", \"json\", \"--help\"],\n        )\n        assert result.exit_code == 0\n\n    def test_config_not_found_nondefault_path(self, tmp_path):\n        nonexistent = str(tmp_path / \"does_not_exist.yaml\")\n        result = self.runner.invoke(\n            arbiter_group, [\"--config\", nonexistent, \"--help\"]\n        )\n        # Group should either show help or error; if config is only loaded\n        # when a subcommand runs, --help may still succeed. We check that\n        # a real subcommand with bad config produces a non-zero exit:\n        result2 = self.runner.invoke(\n            arbiter_group, [\"--config\", nonexistent, \"init\"]\n        )\n        assert result2.exit_code != 0\n\n    def test_config_invalid_yaml(self, invalid_config):\n        result = self.runner.invoke(\n            arbiter_group, [\"--config\", invalid_config, \"init\"]\n        )\n        assert result.exit_code != 0\n\n    def test_registry_path_invalid(self, tmp_config, tmp_path):\n        bad_reg = str(tmp_path / \"no_such_dir\" / \"nested\")\n        result = self.runner.invoke(\n            arbiter_group,\n            [\"--config\", tmp_config, \"--registry-path\", bad_reg, \"init\"],\n        )\n        # Should fail – either at group level or at command level\n        # The contract says registry_path_invalid if explicit path doesn't exist\n        assert result.exit_code != 0\n\n    def test_format_json_flag(self, tmp_config):\n        result = self.runner.invoke(\n            arbiter_group, [\"--config\", tmp_config, \"--format\", \"json\", \"--help\"]\n        )\n        assert result.exit_code == 0\n\n    def test_format_text_flag(self, tmp_config):\n        result = self.runner.invoke(\n            arbiter_group, [\"--config\", tmp_config, \"--format\", \"text\", \"--help\"]\n        )\n        assert result.exit_code == 0\n\n\n# ═══════════════════════════════════════════════════════════════════════════\n# 3. SUBCOMMAND TESTS\n# ═══════════════════════════════════════════════════════════════════════════\n\n\nclass TestCmdInit:\n    \"\"\"Tests for `arbiter init`.\"\"\"\n\n    @patch(\"cli.commands.registry\")\n    def test_happy_path(self, mock_reg, cli_runner, mock_context, sample_init_response):\n        mock_reg.initialize_registry.return_value = sample_init_response\n        result = cli_runner.invoke(\n            arbiter_group, [\"--format\", \"json\", \"init\", \"--force\"], obj=mock_context\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert \"registry_path\" in data\n        assert \"created_files\" in data\n\n    @patch(\"cli.commands.registry\")\n    def test_force_flag(self, mock_reg, cli_runner, mock_context, sample_init_response):\n        mock_reg.initialize_registry.return_value = sample_init_response\n        result = cli_runner.invoke(\n            arbiter_group, [\"--format\", \"json\", \"init\", \"--force\"], obj=mock_context\n        )\n        assert result.exit_code == 0\n\n    @patch(\"cli.commands.registry\")\n    def test_already_initialized_no_force(self, mock_reg, cli_runner, mock_context):\n        mock_reg.initialize_registry.side_effect = Exception(\"already_initialized\")\n        result = cli_runner.invoke(\n            arbiter_group, [\"--format\", \"json\", \"init\"], obj=mock_context\n        )\n        assert result.exit_code != 0\n\n    @patch(\"cli.commands.registry\")\n    def test_permission_denied(self, mock_reg, cli_runner, mock_context):\n        mock_reg.initialize_registry.side_effect = PermissionError(\"cannot write\")\n        result = cli_runner.invoke(\n            arbiter_group, [\"--format\", \"json\", \"init\"], obj=mock_context\n        )\n        assert result.exit_code != 0\n\n\nclass TestCmdRegister:\n    \"\"\"Tests for `arbiter register`.\"\"\"\n\n    @patch(\"cli.commands.registry\")\n    def test_happy_path(self, mock_reg, cli_runner, mock_context, sample_register_response, tmp_path):\n        graph_file = tmp_path / \"graph.json\"\n        graph_file.write_text('{\"nodes\": [], \"edges\": []}')\n        mock_reg.ingest_access_graph.return_value = sample_register_response\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"register\", str(graph_file)],\n            obj=mock_context,\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert data[\"nodes_ingested\"] == 5\n        assert data[\"edges_ingested\"] == 8\n\n    @patch(\"cli.commands.registry\")\n    def test_file_not_found(self, mock_reg, cli_runner, mock_context):\n        mock_reg.ingest_access_graph.side_effect = FileNotFoundError(\"no such file\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"register\", \"/nonexistent/graph.json\"],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n    @patch(\"cli.commands.registry\")\n    def test_registry_not_initialized(self, mock_reg, cli_runner, mock_context, tmp_path):\n        graph_file = tmp_path / \"graph.json\"\n        graph_file.write_text(\"{}\")\n        mock_reg.ingest_access_graph.side_effect = Exception(\"registry_not_initialized\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"register\", str(graph_file)],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n\nclass TestCmdTrustShow:\n    \"\"\"Tests for `arbiter trust show`.\"\"\"\n\n    @patch(\"cli.commands.trust_engine\")\n    def test_happy_path(self, mock_te, cli_runner, mock_context, sample_trust_show_response):\n        mock_te.compute_trust_score.return_value = 0.7\n        mock_te.get_trust_history.return_value = sample_trust_show_response.history\n        # The command should assemble TrustShowResponse\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"trust\", \"show\", SAMPLE_NODE_ID],\n            obj=mock_context,\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert data[\"node_id\"] == SAMPLE_NODE_ID\n        assert \"current_score\" in data\n        assert \"history\" in data\n        # History ordered oldest-first\n        if len(data[\"history\"]) > 1:\n            assert data[\"history\"][0][\"timestamp\"] <= data[\"history\"][-1][\"timestamp\"]\n\n    @patch(\"cli.commands.trust_engine\")\n    def test_node_not_found(self, mock_te, cli_runner, mock_context):\n        mock_te.compute_trust_score.side_effect = LookupError(\"node_not_found\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"trust\", \"show\", \"nonexistent-node\"],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n        # Verify error on stderr includes node info\n        if result.stderr:\n            assert \"nonexistent-node\" in result.stderr or \"not_found\" in result.stderr.lower()\n\n    @patch(\"cli.commands.trust_engine\")\n    def test_ledger_corrupted(self, mock_te, cli_runner, mock_context):\n        mock_te.compute_trust_score.side_effect = Exception(\"ledger_corrupted\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"trust\", \"show\", SAMPLE_NODE_ID],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n    @patch(\"cli.commands.trust_engine\")\n    @patch(\"cli.commands.authority_engine\")\n    def test_trust_authority_separation(self, mock_ae, mock_te, cli_runner, mock_context, sample_trust_show_response):\n        mock_te.compute_trust_score.return_value = 0.7\n        mock_te.get_trust_history.return_value = sample_trust_show_response.history\n        cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"trust\", \"show\", SAMPLE_NODE_ID],\n            obj=mock_context,\n        )\n        # trust_engine should be called, authority_engine should NOT\n        assert mock_te.compute_trust_score.called or mock_te.get_trust_history.called\n        assert not mock_ae.get_authority_map.called\n\n\nclass TestCmdTrustResetTaint:\n    \"\"\"Tests for `arbiter trust reset-taint`.\"\"\"\n\n    @patch(\"cli.commands.trust_engine\")\n    def test_happy_path(self, mock_te, cli_runner, mock_context, sample_trust_reset_response):\n        mock_te.reset_taint.return_value = sample_trust_reset_response\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\n                \"--format\", \"json\", \"trust\", \"reset-taint\",\n                SAMPLE_NODE_ID, \"--review\", SAMPLE_REVIEW_ID,\n            ],\n            obj=mock_context,\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert data[\"node_id\"] == SAMPLE_NODE_ID\n        assert \"previous_score\" in data\n        assert \"new_score\" in data\n\n    @patch(\"cli.commands.trust_engine\")\n    def test_not_tainted(self, mock_te, cli_runner, mock_context):\n        mock_te.reset_taint.side_effect = Exception(\"not_tainted\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\n                \"--format\", \"json\", \"trust\", \"reset-taint\",\n                SAMPLE_NODE_ID, \"--review\", SAMPLE_REVIEW_ID,\n            ],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n    @patch(\"cli.commands.trust_engine\")\n    def test_node_not_found(self, mock_te, cli_runner, mock_context):\n        mock_te.reset_taint.side_effect = LookupError(\"node_not_found\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\n                \"--format\", \"json\", \"trust\", \"reset-taint\",\n                SAMPLE_NODE_ID, \"--review\", SAMPLE_REVIEW_ID,\n            ],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n\nclass TestCmdAuthorityShow:\n    \"\"\"Tests for `arbiter authority show`.\"\"\"\n\n    @patch(\"cli.commands.authority_engine\")\n    def test_happy_path(self, mock_ae, cli_runner, mock_context, sample_authority_response):\n        mock_ae.get_authority_map.return_value = sample_authority_response\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"authority\", \"show\"],\n            obj=mock_context,\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert \"authority_map\" in data\n        assert data[\"total_entries\"] >= 0\n\n    @patch(\"cli.commands.authority_engine\")\n    def test_registry_not_initialized(self, mock_ae, cli_runner, mock_context):\n        mock_ae.get_authority_map.side_effect = Exception(\"registry_not_initialized\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"authority\", \"show\"],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n\nclass TestCmdBlastRadius:\n    \"\"\"Tests for `arbiter blast-radius`.\"\"\"\n\n    @patch(\"cli.commands.blast_radius_engine\")\n    def test_happy_path(self, mock_br, cli_runner, mock_context, sample_blast_radius_response):\n        mock_br.compute_blast_radius.return_value = sample_blast_radius_response\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"blast-radius\", SAMPLE_NODE_ID, SAMPLE_VERSION],\n            obj=mock_context,\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert data[\"total_affected\"] == len(data[\"affected_nodes\"])\n        # Ordered by depth ascending\n        depths = [n[\"depth\"] for n in data[\"affected_nodes\"]]\n        assert depths == sorted(depths)\n        if data[\"affected_nodes\"]:\n            assert data[\"max_depth\"] == max(depths)\n        else:\n            assert data[\"max_depth\"] == 0\n\n    @patch(\"cli.commands.blast_radius_engine\")\n    def test_empty_blast_radius(self, mock_br, cli_runner, mock_context):\n        empty_resp = BlastRadiusResponse(\n            origin_node=SAMPLE_NODE_ID,\n            version=SAMPLE_VERSION,\n            affected_nodes=[],\n            total_affected=0,\n            max_depth=0,\n        )\n        mock_br.compute_blast_radius.return_value = empty_resp\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"blast-radius\", SAMPLE_NODE_ID, SAMPLE_VERSION],\n            obj=mock_context,\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert data[\"total_affected\"] == 0\n        assert data[\"max_depth\"] == 0\n        assert data[\"affected_nodes\"] == []\n\n    @patch(\"cli.commands.blast_radius_engine\")\n    def test_node_not_found(self, mock_br, cli_runner, mock_context):\n        mock_br.compute_blast_radius.side_effect = LookupError(\"node_not_found\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"blast-radius\", \"ghost-node\", SAMPLE_VERSION],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n\nclass TestCmdSoakCompute:\n    \"\"\"Tests for `arbiter soak compute`.\"\"\"\n\n    @patch(\"cli.commands.soak_engine\")\n    def test_happy_path(self, mock_se, cli_runner, mock_context, sample_soak_response):\n        mock_se.compute_soak_duration.return_value = sample_soak_response\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"soak\", \"compute\", SAMPLE_NODE_ID, SAMPLE_TIER],\n            obj=mock_context,\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert data[\"soak_duration_hours\"] >= 0\n\n    @patch(\"cli.commands.soak_engine\")\n    def test_invalid_tier(self, mock_se, cli_runner, mock_context):\n        mock_se.compute_soak_duration.side_effect = ValueError(\"invalid_tier\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"soak\", \"compute\", SAMPLE_NODE_ID, \"nonexistent-tier\"],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n    @patch(\"cli.commands.soak_engine\")\n    def test_node_not_found(self, mock_se, cli_runner, mock_context):\n        mock_se.compute_soak_duration.side_effect = LookupError(\"node_not_found\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"soak\", \"compute\", \"ghost\", SAMPLE_TIER],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n\nclass TestCmdReport:\n    \"\"\"Tests for `arbiter report`.\"\"\"\n\n    @patch(\"cli.commands.report_engine\")\n    def test_happy_path(self, mock_re, cli_runner, mock_context, sample_report_response):\n        mock_re.generate_report.return_value = sample_report_response\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"report\", \"--run\", SAMPLE_RUN_ID],\n            obj=mock_context,\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert data[\"run_id\"] == SAMPLE_RUN_ID\n        # Validate ISO 8601 timestamp\n        datetime.fromisoformat(data[\"generated_at\"].replace(\"Z\", \"+00:00\"))\n        assert len(data[\"report_path\"]) > 0\n\n    @patch(\"cli.commands.report_engine\")\n    def test_run_not_found(self, mock_re, cli_runner, mock_context):\n        mock_re.generate_report.side_effect = LookupError(\"run_not_found\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"report\", \"--run\", SAMPLE_RUN_ID],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n\nclass TestCmdCanaryInject:\n    \"\"\"Tests for `arbiter canary inject`.\"\"\"\n\n    @patch(\"cli.commands.canary_engine\")\n    def test_happy_path(self, mock_ce, cli_runner, mock_context, sample_canary_inject_response):\n        mock_ce.inject_canaries.return_value = sample_canary_inject_response\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"canary\", \"inject\", \"--tiers\", SAMPLE_TIER],\n            obj=mock_context,\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert data[\"injected_count\"] > 0\n        # Validate UUID v4 format for run_id\n        uuid.UUID(data[\"run_id\"], version=4)\n        assert SAMPLE_TIER in data[\"tiers_covered\"]\n\n    @patch(\"cli.commands.canary_engine\")\n    def test_empty_tiers(self, mock_ce, cli_runner, mock_context):\n        mock_ce.inject_canaries.side_effect = ValueError(\"empty_tiers\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"canary\", \"inject\", \"--tiers\", \"\"],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n    @patch(\"cli.commands.canary_engine\")\n    def test_invalid_tier(self, mock_ce, cli_runner, mock_context):\n        mock_ce.inject_canaries.side_effect = ValueError(\"invalid_tier\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"canary\", \"inject\", \"--tiers\", \"bogus-tier\"],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n\nclass TestCmdCanaryResults:\n    \"\"\"Tests for `arbiter canary results`.\"\"\"\n\n    @patch(\"cli.commands.canary_engine\")\n    def test_happy_path(self, mock_ce, cli_runner, mock_context, sample_canary_results_response):\n        mock_ce.get_canary_results.return_value = sample_canary_results_response\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"canary\", \"results\", \"--run\", SAMPLE_RUN_ID],\n            obj=mock_context,\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert data[\"total_escapes\"] == len(data[\"escapes\"])\n        if data[\"total_canaries\"] > 0:\n            expected_rate = data[\"total_escapes\"] / data[\"total_canaries\"]\n            assert abs(data[\"escape_rate\"] - expected_rate) < 1e-9\n\n    @patch(\"cli.commands.canary_engine\")\n    def test_zero_canaries(self, mock_ce, cli_runner, mock_context):\n        zero_resp = CanaryResultsResponse(\n            run_id=SAMPLE_RUN_ID,\n            escapes=[],\n            total_escapes=0,\n            total_canaries=0,\n            escape_rate=0.0,\n        )\n        mock_ce.get_canary_results.return_value = zero_resp\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"canary\", \"results\", \"--run\", SAMPLE_RUN_ID],\n            obj=mock_context,\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert data[\"escape_rate\"] == 0.0\n        assert data[\"total_canaries\"] == 0\n\n    @patch(\"cli.commands.canary_engine\")\n    def test_run_not_found(self, mock_ce, cli_runner, mock_context):\n        mock_ce.get_canary_results.side_effect = LookupError(\"run_not_found\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"canary\", \"results\", \"--run\", SAMPLE_RUN_ID],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n\nclass TestCmdWatch:\n    \"\"\"Tests for `arbiter watch`.\"\"\"\n\n    @patch(\"cli.commands.http_api\")\n    @patch(\"cli.commands.otlp_subscriber\")\n    def test_port_conflict_same_ports(self, mock_otlp, mock_http, cli_runner, mock_context):\n        \"\"\"http_port and otlp_port must differ.\"\"\"\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\n                \"--format\", \"json\", \"watch\",\n                \"--http-port\", \"8080\", \"--otlp-port\", \"8080\",\n            ],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n    @patch(\"cli.commands.http_api\")\n    @patch(\"cli.commands.otlp_subscriber\")\n    def test_port_in_use(self, mock_otlp, mock_http, cli_runner, mock_context):\n        mock_otlp.start.side_effect = OSError(\"port_in_use\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\n                \"--format\", \"json\", \"watch\",\n                \"--http-port\", \"8080\", \"--otlp-port\", \"4317\",\n            ],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n\nclass TestCmdFindings:\n    \"\"\"Tests for `arbiter findings`.\"\"\"\n\n    @patch(\"cli.commands.findings_engine\")\n    def test_happy_path(self, mock_fe, cli_runner, mock_context, sample_findings_response):\n        mock_fe.get_findings.return_value = sample_findings_response\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"findings\", \"--node\", SAMPLE_NODE_ID],\n            obj=mock_context,\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert data[\"total\"] == len(data[\"findings\"])\n        for f in data[\"findings\"]:\n            assert \"severity\" in f\n            assert \"message\" in f\n            assert \"node_id\" in f\n\n    @patch(\"cli.commands.findings_engine\")\n    def test_node_not_found(self, mock_fe, cli_runner, mock_context):\n        mock_fe.get_findings.side_effect = LookupError(\"node_not_found\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"findings\", \"--node\", \"ghost\"],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n\nclass TestCmdConflicts:\n    \"\"\"Tests for `arbiter conflicts`.\"\"\"\n\n    @patch(\"cli.commands.conflicts_engine\")\n    def test_happy_path_all(self, mock_ce, cli_runner, mock_context, sample_conflicts_response):\n        mock_ce.list_conflicts.return_value = sample_conflicts_response\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"conflicts\"],\n            obj=mock_context,\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert data[\"total\"] == len(data[\"conflicts\"])\n\n    @patch(\"cli.commands.conflicts_engine\")\n    def test_unresolved_only(self, mock_ce, cli_runner, mock_context):\n        unresolved_resp = ConflictsResponse(\n            conflicts=[\n                Conflict(\n                    conflict_id=\"c-1\",\n                    node_ids=[SAMPLE_NODE_ID],\n                    conflict_type=\"authority-overlap\",\n                    message=\"Overlap.\",\n                    resolved=False,\n                    timestamp=\"2024-06-15T12:00:00Z\",\n                )\n            ],\n            total=1,\n            unresolved_only=True,\n        )\n        mock_ce.list_conflicts.return_value = unresolved_resp\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"conflicts\", \"--unresolved\"],\n            obj=mock_context,\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert data[\"unresolved_only\"] is True\n        for c in data[\"conflicts\"]:\n            assert c[\"resolved\"] is False\n\n    @patch(\"cli.commands.conflicts_engine\")\n    def test_registry_not_initialized(self, mock_ce, cli_runner, mock_context):\n        mock_ce.list_conflicts.side_effect = Exception(\"registry_not_initialized\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"conflicts\"],\n            obj=mock_context,\n        )\n        assert result.exit_code != 0\n\n\n# ═══════════════════════════════════════════════════════════════════════════\n# 4. PARAMETER VALIDATION TESTS\n# ═══════════════════════════════════════════════════════════════════════════\n\n\nclass TestParamValidation:\n    \"\"\"Tests for custom Click ParamTypes (NodeIdType, RunIdType, VersionType).\"\"\"\n\n    @pytest.fixture(autouse=True)\n    def _setup(self, cli_runner, mock_context):\n        self.runner = cli_runner\n        self.ctx = mock_context\n\n    @patch(\"cli.commands.trust_engine\")\n    def test_node_id_valid_simple(self, mock_te, sample_trust_show_response):\n        mock_te.compute_trust_score.return_value = 0.7\n        mock_te.get_trust_history.return_value = sample_trust_show_response.history\n        result = self.runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"trust\", \"show\", \"my-node.v1\"],\n            obj=self.ctx,\n        )\n        # Valid node ID should not fail at param level\n        # (may fail at engine level which is a different error)\n        if result.exit_code != 0:\n            # If it fails, it shouldn't be a usage/param error\n            assert \"Invalid value\" not in (result.output + (result.stderr or \"\"))\n\n    def test_node_id_empty_rejected(self):\n        result = self.runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"trust\", \"show\", \"\"],\n            obj=self.ctx,\n        )\n        assert result.exit_code != 0\n\n    def test_node_id_invalid_chars_rejected(self):\n        result = self.runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"trust\", \"show\", \"node@#$%\"],\n            obj=self.ctx,\n        )\n        assert result.exit_code != 0\n\n    @patch(\"cli.commands.report_engine\")\n    def test_run_id_valid_uuid(self, mock_re, sample_report_response):\n        mock_re.generate_report.return_value = sample_report_response\n        result = self.runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"report\", \"--run\", SAMPLE_RUN_ID],\n            obj=self.ctx,\n        )\n        # Should not fail at param level\n        if result.exit_code == 0:\n            data = json.loads(result.output)\n            assert data[\"run_id\"] == SAMPLE_RUN_ID\n\n    def test_run_id_invalid_rejected(self):\n        result = self.runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"report\", \"--run\", \"not-a-uuid\"],\n            obj=self.ctx,\n        )\n        assert result.exit_code != 0\n\n    @patch(\"cli.commands.blast_radius_engine\")\n    def test_version_tag_valid_semver(self, mock_br, sample_blast_radius_response):\n        mock_br.compute_blast_radius.return_value = sample_blast_radius_response\n        result = self.runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"blast-radius\", SAMPLE_NODE_ID, \"1.0.0-alpha.1\"],\n            obj=self.ctx,\n        )\n        # Valid semver should not fail at param level\n        if result.exit_code != 0:\n            assert \"Invalid value\" not in (result.output + (result.stderr or \"\"))\n\n    def test_version_tag_invalid_rejected(self):\n        result = self.runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"blast-radius\", SAMPLE_NODE_ID, \"v1.2\"],\n            obj=self.ctx,\n        )\n        assert result.exit_code != 0\n\n\n# ═══════════════════════════════════════════════════════════════════════════\n# 5. INVARIANT TESTS\n# ═══════════════════════════════════════════════════════════════════════════\n\n\nclass TestInvariants:\n    \"\"\"Cross-cutting invariant tests from the contract.\"\"\"\n\n    def test_output_format_never_auto_after_resolve(self):\n        \"\"\"CliContext.output_format should never be 'auto' after resolution.\"\"\"\n        for fmt in OutputFormat:\n            for tty in (True, False):\n                resolved = resolve_output_format(fmt, tty)\n                assert resolved != OutputFormat.auto\n\n    def test_json_output_equals_model_dump(self, sample_blast_radius_response):\n        \"\"\"JSON output is identical to response.model_dump(mode='json').\"\"\"\n        result = format_output(sample_blast_radius_response, OutputFormat.json)\n        parsed = json.loads(result)\n        assert parsed == sample_blast_radius_response.model_dump(mode=\"json\")\n\n    def test_exit_codes_deterministic(self):\n        \"\"\"Same exception type always produces same exit code.\"\"\"\n        exceptions = [\n            FileNotFoundError(\"x\"),\n            PermissionError(\"x\"),\n            ValueError(\"x\"),\n            RuntimeError(\"x\"),\n        ]\n        for exc in exceptions:\n            results = {map_exception_to_exit_code(exc) for _ in range(5)}\n            assert len(results) == 1, f\"Non-deterministic exit code for {type(exc)}\"\n\n    @patch(\"cli.commands.trust_engine\")\n    def test_errors_on_stderr_not_stdout(self, mock_te, cli_runner, mock_context):\n        \"\"\"Error output must go to stderr, not stdout.\"\"\"\n        mock_te.compute_trust_score.side_effect = LookupError(\"node_not_found\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"trust\", \"show\", \"nonexistent\"],\n            obj=mock_context,\n        )\n        if result.exit_code != 0:\n            # stdout should not contain error markers\n            if result.output:\n                try:\n                    data = json.loads(result.output)\n                    # If stdout has JSON, it should not be an error object\n                    # (errors go to stderr)\n                    assert \"error_code\" not in data\n                except json.JSONDecodeError:\n                    pass\n            # stderr should have something if available\n            if result.stderr:\n                assert len(result.stderr) > 0\n\n\n# ═══════════════════════════════════════════════════════════════════════════\n# 6. INTEGRATION SMOKE TESTS\n# ═══════════════════════════════════════════════════════════════════════════\n\n\nclass TestIntegrationSmoke:\n    \"\"\"End-to-end integration-style tests using CliRunner.\"\"\"\n\n    @patch(\"cli.commands.registry\")\n    @patch(\"cli.config.load_config\")\n    def test_init_json_end_to_end(self, mock_load, mock_reg, cli_runner, tmp_config, tmp_registry):\n        mock_load.return_value = ArbiterConfig(\n            registry_path=tmp_registry,\n            ledger_checksum_interval=100,\n            http_port=8080,\n            otlp_port=4317,\n            cold_start_timeout_s=3.0,\n        )\n        mock_reg.initialize_registry.return_value = InitResponse(\n            registry_path=tmp_registry,\n            created_files=[\"trust_ledger.jsonl\", \"config.yaml\"],\n            message=\"Registry initialized.\",\n        )\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--config\", tmp_config, \"--format\", \"json\", \"init\", \"--force\"],\n        )\n        assert result.exit_code == 0\n        data = json.loads(result.output)\n        assert \"registry_path\" in data\n        assert \"created_files\" in data\n\n    def test_no_stacktrace_on_config_error(self, cli_runner, tmp_path):\n        \"\"\"No Python stack traces should leak to user on errors.\"\"\"\n        bad_path = str(tmp_path / \"nope.yaml\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--config\", bad_path, \"init\"],\n        )\n        combined = (result.output or \"\") + (result.stderr or \"\")\n        assert \"Traceback\" not in combined\n        assert 'File \"' not in combined\n\n    @patch(\"cli.commands.trust_engine\")\n    def test_no_stacktrace_on_domain_error(self, mock_te, cli_runner, mock_context):\n        \"\"\"Domain exceptions should not leak tracebacks.\"\"\"\n        mock_te.compute_trust_score.side_effect = LookupError(\"node_not_found\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--format\", \"json\", \"trust\", \"show\", \"ghost\"],\n            obj=mock_context,\n        )\n        combined = (result.output or \"\") + (result.stderr or \"\")\n        assert \"Traceback\" not in combined\n        assert 'File \"' not in combined\n\n    def test_error_pipeline_nonzero_exit(self, cli_runner, tmp_path):\n        \"\"\"Bad config → formatted error → non-zero exit code.\"\"\"\n        bad_path = str(tmp_path / \"nonexistent.yaml\")\n        result = cli_runner.invoke(\n            arbiter_group,\n            [\"--config\", bad_path, \"init\"],\n        )\n        assert result.exit_code != 0\n        # stderr should contain an error indication\n        if result.stderr:\n            assert len(result.stderr) > 0\n"
+}

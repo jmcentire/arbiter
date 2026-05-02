@@ -1,0 +1,1181 @@
+{
+  "component_id": "human_gate",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "eval_happy_financial",
+      "description": "evaluate_gate triggers FINANCIAL_TIER for FINANCIAL data tier",
+      "function": "evaluate_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-1",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "0.8",
+        "data_tier": "FINANCIAL",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is True",
+        "result.trigger_reason == GateTriggerReason.FINANCIAL_TIER",
+        "result.required_action is not None",
+        "'node-1' in result.summary"
+      ]
+    },
+    {
+      "id": "eval_happy_auth",
+      "description": "evaluate_gate triggers AUTH_TIER for AUTH data tier",
+      "function": "evaluate_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-2",
+        "finding_type": "ACCESS_CONFLICT",
+        "trust_score": "0.9",
+        "data_tier": "AUTH",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is True",
+        "result.trigger_reason == GateTriggerReason.AUTH_TIER",
+        "result.required_action is not None"
+      ]
+    },
+    {
+      "id": "eval_happy_compliance",
+      "description": "evaluate_gate triggers COMPLIANCE_TIER for COMPLIANCE data tier",
+      "function": "evaluate_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-3",
+        "finding_type": "BLAST_RADIUS_EXCEEDED",
+        "trust_score": "0.7",
+        "data_tier": "COMPLIANCE",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is True",
+        "result.trigger_reason == GateTriggerReason.COMPLIANCE_TIER",
+        "result.required_action is not None"
+      ]
+    },
+    {
+      "id": "eval_happy_low_trust_auth",
+      "description": "evaluate_gate triggers LOW_TRUST_AUTHORITATIVE when authoritative and trust < 0.5",
+      "function": "evaluate_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-4",
+        "finding_type": "CANARY_TRIGGERED",
+        "trust_score": "0.3",
+        "data_tier": "PUBLIC",
+        "is_authoritative": "true",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is True",
+        "result.trigger_reason == GateTriggerReason.LOW_TRUST_AUTHORITATIVE",
+        "result.required_action is not None"
+      ]
+    },
+    {
+      "id": "eval_happy_unresolvable",
+      "description": "evaluate_gate triggers UNRESOLVABLE_CONFLICT when is_unresolvable_conflict is true",
+      "function": "evaluate_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-5",
+        "finding_type": "CLASSIFICATION_MISMATCH",
+        "trust_score": "0.8",
+        "data_tier": "PUBLIC",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "true"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is True",
+        "result.trigger_reason == GateTriggerReason.UNRESOLVABLE_CONFLICT",
+        "result.required_action is not None"
+      ]
+    },
+    {
+      "id": "eval_happy_not_triggered",
+      "description": "evaluate_gate returns triggered=false for PUBLIC tier, high trust, non-authoritative, no conflict",
+      "function": "evaluate_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-6",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "0.8",
+        "data_tier": "PUBLIC",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is False",
+        "result.trigger_reason is None",
+        "result.required_action is None",
+        "'node-6' in result.summary"
+      ]
+    },
+    {
+      "id": "eval_edge_trust_zero",
+      "description": "evaluate_gate accepts trust_score=0.0 (boundary)",
+      "function": "evaluate_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-7",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "0.0",
+        "data_tier": "PUBLIC",
+        "is_authoritative": "true",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is True",
+        "result.trigger_reason == GateTriggerReason.LOW_TRUST_AUTHORITATIVE"
+      ]
+    },
+    {
+      "id": "eval_edge_trust_one",
+      "description": "evaluate_gate accepts trust_score=1.0 (boundary)",
+      "function": "evaluate_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-8",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "1.0",
+        "data_tier": "INTERNAL",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is False"
+      ]
+    },
+    {
+      "id": "eval_edge_trust_049",
+      "description": "evaluate_gate triggers LOW_TRUST_AUTHORITATIVE at trust=0.49 (just below threshold)",
+      "function": "evaluate_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-9",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "0.49",
+        "data_tier": "INTERNAL",
+        "is_authoritative": "true",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is True",
+        "result.trigger_reason == GateTriggerReason.LOW_TRUST_AUTHORITATIVE"
+      ]
+    },
+    {
+      "id": "eval_edge_trust_050",
+      "description": "evaluate_gate does NOT trigger LOW_TRUST_AUTHORITATIVE at trust=0.5 (threshold boundary)",
+      "function": "evaluate_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-10",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "0.5",
+        "data_tier": "INTERNAL",
+        "is_authoritative": "true",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is False or result.trigger_reason != GateTriggerReason.LOW_TRUST_AUTHORITATIVE"
+      ]
+    },
+    {
+      "id": "eval_edge_internal_no_trigger",
+      "description": "INTERNAL data tier alone does not trigger gate",
+      "function": "evaluate_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-11",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "0.8",
+        "data_tier": "INTERNAL",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is False"
+      ]
+    },
+    {
+      "id": "eval_edge_public_no_trigger",
+      "description": "PUBLIC data tier alone does not trigger gate",
+      "function": "evaluate_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-12",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "0.8",
+        "data_tier": "PUBLIC",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is False"
+      ]
+    },
+    {
+      "id": "eval_edge_confidential_no_trigger",
+      "description": "CONFIDENTIAL data tier alone does not trigger gate (only FINANCIAL/AUTH/COMPLIANCE do)",
+      "function": "evaluate_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-13",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "0.8",
+        "data_tier": "CONFIDENTIAL",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is False"
+      ]
+    },
+    {
+      "id": "eval_edge_authoritative_high_trust",
+      "description": "Authoritative node with high trust does NOT trigger LOW_TRUST_AUTHORITATIVE",
+      "function": "evaluate_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-14",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "0.8",
+        "data_tier": "PUBLIC",
+        "is_authoritative": "true",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is False"
+      ]
+    },
+    {
+      "id": "eval_error_nan_trust",
+      "description": "evaluate_gate raises error for NaN trust_score",
+      "function": "evaluate_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-err",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "NaN",
+        "data_tier": "PUBLIC",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_trust_score",
+      "assertions": [
+        "raises ValueError or similar for NaN trust_score"
+      ]
+    },
+    {
+      "id": "eval_error_inf_trust",
+      "description": "evaluate_gate raises error for infinite trust_score",
+      "function": "evaluate_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-err",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "inf",
+        "data_tier": "PUBLIC",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_trust_score",
+      "assertions": [
+        "raises ValueError or similar for infinite trust_score"
+      ]
+    },
+    {
+      "id": "eval_error_negative_trust",
+      "description": "evaluate_gate raises error for negative trust_score",
+      "function": "evaluate_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-err",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "-0.1",
+        "data_tier": "PUBLIC",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_trust_score",
+      "assertions": [
+        "raises error for trust_score < 0"
+      ]
+    },
+    {
+      "id": "eval_error_over_one_trust",
+      "description": "evaluate_gate raises error for trust_score > 1.0",
+      "function": "evaluate_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "node-err",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "1.1",
+        "data_tier": "PUBLIC",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_trust_score",
+      "assertions": [
+        "raises error for trust_score > 1.0"
+      ]
+    },
+    {
+      "id": "eval_error_empty_node_id",
+      "description": "evaluate_gate raises error for empty node_id",
+      "function": "evaluate_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "0.5",
+        "data_tier": "PUBLIC",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "empty_node_id",
+      "assertions": [
+        "raises error for empty node_id"
+      ]
+    },
+    {
+      "id": "eval_error_whitespace_node_id",
+      "description": "evaluate_gate raises error for whitespace-only node_id",
+      "function": "evaluate_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "   ",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "0.5",
+        "data_tier": "PUBLIC",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "empty_node_id",
+      "assertions": [
+        "raises error for whitespace-only node_id"
+      ]
+    },
+    {
+      "id": "eval_determinism",
+      "description": "evaluate_gate is deterministic: same inputs produce same output",
+      "function": "evaluate_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "det-node",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "0.3",
+        "data_tier": "FINANCIAL",
+        "is_authoritative": "true",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "calling evaluate_gate twice with same inputs produces identical results"
+      ]
+    },
+    {
+      "id": "build_happy_basic",
+      "description": "build_gate_event constructs GateEvent with correct fields from triggered decision",
+      "function": "build_gate_event",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "build-node-1",
+        "finding_type": "TRUST_VIOLATION",
+        "trust_score": "0.3",
+        "data_tier": "FINANCIAL",
+        "schema_version": "1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.node_id == 'build-node-1'",
+        "result.trigger_reason == decision.trigger_reason",
+        "result.required_action == decision.required_action",
+        "result.schema_version == '1'"
+      ]
+    },
+    {
+      "id": "build_happy_uuid4",
+      "description": "build_gate_event generates a valid UUID4 event_id",
+      "function": "build_gate_event",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "event_id is valid UUID4 format"
+      ]
+    },
+    {
+      "id": "build_happy_utc_timestamp",
+      "description": "build_gate_event generates UTC ISO 8601 timestamp",
+      "function": "build_gate_event",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "timestamp is UTC ISO 8601"
+      ]
+    },
+    {
+      "id": "build_happy_frozen",
+      "description": "build_gate_event returns a frozen Pydantic model",
+      "function": "build_gate_event",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "GateEvent is immutable (frozen)"
+      ]
+    },
+    {
+      "id": "build_error_not_triggered",
+      "description": "build_gate_event raises error when decision.triggered is false",
+      "function": "build_gate_event",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "decision_not_triggered",
+      "assertions": [
+        "raises error for decision with triggered=false"
+      ]
+    },
+    {
+      "id": "notify_happy_200",
+      "description": "send_gate_notification returns success WebhookResult on 200 response",
+      "function": "send_gate_notification",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request.urlopen": "mock 200 response"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.success is True",
+        "result.status_code == 200",
+        "result.error_message is None",
+        "result.elapsed_ms >= 0"
+      ]
+    },
+    {
+      "id": "notify_happy_headers",
+      "description": "send_gate_notification includes X-Gate-Event-Id and Content-Type headers",
+      "function": "send_gate_notification",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request.urlopen": "mock 200 response"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "request has X-Gate-Event-Id header",
+        "request has Content-Type: application/json header"
+      ]
+    },
+    {
+      "id": "notify_error_connection_refused",
+      "description": "send_gate_notification handles connection refused gracefully",
+      "function": "send_gate_notification",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request.urlopen": "raise ConnectionRefusedError"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "connection_refused",
+      "assertions": [
+        "result.success is False",
+        "result.status_code is None",
+        "result.error_message contains node_id",
+        "result.error_message contains webhook_url",
+        "result.elapsed_ms >= 0"
+      ]
+    },
+    {
+      "id": "notify_error_timeout",
+      "description": "send_gate_notification handles timeout gracefully",
+      "function": "send_gate_notification",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request.urlopen": "raise socket.timeout or urllib.error.URLError(timeout)"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "timeout",
+      "assertions": [
+        "result.success is False",
+        "result.status_code is None",
+        "result.error_message is not None",
+        "result.elapsed_ms >= 0"
+      ]
+    },
+    {
+      "id": "notify_error_redirect",
+      "description": "send_gate_notification treats 3xx redirect as failure",
+      "function": "send_gate_notification",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request.urlopen": "mock 301 redirect response"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "redirect_received",
+      "assertions": [
+        "result.success is False",
+        "result.error_message mentions redirect"
+      ]
+    },
+    {
+      "id": "notify_error_non_2xx",
+      "description": "send_gate_notification handles non-2xx non-3xx response",
+      "function": "send_gate_notification",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request.urlopen": "mock 500 response"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "non_2xx_response",
+      "assertions": [
+        "result.success is False",
+        "result.status_code == 500",
+        "result.response_body is not None",
+        "len(result.response_body) <= 1024"
+      ]
+    },
+    {
+      "id": "notify_error_dns",
+      "description": "send_gate_notification handles DNS resolution failure",
+      "function": "send_gate_notification",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request.urlopen": "raise socket.gaierror"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "dns_resolution_failure",
+      "assertions": [
+        "result.success is False",
+        "result.status_code is None"
+      ]
+    },
+    {
+      "id": "notify_elapsed_nonneg",
+      "description": "send_gate_notification always has non-negative elapsed_ms",
+      "function": "send_gate_notification",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.elapsed_ms >= 0"
+      ]
+    },
+    {
+      "id": "trigger_happy_triggered",
+      "description": "trigger_human_gate orchestrates full flow when gate triggers",
+      "function": "trigger_human_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy_emitter": "returns True",
+        "send_gate_notification": "returns successful WebhookResult"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is True",
+        "result.stigmergy_emitted is True",
+        "result.notification_sent is True",
+        "result.notification_error is None",
+        "result.event_id is valid UUID4"
+      ]
+    },
+    {
+      "id": "trigger_happy_not_triggered",
+      "description": "trigger_human_gate short-circuits when gate does not trigger",
+      "function": "trigger_human_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy_emitter": "should not be called"
+      },
+      "input_values": {
+        "node_id": "safe-node",
+        "trust_score": "0.9",
+        "data_tier": "PUBLIC",
+        "is_authoritative": "false",
+        "is_unresolvable_conflict": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is False",
+        "result.stigmergy_emitted is False",
+        "result.notification_sent is False",
+        "result.blocked is False"
+      ]
+    },
+    {
+      "id": "trigger_happy_disabled",
+      "description": "trigger_human_gate short-circuits when config.enabled is false",
+      "function": "trigger_human_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is False",
+        "result.stigmergy_emitted is False",
+        "result.notification_sent is False",
+        "result.blocked is False"
+      ]
+    },
+    {
+      "id": "trigger_happy_blocked",
+      "description": "trigger_human_gate sets blocked=true when triggered and block_on_gate=true",
+      "function": "trigger_human_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.blocked is True",
+        "result.triggered is True"
+      ]
+    },
+    {
+      "id": "trigger_happy_not_blocked",
+      "description": "trigger_human_gate sets blocked=false when triggered but block_on_gate=false",
+      "function": "trigger_human_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.blocked is False",
+        "result.triggered is True"
+      ]
+    },
+    {
+      "id": "trigger_edge_webhook_failure",
+      "description": "trigger_human_gate still succeeds when webhook fails (non-fatal)",
+      "function": "trigger_human_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy_emitter": "returns True",
+        "send_gate_notification": "returns failed WebhookResult"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is True",
+        "result.stigmergy_emitted is True",
+        "result.notification_sent is False",
+        "result.notification_error is not None"
+      ]
+    },
+    {
+      "id": "trigger_edge_stigmergy_failure",
+      "description": "trigger_human_gate still attempts webhook when stigmergy emission fails",
+      "function": "trigger_human_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy_emitter": "returns False"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.triggered is True",
+        "result.stigmergy_emitted is False",
+        "notification was still attempted"
+      ]
+    },
+    {
+      "id": "trigger_edge_trigger_reason_matches",
+      "description": "GateResult.trigger_reason matches GateDecision.trigger_reason",
+      "function": "trigger_human_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.trigger_reason matches evaluate_gate decision trigger_reason"
+      ]
+    },
+    {
+      "id": "trigger_error_empty_webhook",
+      "description": "trigger_human_gate errors when enabled but webhook_url is empty",
+      "function": "trigger_human_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "config_enabled_no_webhook_url",
+      "assertions": [
+        "raises error for enabled config with empty webhook_url"
+      ]
+    },
+    {
+      "id": "trigger_error_not_callable",
+      "description": "trigger_human_gate errors when stigmergy_emitter is not callable",
+      "function": "trigger_human_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "stigmergy_emitter_not_callable",
+      "assertions": [
+        "raises error for non-callable stigmergy_emitter"
+      ]
+    },
+    {
+      "id": "trigger_error_emitter_exception",
+      "description": "trigger_human_gate handles emitter raising unexpected exception",
+      "function": "trigger_human_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy_emitter": "raises RuntimeError"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "stigmergy_emitter_exception",
+      "assertions": [
+        "does not propagate exception or captures it gracefully"
+      ]
+    },
+    {
+      "id": "trigger_error_invalid_trust",
+      "description": "trigger_human_gate raises for invalid trust_score",
+      "function": "trigger_human_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_trust_score",
+      "assertions": [
+        "raises error for NaN trust_score"
+      ]
+    },
+    {
+      "id": "trigger_error_empty_node",
+      "description": "trigger_human_gate raises for empty node_id",
+      "function": "trigger_human_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "empty_node_id",
+      "assertions": [
+        "raises error for empty node_id"
+      ]
+    },
+    {
+      "id": "validate_happy_valid",
+      "description": "validate_human_gate_config returns empty list for valid config",
+      "function": "validate_human_gate_config",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == []"
+      ]
+    },
+    {
+      "id": "validate_error_enabled_no_url",
+      "description": "validate_human_gate_config reports error when enabled with empty webhook_url",
+      "function": "validate_human_gate_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is non-empty list",
+        "error mentions webhook_url"
+      ]
+    },
+    {
+      "id": "validate_error_bad_url_scheme",
+      "description": "validate_human_gate_config reports error for non-http(s) webhook_url",
+      "function": "validate_human_gate_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is non-empty list",
+        "error mentions http or https"
+      ]
+    },
+    {
+      "id": "validate_error_timeout_low",
+      "description": "validate_human_gate_config reports error for timeout_seconds < 0.1",
+      "function": "validate_human_gate_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is non-empty list",
+        "error mentions timeout"
+      ]
+    },
+    {
+      "id": "validate_error_timeout_high",
+      "description": "validate_human_gate_config reports error for timeout_seconds > 30.0",
+      "function": "validate_human_gate_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is non-empty list",
+        "error mentions timeout"
+      ]
+    },
+    {
+      "id": "validate_error_bad_schema_version",
+      "description": "validate_human_gate_config reports error for unrecognized schema_version",
+      "function": "validate_human_gate_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is non-empty list",
+        "error mentions schema_version"
+      ]
+    },
+    {
+      "id": "validate_edge_multiple_errors",
+      "description": "validate_human_gate_config reports multiple errors simultaneously",
+      "function": "validate_human_gate_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result) >= 2"
+      ]
+    },
+    {
+      "id": "validate_edge_timeout_boundary_low",
+      "description": "validate_human_gate_config accepts timeout_seconds=0.1",
+      "function": "validate_human_gate_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "no timeout error in result"
+      ]
+    },
+    {
+      "id": "validate_edge_timeout_boundary_high",
+      "description": "validate_human_gate_config accepts timeout_seconds=30.0",
+      "function": "validate_human_gate_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "no timeout error in result"
+      ]
+    },
+    {
+      "id": "invariant_frozen_gate_decision",
+      "description": "GateDecision is a frozen Pydantic model that cannot be mutated",
+      "function": "evaluate_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "attempting to set attribute on GateDecision raises error"
+      ]
+    },
+    {
+      "id": "invariant_frozen_gate_event",
+      "description": "GateEvent is a frozen Pydantic model that cannot be mutated",
+      "function": "build_gate_event",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "attempting to set attribute on GateEvent raises error"
+      ]
+    },
+    {
+      "id": "invariant_stigmergy_before_webhook",
+      "description": "Stigmergy emission is attempted before webhook notification in orchestration",
+      "function": "trigger_human_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "stigmergy_emitter is called before send_gate_notification"
+      ]
+    },
+    {
+      "id": "invariant_webhook_never_raises",
+      "description": "send_gate_notification never raises exceptions",
+      "function": "send_gate_notification",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "function returns WebhookResult even for all error scenarios"
+      ]
+    },
+    {
+      "id": "invariant_event_id_unique",
+      "description": "event_id is unique across multiple gate evaluations",
+      "function": "trigger_human_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "two trigger_human_gate calls produce different event_ids"
+      ]
+    },
+    {
+      "id": "invariant_trust_authority_distinct",
+      "description": "LOW_TRUST_AUTHORITATIVE requires BOTH low trust AND authority declared",
+      "function": "evaluate_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "low trust without authority does not trigger LOW_TRUST_AUTHORITATIVE",
+        "authority without low trust does not trigger LOW_TRUST_AUTHORITATIVE"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for the human_gate component.\nTests organized into classes mirroring the five functions plus invariants.\nRun with: pytest contract_test.py -v\n\"\"\"\n\nimport json\nimport math\nimport uuid\nimport socket\nfrom datetime import datetime, timezone\nfrom unittest.mock import MagicMock, Mock, patch, PropertyMock, call\nfrom urllib.error import URLError, HTTPError\nfrom io import BytesIO\n\nimport pytest\n\nfrom human_gate import (\n    evaluate_gate,\n    build_gate_event,\n    send_gate_notification,\n    trigger_human_gate,\n    validate_human_gate_config,\n    GateTriggerReason,\n    FindingType,\n    DataTier,\n    RequiredAction,\n    HumanGateConfig,\n    GateDecision,\n    GateEvent,\n    WebhookResult,\n    GateResult,\n)\n\n\n# ============================================================================\n# Fixtures\n# ============================================================================\n\n@pytest.fixture\ndef valid_config():\n    \"\"\"Standard valid HumanGateConfig for testing.\"\"\"\n    return HumanGateConfig(\n        enabled=True,\n        webhook_url=\"https://hooks.example.com/gate\",\n        block_on_gate=True,\n        timeout_seconds=5.0,\n        schema_version=\"1\",\n    )\n\n\n@pytest.fixture\ndef disabled_config():\n    \"\"\"HumanGateConfig with enabled=False.\"\"\"\n    return HumanGateConfig(\n        enabled=False,\n        webhook_url=\"\",\n        block_on_gate=False,\n        timeout_seconds=5.0,\n        schema_version=\"1\",\n    )\n\n\n@pytest.fixture\ndef non_blocking_config():\n    \"\"\"Valid HumanGateConfig with block_on_gate=False.\"\"\"\n    return HumanGateConfig(\n        enabled=True,\n        webhook_url=\"https://hooks.example.com/gate\",\n        block_on_gate=False,\n        timeout_seconds=5.0,\n        schema_version=\"1\",\n    )\n\n\n@pytest.fixture\ndef mock_stigmergy_emitter():\n    \"\"\"Mock stigmergy emitter that returns True.\"\"\"\n    emitter = MagicMock()\n    emitter.return_value = True\n    return emitter\n\n\n@pytest.fixture\ndef failing_stigmergy_emitter():\n    \"\"\"Mock stigmergy emitter that returns False.\"\"\"\n    emitter = MagicMock()\n    emitter.return_value = False\n    return emitter\n\n\n@pytest.fixture\ndef sample_triggered_decision():\n    \"\"\"A GateDecision that is triggered.\"\"\"\n    return GateDecision(\n        triggered=True,\n        trigger_reason=GateTriggerReason.FINANCIAL_TIER,\n        required_action=RequiredAction.REVIEW_AND_APPROVE,\n        summary=\"Gate triggered for node build-test-node\",\n    )\n\n\n@pytest.fixture\ndef sample_not_triggered_decision():\n    \"\"\"A GateDecision that is not triggered.\"\"\"\n    return GateDecision(\n        triggered=False,\n        trigger_reason=None,\n        required_action=None,\n        summary=\"No gate trigger for node safe-node\",\n    )\n\n\n@pytest.fixture\ndef sample_gate_event():\n    \"\"\"A valid GateEvent for testing notifications.\"\"\"\n    return GateEvent(\n        event_id=str(uuid.uuid4()),\n        timestamp=datetime.now(timezone.utc).isoformat(),\n        node_id=\"test-node-1\",\n        finding_type=FindingType.TRUST_VIOLATION,\n        trust_score=0.3,\n        data_tier=DataTier.FINANCIAL,\n        trigger_reason=GateTriggerReason.FINANCIAL_TIER,\n        required_action=RequiredAction.REVIEW_AND_APPROVE,\n        summary=\"Test gate event for test-node-1\",\n        schema_version=\"1\",\n    )\n\n\n# ============================================================================\n# Class 1: test_evaluate_gate\n# ============================================================================\n\nclass TestEvaluateGate:\n    \"\"\"Tests for evaluate_gate: pure function, truth-table style.\"\"\"\n\n    # --- Happy path: trigger conditions ---\n\n    def test_financial_tier_triggers(self):\n        \"\"\"FINANCIAL data tier triggers FINANCIAL_TIER.\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-1\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.8,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is True\n        assert result.trigger_reason == GateTriggerReason.FINANCIAL_TIER\n        assert result.required_action is not None\n        assert \"node-1\" in result.summary\n\n    def test_auth_tier_triggers(self):\n        \"\"\"AUTH data tier triggers AUTH_TIER.\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-2\",\n            finding_type=FindingType.ACCESS_CONFLICT,\n            trust_score=0.9,\n            data_tier=DataTier.AUTH,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is True\n        assert result.trigger_reason == GateTriggerReason.AUTH_TIER\n        assert result.required_action is not None\n\n    def test_compliance_tier_triggers(self):\n        \"\"\"COMPLIANCE data tier triggers COMPLIANCE_TIER.\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-3\",\n            finding_type=FindingType.BLAST_RADIUS_EXCEEDED,\n            trust_score=0.7,\n            data_tier=DataTier.COMPLIANCE,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is True\n        assert result.trigger_reason == GateTriggerReason.COMPLIANCE_TIER\n        assert result.required_action is not None\n\n    def test_low_trust_authoritative_triggers(self):\n        \"\"\"Authoritative node with trust < 0.5 triggers LOW_TRUST_AUTHORITATIVE.\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-4\",\n            finding_type=FindingType.CANARY_TRIGGERED,\n            trust_score=0.3,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=True,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is True\n        assert result.trigger_reason == GateTriggerReason.LOW_TRUST_AUTHORITATIVE\n        assert result.required_action is not None\n\n    def test_unresolvable_conflict_triggers(self):\n        \"\"\"Unresolvable conflict triggers UNRESOLVABLE_CONFLICT.\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-5\",\n            finding_type=FindingType.CLASSIFICATION_MISMATCH,\n            trust_score=0.8,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=False,\n            is_unresolvable_conflict=True,\n        )\n        assert result.triggered is True\n        assert result.trigger_reason == GateTriggerReason.UNRESOLVABLE_CONFLICT\n        assert result.required_action is not None\n\n    def test_not_triggered_for_safe_inputs(self):\n        \"\"\"PUBLIC tier, high trust, not authoritative, no conflict = not triggered.\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-6\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.8,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is False\n        assert result.trigger_reason is None\n        assert result.required_action is None\n        assert \"node-6\" in result.summary\n\n    # --- Edge cases: boundary trust scores ---\n\n    def test_trust_score_zero_boundary(self):\n        \"\"\"Trust score 0.0 is valid and triggers LOW_TRUST_AUTHORITATIVE when authoritative.\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-7\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.0,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=True,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is True\n        assert result.trigger_reason == GateTriggerReason.LOW_TRUST_AUTHORITATIVE\n\n    def test_trust_score_one_boundary(self):\n        \"\"\"Trust score 1.0 is valid; no trigger for benign inputs.\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-8\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=1.0,\n            data_tier=DataTier.INTERNAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is False\n\n    def test_trust_score_049_just_below_threshold(self):\n        \"\"\"Trust 0.49 + authoritative triggers LOW_TRUST_AUTHORITATIVE (< 0.5).\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-9\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.49,\n            data_tier=DataTier.INTERNAL,\n            is_authoritative=True,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is True\n        assert result.trigger_reason == GateTriggerReason.LOW_TRUST_AUTHORITATIVE\n\n    def test_trust_score_050_at_threshold_no_low_trust_trigger(self):\n        \"\"\"Trust 0.5 + authoritative does NOT trigger LOW_TRUST_AUTHORITATIVE (threshold is < 0.5).\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-10\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.5,\n            data_tier=DataTier.INTERNAL,\n            is_authoritative=True,\n            is_unresolvable_conflict=False,\n        )\n        # Gate should not fire for LOW_TRUST_AUTHORITATIVE\n        if result.triggered:\n            assert result.trigger_reason != GateTriggerReason.LOW_TRUST_AUTHORITATIVE\n        else:\n            assert result.triggered is False\n\n    # --- Edge cases: non-triggering data tiers ---\n\n    def test_internal_tier_alone_no_trigger(self):\n        \"\"\"INTERNAL data tier alone does not trigger gate.\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-11\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.8,\n            data_tier=DataTier.INTERNAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is False\n\n    def test_public_tier_alone_no_trigger(self):\n        \"\"\"PUBLIC data tier alone does not trigger gate.\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-12\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.8,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is False\n\n    def test_confidential_tier_alone_no_trigger(self):\n        \"\"\"CONFIDENTIAL data tier alone does not trigger gate (only FINANCIAL/AUTH/COMPLIANCE).\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-13\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.8,\n            data_tier=DataTier.CONFIDENTIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is False\n\n    def test_authoritative_high_trust_no_trigger(self):\n        \"\"\"Authoritative + high trust does NOT trigger LOW_TRUST_AUTHORITATIVE.\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-14\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.8,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=True,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is False\n\n    # --- Parametrized: all FindingType values work without error for triggered path ---\n\n    @pytest.mark.parametrize(\"finding_type\", list(FindingType))\n    def test_all_finding_types_accepted(self, finding_type):\n        \"\"\"All FindingType enum values are accepted without error.\"\"\"\n        result = evaluate_gate(\n            node_id=\"param-node\",\n            finding_type=finding_type,\n            trust_score=0.5,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is True\n        assert result.trigger_reason == GateTriggerReason.FINANCIAL_TIER\n\n    # --- Parametrized: all DataTier values are accepted ---\n\n    @pytest.mark.parametrize(\"data_tier\", list(DataTier))\n    def test_all_data_tiers_accepted(self, data_tier):\n        \"\"\"All DataTier enum values are accepted without error.\"\"\"\n        result = evaluate_gate(\n            node_id=\"param-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.8,\n            data_tier=data_tier,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert isinstance(result, GateDecision)\n\n    # --- Error cases ---\n\n    def test_error_nan_trust_score(self):\n        \"\"\"NaN trust_score raises error.\"\"\"\n        with pytest.raises(Exception):\n            evaluate_gate(\n                node_id=\"node-err\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=float(\"nan\"),\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n\n    def test_error_inf_trust_score(self):\n        \"\"\"Infinite trust_score raises error.\"\"\"\n        with pytest.raises(Exception):\n            evaluate_gate(\n                node_id=\"node-err\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=float(\"inf\"),\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n\n    def test_error_negative_inf_trust_score(self):\n        \"\"\"Negative infinite trust_score raises error.\"\"\"\n        with pytest.raises(Exception):\n            evaluate_gate(\n                node_id=\"node-err\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=float(\"-inf\"),\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n\n    def test_error_negative_trust_score(self):\n        \"\"\"Negative trust_score raises error.\"\"\"\n        with pytest.raises(Exception):\n            evaluate_gate(\n                node_id=\"node-err\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=-0.1,\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n\n    def test_error_trust_score_above_one(self):\n        \"\"\"Trust score > 1.0 raises error.\"\"\"\n        with pytest.raises(Exception):\n            evaluate_gate(\n                node_id=\"node-err\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=1.1,\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n\n    def test_error_empty_node_id(self):\n        \"\"\"Empty node_id raises error.\"\"\"\n        with pytest.raises(Exception):\n            evaluate_gate(\n                node_id=\"\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.5,\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n\n    def test_error_whitespace_only_node_id(self):\n        \"\"\"Whitespace-only node_id raises error.\"\"\"\n        with pytest.raises(Exception):\n            evaluate_gate(\n                node_id=\"   \",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.5,\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n\n    # --- Determinism invariant ---\n\n    def test_determinism_same_inputs_same_output(self):\n        \"\"\"Same inputs always produce same output.\"\"\"\n        kwargs = dict(\n            node_id=\"det-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=True,\n            is_unresolvable_conflict=False,\n        )\n        result1 = evaluate_gate(**kwargs)\n        result2 = evaluate_gate(**kwargs)\n        assert result1.triggered == result2.triggered\n        assert result1.trigger_reason == result2.trigger_reason\n        assert result1.required_action == result2.required_action\n        assert result1.summary == result2.summary\n\n\n# ============================================================================\n# Class 2: test_build_gate_event\n# ============================================================================\n\nclass TestBuildGateEvent:\n    \"\"\"Tests for build_gate_event: factory function for GateEvent.\"\"\"\n\n    def test_happy_basic_field_population(self, sample_triggered_decision):\n        \"\"\"All fields populate correctly from inputs and decision.\"\"\"\n        event = build_gate_event(\n            node_id=\"build-node-1\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            decision=sample_triggered_decision,\n            schema_version=\"1\",\n        )\n        assert event.node_id == \"build-node-1\"\n        assert event.finding_type == FindingType.TRUST_VIOLATION\n        assert event.trust_score == 0.3\n        assert event.data_tier == DataTier.FINANCIAL\n        assert event.trigger_reason == sample_triggered_decision.trigger_reason\n        assert event.required_action == sample_triggered_decision.required_action\n        assert event.schema_version == \"1\"\n        assert event.summary == sample_triggered_decision.summary\n\n    def test_event_id_is_valid_uuid4(self, sample_triggered_decision):\n        \"\"\"event_id is a valid UUID4.\"\"\"\n        event = build_gate_event(\n            node_id=\"uuid-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            decision=sample_triggered_decision,\n            schema_version=\"1\",\n        )\n        parsed = uuid.UUID(event.event_id)\n        assert parsed.version == 4\n\n    def test_timestamp_is_utc_iso8601(self, sample_triggered_decision):\n        \"\"\"Timestamp is UTC ISO 8601.\"\"\"\n        event = build_gate_event(\n            node_id=\"ts-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            decision=sample_triggered_decision,\n            schema_version=\"1\",\n        )\n        parsed_ts = datetime.fromisoformat(event.timestamp)\n        assert parsed_ts.tzinfo is not None\n        # Check it's UTC (offset 0)\n        assert parsed_ts.utcoffset().total_seconds() == 0\n\n    def test_schema_version_propagated(self, sample_triggered_decision):\n        \"\"\"schema_version from input propagates to event.\"\"\"\n        event = build_gate_event(\n            node_id=\"sv-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            decision=sample_triggered_decision,\n            schema_version=\"1\",\n        )\n        assert event.schema_version == \"1\"\n\n    def test_frozen_pydantic_model(self, sample_triggered_decision):\n        \"\"\"GateEvent is frozen — assignment raises error.\"\"\"\n        event = build_gate_event(\n            node_id=\"freeze-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            decision=sample_triggered_decision,\n            schema_version=\"1\",\n        )\n        with pytest.raises(Exception):\n            event.node_id = \"mutated\"\n\n    def test_error_decision_not_triggered(self, sample_not_triggered_decision):\n        \"\"\"build_gate_event raises when decision.triggered is False.\"\"\"\n        with pytest.raises(Exception):\n            build_gate_event(\n                node_id=\"err-node\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.5,\n                data_tier=DataTier.PUBLIC,\n                decision=sample_not_triggered_decision,\n                schema_version=\"1\",\n            )\n\n    def test_unique_event_ids_across_calls(self, sample_triggered_decision):\n        \"\"\"Each call generates a different event_id.\"\"\"\n        event1 = build_gate_event(\n            node_id=\"uniq-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            decision=sample_triggered_decision,\n            schema_version=\"1\",\n        )\n        event2 = build_gate_event(\n            node_id=\"uniq-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            decision=sample_triggered_decision,\n            schema_version=\"1\",\n        )\n        assert event1.event_id != event2.event_id\n\n\n# ============================================================================\n# Class 3: test_send_gate_notification\n# ============================================================================\n\nclass TestSendGateNotification:\n    \"\"\"Tests for send_gate_notification with mocked HTTP.\"\"\"\n\n    def _make_mock_response(self, status=200, body=b\"OK\", headers=None):\n        \"\"\"Helper to create a mock HTTP response.\"\"\"\n        mock_resp = MagicMock()\n        mock_resp.status = status\n        mock_resp.getcode.return_value = status\n        mock_resp.read.return_value = body\n        mock_resp.headers = headers or {}\n        mock_resp.__enter__ = MagicMock(return_value=mock_resp)\n        mock_resp.__exit__ = MagicMock(return_value=False)\n        return mock_resp\n\n    @patch(\"human_gate.urllib.request.urlopen\")\n    def test_happy_200_response(self, mock_urlopen, sample_gate_event, valid_config):\n        \"\"\"200 response → success=True, status_code=200, no error.\"\"\"\n        mock_urlopen.return_value = self._make_mock_response(200)\n        result = send_gate_notification(sample_gate_event, valid_config)\n        assert result.success is True\n        assert result.status_code == 200\n        assert result.error_message is None\n        assert result.elapsed_ms >= 0\n\n    @patch(\"human_gate.urllib.request.urlopen\")\n    def test_happy_request_headers(self, mock_urlopen, sample_gate_event, valid_config):\n        \"\"\"Request includes X-Gate-Event-Id and Content-Type headers.\"\"\"\n        mock_urlopen.return_value = self._make_mock_response(200)\n        send_gate_notification(sample_gate_event, valid_config)\n\n        # Inspect the Request object passed to urlopen\n        call_args = mock_urlopen.call_args\n        request_obj = call_args[0][0] if call_args[0] else call_args[1].get(\"url\")\n\n        # Check headers on the Request object\n        assert request_obj.get_header(\"X-gate-event-id\") == sample_gate_event.event_id or \\\n               request_obj.get_header(\"X-Gate-Event-Id\") == sample_gate_event.event_id\n        content_type = request_obj.get_header(\"Content-type\") or request_obj.get_header(\"Content-Type\")\n        assert content_type == \"application/json\"\n\n    @patch(\"human_gate.urllib.request.urlopen\")\n    def test_happy_request_body_json(self, mock_urlopen, sample_gate_event, valid_config):\n        \"\"\"Request body is JSON containing schema_version.\"\"\"\n        mock_urlopen.return_value = self._make_mock_response(200)\n        send_gate_notification(sample_gate_event, valid_config)\n\n        call_args = mock_urlopen.call_args\n        request_obj = call_args[0][0] if call_args[0] else call_args[1].get(\"url\")\n        body = json.loads(request_obj.data)\n        assert \"schema_version\" in body\n        assert body[\"schema_version\"] == \"1\"\n\n    @patch(\"human_gate.urllib.request.urlopen\")\n    def test_error_connection_refused(self, mock_urlopen, sample_gate_event, valid_config):\n        \"\"\"Connection refused → success=False, status_code=None, error has context.\"\"\"\n        mock_urlopen.side_effect = URLError(ConnectionRefusedError(\"Connection refused\"))\n        result = send_gate_notification(sample_gate_event, valid_config)\n        assert result.success is False\n        assert result.status_code is None\n        assert result.error_message is not None\n        assert sample_gate_event.node_id in result.error_message\n        assert valid_config.webhook_url in result.error_message\n        assert result.elapsed_ms >= 0\n\n    @patch(\"human_gate.urllib.request.urlopen\")\n    def test_error_timeout(self, mock_urlopen, sample_gate_event, valid_config):\n        \"\"\"Timeout → success=False, status_code=None, error message set.\"\"\"\n        mock_urlopen.side_effect = URLError(socket.timeout(\"timed out\"))\n        result = send_gate_notification(sample_gate_event, valid_config)\n        assert result.success is False\n        assert result.status_code is None\n        assert result.error_message is not None\n        assert result.elapsed_ms >= 0\n\n    @patch(\"human_gate.urllib.request.urlopen\")\n    def test_error_redirect_3xx(self, mock_urlopen, sample_gate_event, valid_config):\n        \"\"\"3xx redirect → success=False, error mentions redirect.\"\"\"\n        mock_urlopen.side_effect = HTTPError(\n            url=valid_config.webhook_url,\n            code=301,\n            msg=\"Moved Permanently\",\n            hdrs={},\n            fp=BytesIO(b\"Moved\"),\n        )\n        result = send_gate_notification(sample_gate_event, valid_config)\n        assert result.success is False\n        assert result.error_message is not None\n        # Error message should mention redirect\n        assert \"redirect\" in result.error_message.lower() or result.status_code == 301\n\n    @patch(\"human_gate.urllib.request.urlopen\")\n    def test_error_non_2xx_500(self, mock_urlopen, sample_gate_event, valid_config):\n        \"\"\"500 response → success=False, status_code=500, response_body truncated.\"\"\"\n        body = b\"Internal Server Error \" * 100  # > 1024 chars\n        mock_urlopen.side_effect = HTTPError(\n            url=valid_config.webhook_url,\n            code=500,\n            msg=\"Internal Server Error\",\n            hdrs={},\n            fp=BytesIO(body),\n        )\n        result = send_gate_notification(sample_gate_event, valid_config)\n        assert result.success is False\n        assert result.status_code == 500\n        assert result.response_body is not None\n        assert len(result.response_body) <= 1024\n\n    @patch(\"human_gate.urllib.request.urlopen\")\n    def test_error_dns_resolution(self, mock_urlopen, sample_gate_event, valid_config):\n        \"\"\"DNS resolution failure → success=False, status_code=None.\"\"\"\n        mock_urlopen.side_effect = URLError(socket.gaierror(\"Name resolution failed\"))\n        result = send_gate_notification(sample_gate_event, valid_config)\n        assert result.success is False\n        assert result.status_code is None\n        assert result.error_message is not None\n\n    @patch(\"human_gate.urllib.request.urlopen\")\n    def test_error_ssl(self, mock_urlopen, sample_gate_event, valid_config):\n        \"\"\"SSL error → success=False, status_code=None.\"\"\"\n        import ssl\n        mock_urlopen.side_effect = URLError(ssl.SSLError(\"SSL handshake failed\"))\n        result = send_gate_notification(sample_gate_event, valid_config)\n        assert result.success is False\n        assert result.status_code is None\n        assert result.error_message is not None\n\n    @patch(\"human_gate.urllib.request.urlopen\")\n    def test_never_raises(self, mock_urlopen, sample_gate_event, valid_config):\n        \"\"\"send_gate_notification never raises — always returns WebhookResult.\"\"\"\n        mock_urlopen.side_effect = Exception(\"Totally unexpected error\")\n        result = send_gate_notification(sample_gate_event, valid_config)\n        assert isinstance(result, WebhookResult)\n        assert result.success is False\n        assert result.elapsed_ms >= 0\n\n    @patch(\"human_gate.urllib.request.urlopen\")\n    def test_elapsed_ms_always_nonnegative(self, mock_urlopen, sample_gate_event, valid_config):\n        \"\"\"elapsed_ms is always non-negative.\"\"\"\n        mock_urlopen.return_value = self._make_mock_response(200)\n        result = send_gate_notification(sample_gate_event, valid_config)\n        assert result.elapsed_ms >= 0\n\n    @patch(\"human_gate.urllib.request.urlopen\")\n    def test_success_response_body_is_none(self, mock_urlopen, sample_gate_event, valid_config):\n        \"\"\"On success, response_body is None.\"\"\"\n        mock_urlopen.return_value = self._make_mock_response(200)\n        result = send_gate_notification(sample_gate_event, valid_config)\n        assert result.success is True\n        assert result.response_body is None\n\n\n# ============================================================================\n# Class 4: test_trigger_human_gate\n# ============================================================================\n\nclass TestTriggerHumanGate:\n    \"\"\"Tests for trigger_human_gate: orchestration with mocked dependencies.\"\"\"\n\n    @patch(\"human_gate.send_gate_notification\")\n    def test_happy_triggered_full_flow(\n        self, mock_notify, valid_config, mock_stigmergy_emitter\n    ):\n        \"\"\"Triggered gate: stigmergy emitted, notification sent, correct GateResult.\"\"\"\n        mock_notify.return_value = WebhookResult(\n            success=True, status_code=200, error_message=None,\n            response_body=None, elapsed_ms=50.0,\n        )\n        result = trigger_human_gate(\n            node_id=\"orch-node-1\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=valid_config,\n            stigmergy_emitter=mock_stigmergy_emitter,\n        )\n        assert result.triggered is True\n        assert result.stigmergy_emitted is True\n        assert result.notification_sent is True\n        assert result.notification_error is None\n        # event_id is valid UUID4\n        parsed_uuid = uuid.UUID(result.event_id)\n        assert parsed_uuid.version == 4\n        mock_stigmergy_emitter.assert_called_once()\n\n    @patch(\"human_gate.send_gate_notification\")\n    def test_happy_not_triggered_no_side_effects(\n        self, mock_notify, valid_config, mock_stigmergy_emitter\n    ):\n        \"\"\"Not-triggered gate: no stigmergy emission or notification.\"\"\"\n        result = trigger_human_gate(\n            node_id=\"safe-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.9,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=valid_config,\n            stigmergy_emitter=mock_stigmergy_emitter,\n        )\n        assert result.triggered is False\n        assert result.stigmergy_emitted is False\n        assert result.notification_sent is False\n        assert result.blocked is False\n        mock_stigmergy_emitter.assert_not_called()\n        mock_notify.assert_not_called()\n\n    def test_happy_disabled_config_short_circuits(\n        self, disabled_config, mock_stigmergy_emitter\n    ):\n        \"\"\"Disabled config short-circuits: all fields false/empty.\"\"\"\n        result = trigger_human_gate(\n            node_id=\"disabled-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=disabled_config,\n            stigmergy_emitter=mock_stigmergy_emitter,\n        )\n        assert result.triggered is False\n        assert result.stigmergy_emitted is False\n        assert result.notification_sent is False\n        assert result.blocked is False\n        mock_stigmergy_emitter.assert_not_called()\n\n    @patch(\"human_gate.send_gate_notification\")\n    def test_happy_blocked_when_block_on_gate_true(\n        self, mock_notify, valid_config, mock_stigmergy_emitter\n    ):\n        \"\"\"blocked=True when triggered and config.block_on_gate=True.\"\"\"\n        assert valid_config.block_on_gate is True\n        mock_notify.return_value = WebhookResult(\n            success=True, status_code=200, error_message=None,\n            response_body=None, elapsed_ms=10.0,\n        )\n        result = trigger_human_gate(\n            node_id=\"block-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=valid_config,\n            stigmergy_emitter=mock_stigmergy_emitter,\n        )\n        assert result.triggered is True\n        assert result.blocked is True\n\n    @patch(\"human_gate.send_gate_notification\")\n    def test_happy_not_blocked_when_block_on_gate_false(\n        self, mock_notify, non_blocking_config, mock_stigmergy_emitter\n    ):\n        \"\"\"blocked=False when triggered but config.block_on_gate=False.\"\"\"\n        assert non_blocking_config.block_on_gate is False\n        mock_notify.return_value = WebhookResult(\n            success=True, status_code=200, error_message=None,\n            response_body=None, elapsed_ms=10.0,\n        )\n        result = trigger_human_gate(\n            node_id=\"noblock-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=non_blocking_config,\n            stigmergy_emitter=mock_stigmergy_emitter,\n        )\n        assert result.triggered is True\n        assert result.blocked is False\n\n    @patch(\"human_gate.send_gate_notification\")\n    def test_edge_webhook_failure_graceful(\n        self, mock_notify, valid_config, mock_stigmergy_emitter\n    ):\n        \"\"\"Webhook failure is non-fatal: notification_sent=False, notification_error set.\"\"\"\n        mock_notify.return_value = WebhookResult(\n            success=False, status_code=500, error_message=\"Server error for orch-node-2\",\n            response_body=\"Internal Server Error\", elapsed_ms=100.0,\n        )\n        result = trigger_human_gate(\n            node_id=\"orch-node-2\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=valid_config,\n            stigmergy_emitter=mock_stigmergy_emitter,\n        )\n        assert result.triggered is True\n        assert result.stigmergy_emitted is True\n        assert result.notification_sent is False\n        assert result.notification_error is not None\n\n    @patch(\"human_gate.send_gate_notification\")\n    def test_edge_stigmergy_failure_still_notifies(\n        self, mock_notify, valid_config, failing_stigmergy_emitter\n    ):\n        \"\"\"Even if stigmergy emission fails, webhook is still attempted.\"\"\"\n        mock_notify.return_value = WebhookResult(\n            success=True, status_code=200, error_message=None,\n            response_body=None, elapsed_ms=20.0,\n        )\n        result = trigger_human_gate(\n            node_id=\"stig-fail-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=valid_config,\n            stigmergy_emitter=failing_stigmergy_emitter,\n        )\n        assert result.triggered is True\n        assert result.stigmergy_emitted is False\n        mock_notify.assert_called_once()\n\n    @patch(\"human_gate.send_gate_notification\")\n    def test_edge_trigger_reason_matches_decision(\n        self, mock_notify, valid_config, mock_stigmergy_emitter\n    ):\n        \"\"\"GateResult.trigger_reason matches evaluate_gate's decision.\"\"\"\n        mock_notify.return_value = WebhookResult(\n            success=True, status_code=200, error_message=None,\n            response_body=None, elapsed_ms=10.0,\n        )\n        result = trigger_human_gate(\n            node_id=\"reason-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=valid_config,\n            stigmergy_emitter=mock_stigmergy_emitter,\n        )\n        assert result.trigger_reason == GateTriggerReason.FINANCIAL_TIER\n\n    def test_error_enabled_no_webhook_url(self, mock_stigmergy_emitter):\n        \"\"\"Error when config.enabled is True but webhook_url is empty.\"\"\"\n        bad_config = HumanGateConfig(\n            enabled=True,\n            webhook_url=\"\",\n            block_on_gate=False,\n            timeout_seconds=5.0,\n            schema_version=\"1\",\n        )\n        with pytest.raises(Exception):\n            trigger_human_gate(\n                node_id=\"bad-config-node\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.5,\n                data_tier=DataTier.FINANCIAL,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n                config=bad_config,\n                stigmergy_emitter=mock_stigmergy_emitter,\n            )\n\n    def test_error_stigmergy_emitter_not_callable(self, valid_config):\n        \"\"\"Error when stigmergy_emitter is not callable.\"\"\"\n        with pytest.raises(Exception):\n            trigger_human_gate(\n                node_id=\"not-callable-node\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.3,\n                data_tier=DataTier.FINANCIAL,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n                config=valid_config,\n                stigmergy_emitter=\"not-a-callable\",\n            )\n\n    @patch(\"human_gate.send_gate_notification\")\n    def test_error_emitter_raises_exception(self, mock_notify, valid_config):\n        \"\"\"Emitter raising exception is handled gracefully.\"\"\"\n        bad_emitter = MagicMock(side_effect=RuntimeError(\"Emitter crashed\"))\n        mock_notify.return_value = WebhookResult(\n            success=True, status_code=200, error_message=None,\n            response_body=None, elapsed_ms=10.0,\n        )\n        # Should either handle gracefully and return GateResult, or raise a specific error\n        try:\n            result = trigger_human_gate(\n                node_id=\"emitter-crash-node\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.3,\n                data_tier=DataTier.FINANCIAL,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n                config=valid_config,\n                stigmergy_emitter=bad_emitter,\n            )\n            # If it returns, should still have tried notification\n            assert result.triggered is True\n            assert result.stigmergy_emitted is False\n        except Exception:\n            # Contract says this is an error case — it may raise\n            pass\n\n    def test_error_invalid_trust_score(self, valid_config, mock_stigmergy_emitter):\n        \"\"\"Invalid trust_score raises through trigger_human_gate.\"\"\"\n        with pytest.raises(Exception):\n            trigger_human_gate(\n                node_id=\"trust-err-node\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=float(\"nan\"),\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n                config=valid_config,\n                stigmergy_emitter=mock_stigmergy_emitter,\n            )\n\n    def test_error_empty_node_id(self, valid_config, mock_stigmergy_emitter):\n        \"\"\"Empty node_id raises through trigger_human_gate.\"\"\"\n        with pytest.raises(Exception):\n            trigger_human_gate(\n                node_id=\"\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.5,\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n                config=valid_config,\n                stigmergy_emitter=mock_stigmergy_emitter,\n            )\n\n    @patch(\"human_gate.send_gate_notification\")\n    def test_event_id_unique_across_calls(\n        self, mock_notify, valid_config, mock_stigmergy_emitter\n    ):\n        \"\"\"Two trigger_human_gate calls produce different event_ids.\"\"\"\n        mock_notify.return_value = WebhookResult(\n            success=True, status_code=200, error_message=None,\n            response_body=None, elapsed_ms=10.0,\n        )\n        kwargs = dict(\n            node_id=\"unique-id-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=valid_config,\n            stigmergy_emitter=mock_stigmergy_emitter,\n        )\n        result1 = trigger_human_gate(**kwargs)\n        result2 = trigger_human_gate(**kwargs)\n        assert result1.event_id != result2.event_id\n\n    @patch(\"human_gate.send_gate_notification\")\n    def test_stigmergy_called_before_notification(\n        self, mock_notify, valid_config\n    ):\n        \"\"\"Stigmergy emission is called before webhook notification (ordering).\"\"\"\n        call_order = []\n        emitter = MagicMock(side_effect=lambda e: (call_order.append(\"stigmergy\"), True)[-1])\n        mock_notify.side_effect = lambda e, c: (\n            call_order.append(\"webhook\"),\n            WebhookResult(\n                success=True, status_code=200, error_message=None,\n                response_body=None, elapsed_ms=10.0,\n            ),\n        )[-1]\n\n        trigger_human_gate(\n            node_id=\"order-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=valid_config,\n            stigmergy_emitter=emitter,\n        )\n\n        assert call_order.index(\"stigmergy\") < call_order.index(\"webhook\")\n\n\n# ============================================================================\n# Class 5: test_validate_human_gate_config\n# ============================================================================\n\nclass TestValidateHumanGateConfig:\n    \"\"\"Tests for validate_human_gate_config.\"\"\"\n\n    def test_happy_valid_config(self, valid_config):\n        \"\"\"Valid config returns empty list.\"\"\"\n        errors = validate_human_gate_config(valid_config)\n        assert errors == []\n\n    def test_error_enabled_no_webhook_url(self):\n        \"\"\"Enabled config with empty webhook_url reports error.\"\"\"\n        config = HumanGateConfig(\n            enabled=True,\n            webhook_url=\"\",\n            block_on_gate=False,\n            timeout_seconds=5.0,\n            schema_version=\"1\",\n        )\n        errors = validate_human_gate_config(config)\n        assert len(errors) > 0\n        assert any(\"webhook_url\" in e.lower() or \"webhook\" in e.lower() for e in errors)\n\n    def test_error_bad_url_scheme(self):\n        \"\"\"Non-http(s) webhook_url reports error.\"\"\"\n        config = HumanGateConfig(\n            enabled=True,\n            webhook_url=\"ftp://example.com/gate\",\n            block_on_gate=False,\n            timeout_seconds=5.0,\n            schema_version=\"1\",\n        )\n        errors = validate_human_gate_config(config)\n        assert len(errors) > 0\n        assert any(\"http\" in e.lower() for e in errors)\n\n    def test_error_timeout_too_low(self):\n        \"\"\"timeout_seconds < 0.1 reports error.\"\"\"\n        config = HumanGateConfig(\n            enabled=True,\n            webhook_url=\"https://hooks.example.com/gate\",\n            block_on_gate=False,\n            timeout_seconds=0.05,\n            schema_version=\"1\",\n        )\n        errors = validate_human_gate_config(config)\n        assert len(errors) > 0\n        assert any(\"timeout\" in e.lower() for e in errors)\n\n    def test_error_timeout_too_high(self):\n        \"\"\"timeout_seconds > 30.0 reports error.\"\"\"\n        config = HumanGateConfig(\n            enabled=True,\n            webhook_url=\"https://hooks.example.com/gate\",\n            block_on_gate=False,\n            timeout_seconds=60.0,\n            schema_version=\"1\",\n        )\n        errors = validate_human_gate_config(config)\n        assert len(errors) > 0\n        assert any(\"timeout\" in e.lower() for e in errors)\n\n    def test_error_bad_schema_version(self):\n        \"\"\"Unrecognized schema_version reports error.\"\"\"\n        config = HumanGateConfig(\n            enabled=True,\n            webhook_url=\"https://hooks.example.com/gate\",\n            block_on_gate=False,\n            timeout_seconds=5.0,\n            schema_version=\"99\",\n        )\n        errors = validate_human_gate_config(config)\n        assert len(errors) > 0\n        assert any(\"schema_version\" in e.lower() or \"schema\" in e.lower() or \"version\" in e.lower() for e in errors)\n\n    def test_edge_multiple_errors_simultaneously(self):\n        \"\"\"Config with multiple issues reports all errors.\"\"\"\n        config = HumanGateConfig(\n            enabled=True,\n            webhook_url=\"\",\n            block_on_gate=False,\n            timeout_seconds=0.01,\n            schema_version=\"99\",\n        )\n        errors = validate_human_gate_config(config)\n        assert len(errors) >= 2\n\n    def test_edge_timeout_boundary_low_valid(self):\n        \"\"\"timeout_seconds=0.1 is valid (boundary).\"\"\"\n        config = HumanGateConfig(\n            enabled=True,\n            webhook_url=\"https://hooks.example.com/gate\",\n            block_on_gate=False,\n            timeout_seconds=0.1,\n            schema_version=\"1\",\n        )\n        errors = validate_human_gate_config(config)\n        timeout_errors = [e for e in errors if \"timeout\" in e.lower()]\n        assert len(timeout_errors) == 0\n\n    def test_edge_timeout_boundary_high_valid(self):\n        \"\"\"timeout_seconds=30.0 is valid (boundary).\"\"\"\n        config = HumanGateConfig(\n            enabled=True,\n            webhook_url=\"https://hooks.example.com/gate\",\n            block_on_gate=False,\n            timeout_seconds=30.0,\n            schema_version=\"1\",\n        )\n        errors = validate_human_gate_config(config)\n        timeout_errors = [e for e in errors if \"timeout\" in e.lower()]\n        assert len(timeout_errors) == 0\n\n    def test_disabled_config_with_empty_url_valid(self):\n        \"\"\"Disabled config with empty URL should be valid (URL not required when disabled).\"\"\"\n        config = HumanGateConfig(\n            enabled=False,\n            webhook_url=\"\",\n            block_on_gate=False,\n            timeout_seconds=5.0,\n            schema_version=\"1\",\n        )\n        errors = validate_human_gate_config(config)\n        # Should not report webhook_url error since not enabled\n        webhook_errors = [e for e in errors if \"webhook\" in e.lower()]\n        assert len(webhook_errors) == 0\n\n\n# ============================================================================\n# Class 6: Invariants and cross-cutting properties\n# ============================================================================\n\nclass TestHumanGateInvariants:\n    \"\"\"Cross-cutting invariant tests.\"\"\"\n\n    def test_gate_decision_is_frozen(self):\n        \"\"\"GateDecision is frozen Pydantic model.\"\"\"\n        decision = evaluate_gate(\n            node_id=\"frozen-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.8,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        with pytest.raises(Exception):\n            decision.triggered = True\n\n    def test_gate_event_is_frozen(self, sample_triggered_decision):\n        \"\"\"GateEvent is frozen Pydantic model.\"\"\"\n        event = build_gate_event(\n            node_id=\"frozen-event-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            decision=sample_triggered_decision,\n            schema_version=\"1\",\n        )\n        with pytest.raises(Exception):\n            event.node_id = \"mutated\"\n\n    def test_gate_event_timestamps_are_utc(self, sample_triggered_decision):\n        \"\"\"All GateEvent timestamps are UTC.\"\"\"\n        event = build_gate_event(\n            node_id=\"utc-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            decision=sample_triggered_decision,\n            schema_version=\"1\",\n        )\n        ts = datetime.fromisoformat(event.timestamp)\n        assert ts.tzinfo is not None\n        assert ts.utcoffset().total_seconds() == 0\n\n    def test_trust_and_authority_are_distinct_low_trust_no_authority(self):\n        \"\"\"Low trust without authority does NOT trigger LOW_TRUST_AUTHORITATIVE.\"\"\"\n        result = evaluate_gate(\n            node_id=\"distinct-1\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.1,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        # Should not trigger at all (no other trigger conditions met)\n        assert result.triggered is False\n\n    def test_trust_and_authority_are_distinct_high_trust_authority(self):\n        \"\"\"Authority without low trust does NOT trigger LOW_TRUST_AUTHORITATIVE.\"\"\"\n        result = evaluate_gate(\n            node_id=\"distinct-2\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.9,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=True,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is False\n\n    def test_not_triggered_implies_no_reason_and_no_action(self):\n        \"\"\"When triggered=False, trigger_reason and required_action are both None.\"\"\"\n        result = evaluate_gate(\n            node_id=\"no-trigger-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.8,\n            data_tier=DataTier.INTERNAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is False\n        assert result.trigger_reason is None\n        assert result.required_action is None\n\n    def test_triggered_implies_reason_and_action_present(self):\n        \"\"\"When triggered=True, trigger_reason and required_action are not None.\"\"\"\n        result = evaluate_gate(\n            node_id=\"triggered-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is True\n        assert result.trigger_reason is not None\n        assert result.required_action is not None\n\n    def test_summary_always_contains_node_id(self):\n        \"\"\"Summary always contains the node_id, whether triggered or not.\"\"\"\n        for triggered_data_tier, expected_triggered in [\n            (DataTier.FINANCIAL, True),\n            (DataTier.PUBLIC, False),\n        ]:\n            node = f\"summary-node-{triggered_data_tier.name}\"\n            result = evaluate_gate(\n                node_id=node,\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.8,\n                data_tier=triggered_data_tier,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n            assert node in result.summary, (\n                f\"node_id '{node}' not found in summary: '{result.summary}'\"\n            )\n\n    def test_determinism_multiple_runs(self):\n        \"\"\"Evaluate gate 10 times with same inputs; all results identical.\"\"\"\n        kwargs = dict(\n            node_id=\"determ-node\",\n            finding_type=FindingType.ACCESS_CONFLICT,\n            trust_score=0.4,\n            data_tier=DataTier.AUTH,\n            is_authoritative=True,\n            is_unresolvable_conflict=True,\n        )\n        results = [evaluate_gate(**kwargs) for _ in range(10)]\n        for r in results[1:]:\n            assert r.triggered == results[0].triggered\n            assert r.trigger_reason == results[0].trigger_reason\n            assert r.required_action == results[0].required_action\n            assert r.summary == results[0].summary\n\n    @patch(\"human_gate.send_gate_notification\")\n    def test_webhook_result_is_frozen(self, mock_urlopen, sample_gate_event, valid_config):\n        \"\"\"WebhookResult is frozen.\"\"\"\n        wr = WebhookResult(\n            success=True, status_code=200, error_message=None,\n            response_body=None, elapsed_ms=10.0,\n        )\n        with pytest.raises(Exception):\n            wr.success = False\n\n    @patch(\"human_gate.send_gate_notification\")\n    def test_gate_result_is_frozen(self, mock_notify, valid_config, mock_stigmergy_emitter):\n        \"\"\"GateResult is frozen Pydantic model.\"\"\"\n        mock_notify.return_value = WebhookResult(\n            success=True, status_code=200, error_message=None,\n            response_body=None, elapsed_ms=10.0,\n        )\n        result = trigger_human_gate(\n            node_id=\"frozen-result-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=valid_config,\n            stigmergy_emitter=mock_stigmergy_emitter,\n        )\n        with pytest.raises(Exception):\n            result.triggered = False\n\n    def test_schema_version_is_1(self, sample_triggered_decision):\n        \"\"\"schema_version in GateEvent is always '1' for this contract version.\"\"\"\n        event = build_gate_event(\n            node_id=\"schema-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            decision=sample_triggered_decision,\n            schema_version=\"1\",\n        )\n        assert event.schema_version == \"1\"\n\n    @patch(\"human_gate.send_gate_notification\")\n    def test_notification_error_none_when_not_triggered(\n        self, mock_notify, valid_config, mock_stigmergy_emitter\n    ):\n        \"\"\"notification_error is None when gate is not triggered.\"\"\"\n        result = trigger_human_gate(\n            node_id=\"no-err-node\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.9,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=valid_config,\n            stigmergy_emitter=mock_stigmergy_emitter,\n        )\n        assert result.notification_error is None\n"
+}

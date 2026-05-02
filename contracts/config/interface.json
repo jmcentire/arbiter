@@ -1,0 +1,870 @@
+{
+  "component_id": "config",
+  "name": "Configuration Loader",
+  "description": "Loads and validates arbiter.yaml via a Pydantic Settings model. Exposes all configurable values for the Arbiter trust enforcement system including registry, trust scoring, soak testing, OTLP telemetry, API, classification registry, human gate, and ledger settings. Provides a global get_config() accessor for immutable configuration and handles default config generation for `arbiter init`. Source priority: defaults → YAML file → environment variables (prefix=ARBITER_, nested delimiter=__). All config is frozen/immutable after load. YAML source uses yaml.safe_load() exclusively.",
+  "version": 1,
+  "types": [
+    {
+      "name": "DataClassificationTier",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "PUBLIC",
+        "INTERNAL",
+        "CONFIDENTIAL",
+        "RESTRICTED",
+        "CRITICAL"
+      ],
+      "inner_types": [],
+      "description": "Data classification tiers used across the Arbiter system. StrEnum for YAML/JSON serialization compatibility."
+    },
+    {
+      "name": "RegistryConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "path",
+          "type_ref": "str",
+          "required": false,
+          "default": "./registry",
+          "description": "Filesystem path to the registry directory. Resolved as pathlib.Path at runtime.",
+          "validators": []
+        },
+        {
+          "name": "append_only",
+          "type_ref": "bool",
+          "required": false,
+          "default": "true",
+          "description": "Whether the registry operates in append-only mode (no overwrites).",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for the component/service registry."
+    },
+    {
+      "name": "TrustConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "floor",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.10",
+          "description": "Minimum trust score floor. Trust scores cannot decay below this value.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "trust.floor must be between 0.0 and 1.0"
+            }
+          ]
+        },
+        {
+          "name": "authority_override_floor",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.40",
+          "description": "Minimum trust score required for authority override operations. Must be >= trust.floor.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "trust.authority_override_floor must be between 0.0 and 1.0"
+            }
+          ]
+        },
+        {
+          "name": "decay_lambda",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.05",
+          "description": "Exponential decay rate lambda for trust score time-based decay.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0.0",
+              "error_message": "trust.decay_lambda must be non-negative"
+            }
+          ]
+        },
+        {
+          "name": "conflict_trust_delta_threshold",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.20",
+          "description": "Minimum trust score delta between conflicting nodes to trigger a conflict finding.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "trust.conflict_trust_delta_threshold must be between 0.0 and 1.0"
+            }
+          ]
+        },
+        {
+          "name": "taint_lock_tiers",
+          "type_ref": "TaintLockTiersList",
+          "required": false,
+          "default": "['RESTRICTED', 'CRITICAL']",
+          "description": "List of DataClassificationTier values for which taint-lock is enforced. Nodes handling data at these tiers have stricter trust requirements.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for trust score computation, decay, and conflict thresholds. All policy calculations use raw trust score, never display tiers."
+    },
+    {
+      "name": "TaintLockTiersList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "DataClassificationTier",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of DataClassificationTier values for taint lock enforcement."
+    },
+    {
+      "name": "SoakDurationsMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "PUBLIC",
+          "type_ref": "int",
+          "required": false,
+          "default": "3600",
+          "description": "Soak duration in seconds for PUBLIC tier.",
+          "validators": []
+        },
+        {
+          "name": "INTERNAL",
+          "type_ref": "int",
+          "required": false,
+          "default": "7200",
+          "description": "Soak duration in seconds for INTERNAL tier.",
+          "validators": []
+        },
+        {
+          "name": "CONFIDENTIAL",
+          "type_ref": "int",
+          "required": false,
+          "default": "14400",
+          "description": "Soak duration in seconds for CONFIDENTIAL tier.",
+          "validators": []
+        },
+        {
+          "name": "RESTRICTED",
+          "type_ref": "int",
+          "required": false,
+          "default": "28800",
+          "description": "Soak duration in seconds for RESTRICTED tier.",
+          "validators": []
+        },
+        {
+          "name": "CRITICAL",
+          "type_ref": "int",
+          "required": false,
+          "default": "86400",
+          "description": "Soak duration in seconds for CRITICAL tier.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Mapping from DataClassificationTier to base soak duration in seconds. Keys must be valid DataClassificationTier variants."
+    },
+    {
+      "name": "SoakConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "base_durations",
+          "type_ref": "SoakDurationsMap",
+          "required": false,
+          "default": "SoakDurationsMap()",
+          "description": "Mapping of DataClassificationTier to base soak duration in seconds.",
+          "validators": []
+        },
+        {
+          "name": "target_requests",
+          "type_ref": "int",
+          "required": false,
+          "default": "1000",
+          "description": "Target number of requests to observe during soak period before promotion.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 1",
+              "error_message": "soak.target_requests must be at least 1"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for soak testing parameters — duration and request volume gates per classification tier."
+    },
+    {
+      "name": "OtlpConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "listen_port",
+          "type_ref": "int",
+          "required": false,
+          "default": "4317",
+          "description": "gRPC port for OTLP telemetry ingestion.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 65535",
+              "error_message": "otlp.listen_port must be a valid port number (1-65535)"
+            }
+          ]
+        },
+        {
+          "name": "http_port",
+          "type_ref": "int",
+          "required": false,
+          "default": "4318",
+          "description": "HTTP port for OTLP telemetry ingestion.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 65535",
+              "error_message": "otlp.http_port must be a valid port number (1-65535)"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for OpenTelemetry Protocol (OTLP) listener ports."
+    },
+    {
+      "name": "ApiConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "port",
+          "type_ref": "int",
+          "required": false,
+          "default": "7700",
+          "description": "HTTP port for the Arbiter API server.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 65535",
+              "error_message": "api.port must be a valid port number (1-65535)"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for the Arbiter HTTP API server."
+    },
+    {
+      "name": "ClassificationRegistryConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "path",
+          "type_ref": "str",
+          "required": false,
+          "default": "./classification_registry.yaml",
+          "description": "Filesystem path to the classification registry file or directory. Resolved as pathlib.Path at runtime.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for the field classification registry."
+    },
+    {
+      "name": "HumanGateConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "webhook_url",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "URL for the webhook to notify when a human gate is triggered. Empty string means no webhook configured.",
+          "validators": []
+        },
+        {
+          "name": "block_on_gate",
+          "type_ref": "bool",
+          "required": false,
+          "default": "true",
+          "description": "Whether to block (halt processing) when a human gate is triggered, waiting for approval. If false, gate is advisory only.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for the human-in-the-loop approval gate."
+    },
+    {
+      "name": "LedgerConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "checksum_interval",
+          "type_ref": "int",
+          "required": false,
+          "default": "100",
+          "description": "Number of ledger entries between SHA256 checksum lines.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 1",
+              "error_message": "ledger.checksum_interval must be at least 1"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for the trust ledger (append-only JSONL with periodic SHA256 checksums)."
+    },
+    {
+      "name": "ArbiterConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "config_version",
+          "type_ref": "int",
+          "required": false,
+          "default": "1",
+          "description": "Configuration schema version for future migration support. Must be 1 for this version.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value == 1",
+              "error_message": "config_version must be 1 for this contract version"
+            }
+          ]
+        },
+        {
+          "name": "registry",
+          "type_ref": "RegistryConfig",
+          "required": false,
+          "default": "RegistryConfig()",
+          "description": "Component/service registry configuration section.",
+          "validators": []
+        },
+        {
+          "name": "trust",
+          "type_ref": "TrustConfig",
+          "required": false,
+          "default": "TrustConfig()",
+          "description": "Trust score computation and policy configuration section.",
+          "validators": []
+        },
+        {
+          "name": "soak",
+          "type_ref": "SoakConfig",
+          "required": false,
+          "default": "SoakConfig()",
+          "description": "Soak testing parameters configuration section.",
+          "validators": []
+        },
+        {
+          "name": "otlp",
+          "type_ref": "OtlpConfig",
+          "required": false,
+          "default": "OtlpConfig()",
+          "description": "OTLP telemetry listener configuration section.",
+          "validators": []
+        },
+        {
+          "name": "api",
+          "type_ref": "ApiConfig",
+          "required": false,
+          "default": "ApiConfig()",
+          "description": "HTTP API server configuration section.",
+          "validators": []
+        },
+        {
+          "name": "classification_registry",
+          "type_ref": "ClassificationRegistryConfig",
+          "required": false,
+          "default": "ClassificationRegistryConfig()",
+          "description": "Field classification registry configuration section.",
+          "validators": []
+        },
+        {
+          "name": "human_gate",
+          "type_ref": "HumanGateConfig",
+          "required": false,
+          "default": "HumanGateConfig()",
+          "description": "Human-in-the-loop approval gate configuration section.",
+          "validators": []
+        },
+        {
+          "name": "ledger",
+          "type_ref": "LedgerConfig",
+          "required": false,
+          "default": "LedgerConfig()",
+          "description": "Trust ledger configuration section.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Root configuration model for the Arbiter system. Composes all section configs. Extends Pydantic BaseSettings with frozen immutability and custom YAML settings source. Source priority: defaults → YAML → env vars (prefix=ARBITER_, nested delimiter=__)."
+    },
+    {
+      "name": "ConfigurationError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "config_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Filesystem path of the config file that failed validation.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message including file path and specific field/value details.",
+          "validators": []
+        },
+        {
+          "name": "validation_errors",
+          "type_ref": "ValidationErrorList",
+          "required": true,
+          "default": "",
+          "description": "List of individual field-level validation error detail dicts from Pydantic.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Exception wrapping Pydantic ValidationError with file path context. Raised when config file is present but contains invalid values. Includes the file path, the original validation errors, and a human-readable message suitable for CLI display via click."
+    },
+    {
+      "name": "ValidationErrorDetail",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "field",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Dot-separated field path (e.g. 'trust.floor').",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable validation error message.",
+          "validators": []
+        },
+        {
+          "name": "value",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "String representation of the invalid value.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single field-level validation error extracted from Pydantic ValidationError."
+    },
+    {
+      "name": "ValidationErrorList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "ValidationErrorDetail",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of individual validation error details."
+    },
+    {
+      "name": "ConfigNotLoadedError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "Configuration not loaded. Call load_config() before get_config().",
+          "description": "Error message indicating config was not loaded.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Exception raised when get_config() is called before load_config(). Indicates the module-level singleton has not been initialized."
+    },
+    {
+      "name": "OptionalPath",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "str"
+      ],
+      "description": "An optional filesystem path string. None means use default resolution (look for arbiter.yaml in cwd)."
+    }
+  ],
+  "functions": [
+    {
+      "name": "load_config",
+      "description": "Loads, validates, and caches the Arbiter configuration from a YAML file. If path is None, looks for 'arbiter.yaml' in the current working directory. If the file does not exist at the resolved path, falls back to defaults (with env var overrides). Stores the resulting ArbiterConfig in the module-level singleton. Subsequent calls overwrite the cached config. Source priority: defaults → YAML file contents → environment variables.",
+      "inputs": [
+        {
+          "name": "path",
+          "type_ref": "OptionalPath",
+          "required": false,
+          "default": "None",
+          "description": "Path to the arbiter.yaml config file. If None, defaults to './arbiter.yaml'. Resolved via pathlib.Path.",
+          "validators": []
+        }
+      ],
+      "output_type": "ArbiterConfig",
+      "error_cases": [
+        {
+          "name": "validation_error",
+          "condition": "YAML file or env vars contain values that fail Pydantic validation (type mismatch, out-of-range, cross-field constraint violation)",
+          "error_type": "ConfigurationError",
+          "error_data": {
+            "config_path": "Path to the invalid config file",
+            "message": "Includes specific field and value details"
+          }
+        },
+        {
+          "name": "yaml_parse_error",
+          "condition": "YAML file exists but contains malformed YAML syntax that yaml.safe_load() cannot parse",
+          "error_type": "ConfigurationError",
+          "error_data": {
+            "config_path": "Path to the malformed file",
+            "message": "YAML parse error details"
+          }
+        },
+        {
+          "name": "permission_error",
+          "condition": "YAML file exists but the process lacks read permissions",
+          "error_type": "ConfigurationError",
+          "error_data": {
+            "config_path": "Path to the unreadable file",
+            "message": "Permission denied details"
+          }
+        },
+        {
+          "name": "cross_field_validation_error",
+          "condition": "trust.floor > trust.authority_override_floor or other cross-field constraint violations",
+          "error_type": "ConfigurationError",
+          "error_data": {
+            "config_path": "Path to the config file",
+            "message": "Cross-field constraint violation details"
+          }
+        }
+      ],
+      "preconditions": [
+        "If path is provided, it must be a string representing a valid filesystem path or a pathlib.Path",
+        "If the YAML file exists, it must be readable by the current process"
+      ],
+      "postconditions": [
+        "The returned ArbiterConfig is fully validated against all field constraints and cross-field invariants",
+        "The module-level _config singleton is set to the returned ArbiterConfig instance",
+        "get_config() will return this same instance until load_config() or reset_config() is called again",
+        "The returned ArbiterConfig is frozen/immutable",
+        "trust.floor <= trust.authority_override_floor in the returned config"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "arbiter.yaml config file at resolved path",
+          "description": "Reads YAML config file via pathlib.Path.read_text() and yaml.safe_load()"
+        },
+        {
+          "kind": "mutates_state",
+          "target": "module-level _config singleton",
+          "description": "Sets or overwrites the cached ArbiterConfig singleton"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 100,
+        "max_memory_mb": 10,
+        "complexity": "O(1)"
+      }
+    },
+    {
+      "name": "get_config",
+      "description": "Returns the cached ArbiterConfig singleton. Must be called after load_config(). This is the primary accessor for all Arbiter components to retrieve configuration values. Returns the same immutable instance on every call until reset_config() or another load_config() call.",
+      "inputs": [],
+      "output_type": "ArbiterConfig",
+      "error_cases": [
+        {
+          "name": "config_not_loaded",
+          "condition": "load_config() has not been called, or reset_config() was called without a subsequent load_config()",
+          "error_type": "ConfigNotLoadedError",
+          "error_data": {
+            "message": "Configuration not loaded. Call load_config() before get_config()."
+          }
+        }
+      ],
+      "preconditions": [
+        "load_config() must have been called successfully at least once prior to this call"
+      ],
+      "postconditions": [
+        "Returns the same ArbiterConfig instance that was set by the most recent load_config() call",
+        "The returned ArbiterConfig is frozen/immutable"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure accessor — reads module-level singleton without mutation"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 1,
+        "max_memory_mb": null,
+        "complexity": "O(1)"
+      }
+    },
+    {
+      "name": "reset_config",
+      "description": "Resets the module-level _config singleton to None. Primarily used in testing to ensure clean state between test cases. After calling this, get_config() will raise ConfigNotLoadedError until load_config() is called again.",
+      "inputs": [],
+      "output_type": "None",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "The module-level _config singleton is set to None",
+        "Subsequent get_config() calls will raise ConfigNotLoadedError until load_config() is called"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "mutates_state",
+          "target": "module-level _config singleton",
+          "description": "Sets _config to None"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 1,
+        "max_memory_mb": null,
+        "complexity": "O(1)"
+      }
+    },
+    {
+      "name": "generate_default_config",
+      "description": "Generates an arbiter.yaml file with all default configuration values. Used by `arbiter init` CLI command. Instantiates ArbiterConfig() with all defaults, serializes via model_dump(mode='json'), and writes to the target path using yaml.dump(sort_keys=False). Includes a YAML header comment identifying the file as auto-generated. Will not overwrite an existing file unless overwrite=True.",
+      "inputs": [
+        {
+          "name": "path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Filesystem path where the default arbiter.yaml should be written. Resolved via pathlib.Path.",
+          "validators": []
+        },
+        {
+          "name": "overwrite",
+          "type_ref": "bool",
+          "required": false,
+          "default": "false",
+          "description": "Whether to overwrite an existing file at the target path.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "file_exists_no_overwrite",
+          "condition": "A file already exists at the target path and overwrite is False",
+          "error_type": "ConfigurationError",
+          "error_data": {
+            "config_path": "Target file path",
+            "message": "File already exists at <path>. Use --force to overwrite."
+          }
+        },
+        {
+          "name": "parent_directory_not_found",
+          "condition": "The parent directory of the target path does not exist",
+          "error_type": "ConfigurationError",
+          "error_data": {
+            "config_path": "Target file path",
+            "message": "Parent directory does not exist: <parent_path>"
+          }
+        },
+        {
+          "name": "permission_error",
+          "condition": "The process lacks write permissions to the target path or its parent directory",
+          "error_type": "ConfigurationError",
+          "error_data": {
+            "config_path": "Target file path",
+            "message": "Permission denied writing to <path>"
+          }
+        }
+      ],
+      "preconditions": [
+        "The parent directory of path must exist and be writable by the current process",
+        "path must be a valid filesystem path string"
+      ],
+      "postconditions": [
+        "A valid YAML file exists at the specified path containing all ArbiterConfig defaults",
+        "The generated YAML file can be loaded by load_config() without errors",
+        "The file begins with a YAML header comment identifying it as auto-generated",
+        "YAML keys are in definition order (sort_keys=False)",
+        "The generated file includes config_version: 1"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "writes_file",
+          "target": "arbiter.yaml at specified path",
+          "description": "Creates or overwrites YAML config file via pathlib.Path.write_text() with yaml.dump() output"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 200,
+        "max_memory_mb": null,
+        "complexity": "O(1)"
+      }
+    },
+    {
+      "name": "validate_config_file",
+      "description": "Validates an existing arbiter.yaml file without loading it into the module singleton. Parses and validates the file, returning the validated ArbiterConfig or raising ConfigurationError. Useful for CLI `arbiter config validate` command and CI checks.",
+      "inputs": [
+        {
+          "name": "path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Filesystem path to the arbiter.yaml config file to validate. Resolved via pathlib.Path.",
+          "validators": []
+        }
+      ],
+      "output_type": "ArbiterConfig",
+      "error_cases": [
+        {
+          "name": "file_not_found",
+          "condition": "No file exists at the specified path",
+          "error_type": "ConfigurationError",
+          "error_data": {
+            "config_path": "Specified file path",
+            "message": "Config file not found: <path>"
+          }
+        },
+        {
+          "name": "yaml_parse_error",
+          "condition": "File contains malformed YAML syntax",
+          "error_type": "ConfigurationError",
+          "error_data": {
+            "config_path": "Specified file path",
+            "message": "YAML parse error details"
+          }
+        },
+        {
+          "name": "validation_error",
+          "condition": "YAML content fails Pydantic validation",
+          "error_type": "ConfigurationError",
+          "error_data": {
+            "config_path": "Specified file path",
+            "message": "Includes specific field and value details"
+          }
+        },
+        {
+          "name": "permission_error",
+          "condition": "File exists but process lacks read permission",
+          "error_type": "ConfigurationError",
+          "error_data": {
+            "config_path": "Specified file path",
+            "message": "Permission denied reading <path>"
+          }
+        }
+      ],
+      "preconditions": [
+        "path must point to an existing, readable file",
+        "The file must contain YAML content"
+      ],
+      "postconditions": [
+        "If no error is raised, the returned ArbiterConfig is fully valid",
+        "The module-level _config singleton is NOT modified",
+        "The returned ArbiterConfig is frozen/immutable"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "arbiter.yaml at specified path",
+          "description": "Reads and parses YAML file for validation without caching result"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 100,
+        "max_memory_mb": 10,
+        "complexity": "O(1)"
+      }
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "ArbiterConfig is frozen/immutable after construction — no field mutation allowed",
+    "The module-level _config singleton is either None or a fully validated ArbiterConfig instance",
+    "get_config() always returns the same ArbiterConfig instance until reset_config() is called",
+    "Source priority is always: defaults → YAML file → environment variables (ARBITER_ prefix, __ nested delimiter)",
+    "All Path fields use pathlib.Path; all timestamps use UTC",
+    "trust.floor <= trust.authority_override_floor (cross-field invariant)",
+    "trust.floor >= 0.0 and trust.floor <= 1.0",
+    "trust.authority_override_floor >= 0.0 and trust.authority_override_floor <= 1.0",
+    "trust.decay_lambda >= 0.0",
+    "trust.conflict_trust_delta_threshold >= 0.0 and trust.conflict_trust_delta_threshold <= 1.0",
+    "soak.target_requests >= 1",
+    "otlp.listen_port is a valid port number (1..65535)",
+    "otlp.http_port is a valid port number (1..65535)",
+    "api.port is a valid port number (1..65535)",
+    "ledger.checksum_interval >= 1",
+    "config_version == 1 for this contract version",
+    "Trust ledger is append-only — config cannot enable update or delete semantics",
+    "All soak.base_durations keys must be valid DataClassificationTier variants",
+    "All trust.taint_lock_tiers entries must be valid DataClassificationTier variants",
+    "YAML file is read via yaml.safe_load() exclusively — never yaml.load()"
+  ],
+  "requires": [
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "PyYAML>=6.0",
+    "click>=8.0"
+  ],
+  "processing_register": "rigorous-analytical"
+}

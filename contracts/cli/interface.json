@@ -1,0 +1,2746 @@
+{
+  "component_id": "cli",
+  "name": "CLI Entry Point",
+  "description": "Click-based CLI surface for all arbiter commands. Thin adapter layer that validates inputs via custom ParamTypes, constructs Pydantic request models, delegates to engine functions, formats Pydantic response models, and outputs results with appropriate exit codes. Top-level `arbiter` Click group with sub-groups `trust` and `canary`, plus top-level commands `init`, `register`, `authority`, `blast-radius`, `soak`, `report`, `watch`, `findings`, `conflicts`. Shared CliContext on ctx.obj carries registry_path, config, and output_format. Custom ArbiterGroup.invoke() wraps super().invoke() in try/except for centralized error handling with node/field context in messages. All errors to stderr. JSON output is .model_dump(mode='json') of response models. Text output is human-readable formatted string. --format supports text|json with TTY auto-detection.",
+  "version": 1,
+  "types": [
+    {
+      "name": "ExitCode",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "SUCCESS_0",
+        "DOMAIN_ERROR_1",
+        "USAGE_ERROR_2",
+        "IO_ERROR_3",
+        "NOT_FOUND_4"
+      ],
+      "inner_types": [],
+      "description": "CLI exit codes. Every command contract specifies which subset it can produce."
+    },
+    {
+      "name": "OutputFormat",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "text",
+        "json",
+        "auto"
+      ],
+      "inner_types": [],
+      "description": "Output format for CLI responses. 'auto' detects TTY (text if TTY, json otherwise)."
+    },
+    {
+      "name": "ArbiterConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "registry_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Path to the registry directory.",
+          "validators": []
+        },
+        {
+          "name": "ledger_checksum_interval",
+          "type_ref": "int",
+          "required": true,
+          "default": "100",
+          "description": "Number of ledger entries between SHA256 checksum lines.",
+          "validators": []
+        },
+        {
+          "name": "http_port",
+          "type_ref": "int",
+          "required": true,
+          "default": "8900",
+          "description": "Default HTTP API port for watch mode.",
+          "validators": []
+        },
+        {
+          "name": "otlp_port",
+          "type_ref": "int",
+          "required": true,
+          "default": "4317",
+          "description": "Default OTLP gRPC port for watch mode.",
+          "validators": []
+        },
+        {
+          "name": "cold_start_timeout_s",
+          "type_ref": "float",
+          "required": true,
+          "default": "3.0",
+          "description": "Maximum seconds for watch cold start.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Top-level arbiter configuration loaded from YAML. Delegated from config component."
+    },
+    {
+      "name": "CliContext",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "registry_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Resolved absolute path to the registry directory.",
+          "validators": []
+        },
+        {
+          "name": "config",
+          "type_ref": "ArbiterConfig",
+          "required": true,
+          "default": "",
+          "description": "Loaded arbiter configuration.",
+          "validators": []
+        },
+        {
+          "name": "output_format",
+          "type_ref": "OutputFormat",
+          "required": true,
+          "default": "",
+          "description": "Resolved output format (never 'auto' after resolution).",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Shared CLI context attached to click ctx.obj. Loaded in the top-level group callback. Available to all subcommands via @click.pass_obj."
+    },
+    {
+      "name": "NodeId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Opaque string identifying a node in the access graph. Validated by NodeIdType ParamType: non-empty, matches ^[a-zA-Z0-9_.-]+$ pattern."
+    },
+    {
+      "name": "RunId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Opaque string identifying a run (canary run, report run). Validated by RunIdType ParamType: non-empty UUID v4 format."
+    },
+    {
+      "name": "TierName",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "String name of a data classification tier. Validated by TierType ParamType against the classification registry enum."
+    },
+    {
+      "name": "VersionTag",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Semver-compatible version string. Validated by VersionType ParamType: matches ^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?$ pattern."
+    },
+    {
+      "name": "ReviewId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Opaque string identifying a review for taint reset. Non-empty string."
+    },
+    {
+      "name": "InitRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "registry_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Path where the registry directory should be created.",
+          "validators": []
+        },
+        {
+          "name": "force",
+          "type_ref": "bool",
+          "required": true,
+          "default": "false",
+          "description": "If true, re-initialize even if registry exists.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request model for `arbiter init`."
+    },
+    {
+      "name": "InitResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "registry_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Absolute path to the initialized registry directory.",
+          "validators": []
+        },
+        {
+          "name": "created_files",
+          "type_ref": "CreatedFilesList",
+          "required": true,
+          "default": "",
+          "description": "List of files created during initialization.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable success message.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response model for `arbiter init`."
+    },
+    {
+      "name": "CreatedFilesList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of file paths created during initialization."
+    },
+    {
+      "name": "RegisterRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "access_graph_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Path to the access_graph.json file to ingest.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request model for `arbiter register`."
+    },
+    {
+      "name": "RegisterResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "nodes_ingested",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of nodes ingested from the access graph.",
+          "validators": []
+        },
+        {
+          "name": "edges_ingested",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of edges ingested from the access graph.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable success message.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response model for `arbiter register`."
+    },
+    {
+      "name": "TrustShowRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node to query trust for.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request model for `arbiter trust show`."
+    },
+    {
+      "name": "TrustScoreEntry",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "UTC ISO 8601 timestamp of the entry.",
+          "validators": []
+        },
+        {
+          "name": "raw_score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Raw trust score value.",
+          "validators": []
+        },
+        {
+          "name": "event_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Type of trust event that produced this score.",
+          "validators": []
+        },
+        {
+          "name": "tainted",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether the node was tainted at this point.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single trust score entry from the ledger history."
+    },
+    {
+      "name": "TrustHistory",
+      "kind": "list",
+      "fields": [],
+      "item_type": "TrustScoreEntry",
+      "variants": [],
+      "inner_types": [],
+      "description": "Ordered list of trust score entries, oldest first."
+    },
+    {
+      "name": "TrustShowResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The queried node.",
+          "validators": []
+        },
+        {
+          "name": "current_score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Current raw trust score.",
+          "validators": []
+        },
+        {
+          "name": "tainted",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether the node is currently tainted.",
+          "validators": []
+        },
+        {
+          "name": "history",
+          "type_ref": "TrustHistory",
+          "required": true,
+          "default": "",
+          "description": "Trust score history entries.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response model for `arbiter trust show`."
+    },
+    {
+      "name": "TrustResetTaintRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node to clear taint on.",
+          "validators": []
+        },
+        {
+          "name": "review_id",
+          "type_ref": "ReviewId",
+          "required": true,
+          "default": "",
+          "description": "The review ID authorizing the taint reset.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request model for `arbiter trust reset-taint`."
+    },
+    {
+      "name": "TrustResetTaintResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node whose taint was cleared.",
+          "validators": []
+        },
+        {
+          "name": "review_id",
+          "type_ref": "ReviewId",
+          "required": true,
+          "default": "",
+          "description": "The review ID used.",
+          "validators": []
+        },
+        {
+          "name": "previous_score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Trust score before taint reset.",
+          "validators": []
+        },
+        {
+          "name": "new_score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Trust score after taint reset.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable confirmation message.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response model for `arbiter trust reset-taint`."
+    },
+    {
+      "name": "AuthorityShowResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "authority_map",
+          "type_ref": "AuthorityEntryList",
+          "required": true,
+          "default": "",
+          "description": "Full authority map from manifests.",
+          "validators": []
+        },
+        {
+          "name": "total_entries",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of authority entries.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response model for `arbiter authority show`."
+    },
+    {
+      "name": "AuthorityEntry",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node with declared authority.",
+          "validators": []
+        },
+        {
+          "name": "authority_scope",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Scope of authority (e.g., resource path pattern).",
+          "validators": []
+        },
+        {
+          "name": "declared_by",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Manifest or source that declared this authority.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "UTC ISO 8601 timestamp of declaration.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single authority declaration from a manifest."
+    },
+    {
+      "name": "AuthorityEntryList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "AuthorityEntry",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of authority entries."
+    },
+    {
+      "name": "BlastRadiusRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node to compute blast radius from.",
+          "validators": []
+        },
+        {
+          "name": "version",
+          "type_ref": "VersionTag",
+          "required": true,
+          "default": "",
+          "description": "The version of the node to evaluate.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request model for `arbiter blast-radius`."
+    },
+    {
+      "name": "BlastRadiusNode",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The affected node.",
+          "validators": []
+        },
+        {
+          "name": "depth",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Graph distance from the origin node.",
+          "validators": []
+        },
+        {
+          "name": "data_tier",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Data classification tier of this node.",
+          "validators": []
+        },
+        {
+          "name": "trust_score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Current raw trust score of this node.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A node within the blast radius result."
+    },
+    {
+      "name": "BlastRadiusNodeList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "BlastRadiusNode",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of blast radius nodes."
+    },
+    {
+      "name": "BlastRadiusResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "origin_node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The origin node of the blast radius computation.",
+          "validators": []
+        },
+        {
+          "name": "version",
+          "type_ref": "VersionTag",
+          "required": true,
+          "default": "",
+          "description": "Version evaluated.",
+          "validators": []
+        },
+        {
+          "name": "affected_nodes",
+          "type_ref": "BlastRadiusNodeList",
+          "required": true,
+          "default": "",
+          "description": "All nodes within blast radius, ordered by depth.",
+          "validators": []
+        },
+        {
+          "name": "total_affected",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of affected nodes.",
+          "validators": []
+        },
+        {
+          "name": "max_depth",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Maximum depth reached in traversal.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response model for `arbiter blast-radius`."
+    },
+    {
+      "name": "SoakComputeRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node to compute soak duration for.",
+          "validators": []
+        },
+        {
+          "name": "tier",
+          "type_ref": "TierName",
+          "required": true,
+          "default": "",
+          "description": "The data classification tier.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request model for `arbiter soak compute`."
+    },
+    {
+      "name": "SoakComputeResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node evaluated.",
+          "validators": []
+        },
+        {
+          "name": "tier",
+          "type_ref": "TierName",
+          "required": true,
+          "default": "",
+          "description": "The data classification tier used.",
+          "validators": []
+        },
+        {
+          "name": "soak_duration_hours",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Computed soak duration in hours.",
+          "validators": []
+        },
+        {
+          "name": "trust_score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Trust score used in computation.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable summary.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response model for `arbiter soak compute`."
+    },
+    {
+      "name": "ReportRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "run_id",
+          "type_ref": "RunId",
+          "required": true,
+          "default": "",
+          "description": "The run ID to generate a report for.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request model for `arbiter report`."
+    },
+    {
+      "name": "ReportResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "run_id",
+          "type_ref": "RunId",
+          "required": true,
+          "default": "",
+          "description": "The run ID.",
+          "validators": []
+        },
+        {
+          "name": "generated_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "UTC ISO 8601 timestamp of report generation.",
+          "validators": []
+        },
+        {
+          "name": "summary",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable report summary.",
+          "validators": []
+        },
+        {
+          "name": "findings_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total findings in the report.",
+          "validators": []
+        },
+        {
+          "name": "report_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Path to the generated report file.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response model for `arbiter report`."
+    },
+    {
+      "name": "CanaryInjectRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "tiers",
+          "type_ref": "TierNameList",
+          "required": true,
+          "default": "",
+          "description": "List of data classification tiers to inject canary data for.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request model for `arbiter canary inject`."
+    },
+    {
+      "name": "TierNameList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "TierName",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of tier names."
+    },
+    {
+      "name": "CanaryInjectResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "run_id",
+          "type_ref": "RunId",
+          "required": true,
+          "default": "",
+          "description": "The canary run ID generated for this injection.",
+          "validators": []
+        },
+        {
+          "name": "injected_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of canary records injected.",
+          "validators": []
+        },
+        {
+          "name": "tiers_covered",
+          "type_ref": "TierNameList",
+          "required": true,
+          "default": "",
+          "description": "Tiers that received canary data.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable summary.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response model for `arbiter canary inject`."
+    },
+    {
+      "name": "CanaryResultsRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "run_id",
+          "type_ref": "RunId",
+          "required": true,
+          "default": "",
+          "description": "The canary run ID to get results for.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request model for `arbiter canary results`."
+    },
+    {
+      "name": "TaintEscape",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "canary_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique ID of the canary that escaped.",
+          "validators": []
+        },
+        {
+          "name": "source_tier",
+          "type_ref": "TierName",
+          "required": true,
+          "default": "",
+          "description": "Tier the canary was injected into.",
+          "validators": []
+        },
+        {
+          "name": "found_at_node",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Node where the canary was detected.",
+          "validators": []
+        },
+        {
+          "name": "found_at_tier",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Tier classification of the location where canary was found.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "UTC ISO 8601 timestamp of detection.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single taint escape finding from canary analysis."
+    },
+    {
+      "name": "TaintEscapeList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "TaintEscape",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of taint escape findings."
+    },
+    {
+      "name": "CanaryResultsResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "run_id",
+          "type_ref": "RunId",
+          "required": true,
+          "default": "",
+          "description": "The canary run ID.",
+          "validators": []
+        },
+        {
+          "name": "escapes",
+          "type_ref": "TaintEscapeList",
+          "required": true,
+          "default": "",
+          "description": "All taint escape findings.",
+          "validators": []
+        },
+        {
+          "name": "total_escapes",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of escapes detected.",
+          "validators": []
+        },
+        {
+          "name": "total_canaries",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total canaries injected in this run.",
+          "validators": []
+        },
+        {
+          "name": "escape_rate",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Fraction of canaries that escaped (0.0 to 1.0).",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response model for `arbiter canary results`."
+    },
+    {
+      "name": "WatchRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "http_port",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Port for the HTTP API server.",
+          "validators": []
+        },
+        {
+          "name": "otlp_port",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Port for the OTLP gRPC subscriber.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request model for `arbiter watch`."
+    },
+    {
+      "name": "WatchStatus",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "http_port",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Active HTTP API port.",
+          "validators": []
+        },
+        {
+          "name": "otlp_port",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Active OTLP gRPC port.",
+          "validators": []
+        },
+        {
+          "name": "started_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "UTC ISO 8601 timestamp of watch start.",
+          "validators": []
+        },
+        {
+          "name": "ready",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether both servers are ready to accept connections.",
+          "validators": []
+        },
+        {
+          "name": "cold_start_ms",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Time in milliseconds from invocation to ready state.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Status snapshot of the watch process (used in readiness checks, not a terminal response)."
+    },
+    {
+      "name": "Finding",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "finding_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique finding identifier.",
+          "validators": []
+        },
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Node the finding pertains to.",
+          "validators": []
+        },
+        {
+          "name": "severity",
+          "type_ref": "FindingSeverity",
+          "required": true,
+          "default": "",
+          "description": "Severity of the finding.",
+          "validators": []
+        },
+        {
+          "name": "category",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Category of the consistency check.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable finding description.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "UTC ISO 8601 timestamp.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A consistency finding for a node."
+    },
+    {
+      "name": "FindingSeverity",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "critical",
+        "high",
+        "medium",
+        "low",
+        "info"
+      ],
+      "inner_types": [],
+      "description": "Severity levels for findings."
+    },
+    {
+      "name": "FindingsList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "Finding",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of findings."
+    },
+    {
+      "name": "FindingsRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node to query findings for.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request model for `arbiter findings`."
+    },
+    {
+      "name": "FindingsResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The queried node.",
+          "validators": []
+        },
+        {
+          "name": "findings",
+          "type_ref": "FindingsList",
+          "required": true,
+          "default": "",
+          "description": "Consistency findings for the node.",
+          "validators": []
+        },
+        {
+          "name": "total",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of findings.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response model for `arbiter findings`."
+    },
+    {
+      "name": "Conflict",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "conflict_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique conflict identifier.",
+          "validators": []
+        },
+        {
+          "name": "node_ids",
+          "type_ref": "NodeIdList",
+          "required": true,
+          "default": "",
+          "description": "Nodes involved in the conflict.",
+          "validators": []
+        },
+        {
+          "name": "conflict_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Type of conflict (e.g., trust_authority_mismatch, overlapping_authority).",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable conflict description.",
+          "validators": []
+        },
+        {
+          "name": "resolved",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether the conflict has been resolved.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "UTC ISO 8601 timestamp of detection.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A conflict between trust and authority or between declarations."
+    },
+    {
+      "name": "NodeIdList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "NodeId",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of node IDs."
+    },
+    {
+      "name": "ConflictList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "Conflict",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of conflicts."
+    },
+    {
+      "name": "ConflictsRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "unresolved_only",
+          "type_ref": "bool",
+          "required": true,
+          "default": "false",
+          "description": "If true, return only unresolved conflicts.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request model for `arbiter conflicts`."
+    },
+    {
+      "name": "ConflictsResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "conflicts",
+          "type_ref": "ConflictList",
+          "required": true,
+          "default": "",
+          "description": "Matching conflicts.",
+          "validators": []
+        },
+        {
+          "name": "total",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of matching conflicts.",
+          "validators": []
+        },
+        {
+          "name": "unresolved_only",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether filter was applied.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response model for `arbiter conflicts`."
+    },
+    {
+      "name": "CliError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "error_code",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Machine-readable error code.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message including node/field/domain context.",
+          "validators": []
+        },
+        {
+          "name": "exit_code",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "The exit code that will be used.",
+          "validators": []
+        },
+        {
+          "name": "node_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Node ID involved, if applicable.",
+          "validators": []
+        },
+        {
+          "name": "field",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Field involved, if applicable.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Structured error output written to stderr in JSON mode."
+    }
+  ],
+  "functions": [
+    {
+      "name": "arbiter_group",
+      "description": "Top-level Click group callback. Loads config from --config path (default: ./arbiter.yaml), resolves --registry-path, resolves --format (auto → text if TTY, json otherwise), constructs CliContext and attaches to ctx.obj. Uses custom ArbiterGroup class whose invoke() wraps super().invoke() in try/except to catch all domain exceptions, format CliError, write to stderr, and sys.exit with mapped ExitCode.",
+      "inputs": [
+        {
+          "name": "config_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "./arbiter.yaml",
+          "description": "Path to arbiter YAML config file.",
+          "validators": []
+        },
+        {
+          "name": "registry_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Override registry path from config.",
+          "validators": []
+        },
+        {
+          "name": "format",
+          "type_ref": "OutputFormat",
+          "required": true,
+          "default": "auto",
+          "description": "Output format: text, json, or auto (TTY detection).",
+          "validators": []
+        }
+      ],
+      "output_type": "CliContext",
+      "error_cases": [
+        {
+          "name": "config_not_found",
+          "condition": "Config file path does not exist and is not the default",
+          "error_type": "IO_ERROR",
+          "error_data": {
+            "exit_code": "3"
+          }
+        },
+        {
+          "name": "config_invalid_yaml",
+          "condition": "Config file is not valid YAML or fails ArbiterConfig validation",
+          "error_type": "USAGE_ERROR",
+          "error_data": {
+            "exit_code": "2"
+          }
+        },
+        {
+          "name": "registry_path_invalid",
+          "condition": "Explicit registry_path does not exist or is not a directory",
+          "error_type": "IO_ERROR",
+          "error_data": {
+            "exit_code": "3"
+          }
+        }
+      ],
+      "preconditions": [
+        "config_path must point to a readable YAML file or not exist (defaults used)",
+        "If registry_path is provided, it must be a valid directory path"
+      ],
+      "postconditions": [
+        "CliContext is fully initialized with resolved output_format (never 'auto')",
+        "CliContext is attached to click ctx.obj",
+        "Config is loaded and validated as ArbiterConfig"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "config YAML file at config_path",
+          "description": "Reads and parses arbiter configuration from YAML."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "cmd_init",
+      "description": "Command: `arbiter init [--force]`. Initializes registry directory, empty trust ledger (JSONL with checksum), and default config (FA-A-001). Delegates to registry.initialize_registry.",
+      "inputs": [
+        {
+          "name": "ctx",
+          "type_ref": "CliContext",
+          "required": true,
+          "default": "",
+          "description": "Shared CLI context from group callback.",
+          "validators": []
+        },
+        {
+          "name": "force",
+          "type_ref": "bool",
+          "required": true,
+          "default": "false",
+          "description": "Re-initialize even if registry already exists.",
+          "validators": []
+        }
+      ],
+      "output_type": "InitResponse",
+      "error_cases": [
+        {
+          "name": "already_initialized",
+          "condition": "Registry directory exists and force is false",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "REGISTRY_EXISTS"
+          }
+        },
+        {
+          "name": "permission_denied",
+          "condition": "Cannot create registry directory due to filesystem permissions",
+          "error_type": "IO_ERROR",
+          "error_data": {
+            "exit_code": "3",
+            "error_code": "PERMISSION_DENIED"
+          }
+        },
+        {
+          "name": "parent_not_found",
+          "condition": "Parent directory of registry_path does not exist",
+          "error_type": "IO_ERROR",
+          "error_data": {
+            "exit_code": "3",
+            "error_code": "PARENT_DIR_NOT_FOUND"
+          }
+        }
+      ],
+      "preconditions": [
+        "CliContext is initialized",
+        "Parent directory of registry_path must be writable"
+      ],
+      "postconditions": [
+        "Registry directory exists at registry_path",
+        "Empty trust ledger file exists within registry",
+        "Default config file exists within registry",
+        "Exit code is SUCCESS_0"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "writes_file",
+          "target": "registry directory and initial files (ledger, config)",
+          "description": "Creates registry directory structure with empty trust ledger and default config."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "cmd_register",
+      "description": "Command: `arbiter register <access_graph_path>`. Ingests an access graph JSON file into the registry. Delegates to registry.ingest_access_graph.",
+      "inputs": [
+        {
+          "name": "ctx",
+          "type_ref": "CliContext",
+          "required": true,
+          "default": "",
+          "description": "Shared CLI context.",
+          "validators": []
+        },
+        {
+          "name": "access_graph_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Path to access_graph.json. Validated by Click as existing file path.",
+          "validators": []
+        }
+      ],
+      "output_type": "RegisterResponse",
+      "error_cases": [
+        {
+          "name": "registry_not_initialized",
+          "condition": "Registry directory does not exist or is missing required files",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "REGISTRY_NOT_INITIALIZED"
+          }
+        },
+        {
+          "name": "file_not_found",
+          "condition": "access_graph_path does not exist",
+          "error_type": "IO_ERROR",
+          "error_data": {
+            "exit_code": "3",
+            "error_code": "FILE_NOT_FOUND"
+          }
+        },
+        {
+          "name": "invalid_json",
+          "condition": "File is not valid JSON",
+          "error_type": "USAGE_ERROR",
+          "error_data": {
+            "exit_code": "2",
+            "error_code": "INVALID_JSON"
+          }
+        },
+        {
+          "name": "schema_violation",
+          "condition": "JSON does not conform to the access graph schema",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "SCHEMA_VIOLATION"
+          }
+        },
+        {
+          "name": "permission_denied",
+          "condition": "Cannot read the access graph file",
+          "error_type": "IO_ERROR",
+          "error_data": {
+            "exit_code": "3",
+            "error_code": "PERMISSION_DENIED"
+          }
+        }
+      ],
+      "preconditions": [
+        "Registry must be initialized (arbiter init has been run)",
+        "access_graph_path must point to a readable JSON file",
+        "JSON must conform to access graph schema"
+      ],
+      "postconditions": [
+        "Access graph nodes and edges are stored in registry",
+        "Exit code is SUCCESS_0"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "access_graph.json",
+          "description": "Reads and parses access graph JSON file."
+        },
+        {
+          "kind": "writes_file",
+          "target": "registry access graph storage",
+          "description": "Persists ingested access graph data to registry."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "cmd_trust_show",
+      "description": "Command: `arbiter trust show <node>`. Displays current trust score and history for a node. Delegates to trust_engine.compute_trust_score and trust_engine.get_trust_history.",
+      "inputs": [
+        {
+          "name": "ctx",
+          "type_ref": "CliContext",
+          "required": true,
+          "default": "",
+          "description": "Shared CLI context.",
+          "validators": []
+        },
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node to query. Validated by NodeIdType ParamType.",
+          "validators": []
+        }
+      ],
+      "output_type": "TrustShowResponse",
+      "error_cases": [
+        {
+          "name": "registry_not_initialized",
+          "condition": "Registry is not initialized",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "REGISTRY_NOT_INITIALIZED"
+          }
+        },
+        {
+          "name": "node_not_found",
+          "condition": "node_id does not exist in the access graph",
+          "error_type": "NOT_FOUND",
+          "error_data": {
+            "exit_code": "4",
+            "error_code": "NODE_NOT_FOUND"
+          }
+        },
+        {
+          "name": "ledger_corrupted",
+          "condition": "Trust ledger checksum validation fails",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "LEDGER_CORRUPTED"
+          }
+        }
+      ],
+      "preconditions": [
+        "Registry must be initialized",
+        "node_id must exist in the registered access graph"
+      ],
+      "postconditions": [
+        "Response contains current raw trust score (never display tier)",
+        "History is ordered oldest-first",
+        "Trust score computation is deterministic given same ledger input",
+        "Exit code is SUCCESS_0"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "trust ledger JSONL file",
+          "description": "Reads trust ledger to compute score and retrieve history."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "cmd_trust_reset_taint",
+      "description": "Command: `arbiter trust reset-taint <node> --review <id>`. Clears taint lock on a node, appending a reset event to the trust ledger. Delegates to trust_engine.reset_taint.",
+      "inputs": [
+        {
+          "name": "ctx",
+          "type_ref": "CliContext",
+          "required": true,
+          "default": "",
+          "description": "Shared CLI context.",
+          "validators": []
+        },
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node to clear taint on. Validated by NodeIdType.",
+          "validators": []
+        },
+        {
+          "name": "review_id",
+          "type_ref": "ReviewId",
+          "required": true,
+          "default": "",
+          "description": "The review ID authorizing the reset. Required option.",
+          "validators": []
+        }
+      ],
+      "output_type": "TrustResetTaintResponse",
+      "error_cases": [
+        {
+          "name": "registry_not_initialized",
+          "condition": "Registry is not initialized",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "REGISTRY_NOT_INITIALIZED"
+          }
+        },
+        {
+          "name": "node_not_found",
+          "condition": "node_id does not exist",
+          "error_type": "NOT_FOUND",
+          "error_data": {
+            "exit_code": "4",
+            "error_code": "NODE_NOT_FOUND"
+          }
+        },
+        {
+          "name": "not_tainted",
+          "condition": "Node is not currently tainted",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "NODE_NOT_TAINTED"
+          }
+        },
+        {
+          "name": "empty_review_id",
+          "condition": "review_id is empty string",
+          "error_type": "USAGE_ERROR",
+          "error_data": {
+            "exit_code": "2",
+            "error_code": "EMPTY_REVIEW_ID"
+          }
+        },
+        {
+          "name": "ledger_corrupted",
+          "condition": "Trust ledger checksum validation fails",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "LEDGER_CORRUPTED"
+          }
+        }
+      ],
+      "preconditions": [
+        "Registry must be initialized",
+        "node_id must exist in the access graph",
+        "Node must currently be tainted",
+        "review_id must be non-empty"
+      ],
+      "postconditions": [
+        "Taint reset event is appended to trust ledger (append-only)",
+        "Node is no longer tainted",
+        "Trust score is recomputed",
+        "Exit code is SUCCESS_0"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "trust ledger JSONL file",
+          "description": "Reads current taint status."
+        },
+        {
+          "kind": "writes_file",
+          "target": "trust ledger JSONL file",
+          "description": "Appends taint reset event to ledger (append-only)."
+        },
+        {
+          "kind": "logging",
+          "target": "audit log",
+          "description": "Logs taint reset action with node_id and review_id."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "cmd_authority_show",
+      "description": "Command: `arbiter authority show`. Displays the full authority map declared from manifests. Delegates to authority_engine.get_authority_map.",
+      "inputs": [
+        {
+          "name": "ctx",
+          "type_ref": "CliContext",
+          "required": true,
+          "default": "",
+          "description": "Shared CLI context.",
+          "validators": []
+        }
+      ],
+      "output_type": "AuthorityShowResponse",
+      "error_cases": [
+        {
+          "name": "registry_not_initialized",
+          "condition": "Registry is not initialized",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "REGISTRY_NOT_INITIALIZED"
+          }
+        }
+      ],
+      "preconditions": [
+        "Registry must be initialized"
+      ],
+      "postconditions": [
+        "Response contains all authority declarations from manifests",
+        "Authority is distinct from trust (declared, not computed)",
+        "Exit code is SUCCESS_0"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "registry authority manifests",
+          "description": "Reads authority declarations from stored manifests."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "cmd_blast_radius",
+      "description": "Command: `arbiter blast-radius <node> <version>`. Computes blast radius via BFS/DFS over access graph edges. Delegates to blast_radius_engine.compute_blast_radius.",
+      "inputs": [
+        {
+          "name": "ctx",
+          "type_ref": "CliContext",
+          "required": true,
+          "default": "",
+          "description": "Shared CLI context.",
+          "validators": []
+        },
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Origin node. Validated by NodeIdType.",
+          "validators": []
+        },
+        {
+          "name": "version",
+          "type_ref": "VersionTag",
+          "required": true,
+          "default": "",
+          "description": "Version to evaluate. Validated by VersionType.",
+          "validators": []
+        }
+      ],
+      "output_type": "BlastRadiusResponse",
+      "error_cases": [
+        {
+          "name": "registry_not_initialized",
+          "condition": "Registry is not initialized",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "REGISTRY_NOT_INITIALIZED"
+          }
+        },
+        {
+          "name": "node_not_found",
+          "condition": "node_id does not exist in the access graph",
+          "error_type": "NOT_FOUND",
+          "error_data": {
+            "exit_code": "4",
+            "error_code": "NODE_NOT_FOUND"
+          }
+        },
+        {
+          "name": "no_access_graph",
+          "condition": "No access graph has been registered",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "NO_ACCESS_GRAPH"
+          }
+        }
+      ],
+      "preconditions": [
+        "Registry must be initialized",
+        "Access graph must be registered",
+        "node_id must exist in the access graph"
+      ],
+      "postconditions": [
+        "affected_nodes is ordered by depth ascending",
+        "total_affected equals len(affected_nodes)",
+        "max_depth equals max depth among affected_nodes or 0 if empty",
+        "Exit code is SUCCESS_0"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "registry access graph and trust ledger",
+          "description": "Reads access graph edges for BFS/DFS traversal and trust scores for each node."
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 500,
+        "max_memory_mb": null,
+        "complexity": "O(V + E) where V=nodes, E=edges in access graph"
+      }
+    },
+    {
+      "name": "cmd_soak_compute",
+      "description": "Command: `arbiter soak compute <node> <tier>`. Computes soak duration for a node at a given data classification tier. Delegates to soak_engine.compute_soak_duration.",
+      "inputs": [
+        {
+          "name": "ctx",
+          "type_ref": "CliContext",
+          "required": true,
+          "default": "",
+          "description": "Shared CLI context.",
+          "validators": []
+        },
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Node to compute soak for. Validated by NodeIdType.",
+          "validators": []
+        },
+        {
+          "name": "tier",
+          "type_ref": "TierName",
+          "required": true,
+          "default": "",
+          "description": "Data classification tier. Validated by TierType.",
+          "validators": []
+        }
+      ],
+      "output_type": "SoakComputeResponse",
+      "error_cases": [
+        {
+          "name": "registry_not_initialized",
+          "condition": "Registry is not initialized",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "REGISTRY_NOT_INITIALIZED"
+          }
+        },
+        {
+          "name": "node_not_found",
+          "condition": "node_id does not exist",
+          "error_type": "NOT_FOUND",
+          "error_data": {
+            "exit_code": "4",
+            "error_code": "NODE_NOT_FOUND"
+          }
+        },
+        {
+          "name": "invalid_tier",
+          "condition": "tier is not a recognized classification tier",
+          "error_type": "USAGE_ERROR",
+          "error_data": {
+            "exit_code": "2",
+            "error_code": "INVALID_TIER"
+          }
+        }
+      ],
+      "preconditions": [
+        "Registry must be initialized",
+        "node_id must exist in the access graph",
+        "tier must be a valid classification tier"
+      ],
+      "postconditions": [
+        "soak_duration_hours >= 0",
+        "Computation uses raw trust score (not display tiers)",
+        "Exit code is SUCCESS_0"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "registry trust ledger and classification config",
+          "description": "Reads trust score and classification rules."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "cmd_report",
+      "description": "Command: `arbiter report --run <run_id>`. Generates a feedback report for a given run. Delegates to report_engine.generate_report.",
+      "inputs": [
+        {
+          "name": "ctx",
+          "type_ref": "CliContext",
+          "required": true,
+          "default": "",
+          "description": "Shared CLI context.",
+          "validators": []
+        },
+        {
+          "name": "run_id",
+          "type_ref": "RunId",
+          "required": true,
+          "default": "",
+          "description": "Run ID to generate report for. Validated by RunIdType.",
+          "validators": []
+        }
+      ],
+      "output_type": "ReportResponse",
+      "error_cases": [
+        {
+          "name": "registry_not_initialized",
+          "condition": "Registry is not initialized",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "REGISTRY_NOT_INITIALIZED"
+          }
+        },
+        {
+          "name": "run_not_found",
+          "condition": "run_id does not match any known run",
+          "error_type": "NOT_FOUND",
+          "error_data": {
+            "exit_code": "4",
+            "error_code": "RUN_NOT_FOUND"
+          }
+        },
+        {
+          "name": "write_failure",
+          "condition": "Cannot write report file",
+          "error_type": "IO_ERROR",
+          "error_data": {
+            "exit_code": "3",
+            "error_code": "WRITE_FAILURE"
+          }
+        }
+      ],
+      "preconditions": [
+        "Registry must be initialized",
+        "run_id must correspond to a known run"
+      ],
+      "postconditions": [
+        "Report file is written to registry reports directory",
+        "generated_at is a valid UTC ISO 8601 timestamp",
+        "Exit code is SUCCESS_0"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "registry run data",
+          "description": "Reads run data to compile report."
+        },
+        {
+          "kind": "writes_file",
+          "target": "registry reports directory",
+          "description": "Writes generated report file."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "cmd_canary_inject",
+      "description": "Command: `arbiter canary inject --tiers <tier>[,<tier>...]`. Seeds canary data for the specified tiers. Canary fingerprints are structurally valid for tier, globally unique per run, and impossible in real data (UUIDs in domain-shaped strings). Delegates to canary_engine.inject_canaries.",
+      "inputs": [
+        {
+          "name": "ctx",
+          "type_ref": "CliContext",
+          "required": true,
+          "default": "",
+          "description": "Shared CLI context.",
+          "validators": []
+        },
+        {
+          "name": "tiers",
+          "type_ref": "TierNameList",
+          "required": true,
+          "default": "",
+          "description": "Comma-separated list of tiers to inject canary data for. Validated by TierType.",
+          "validators": []
+        }
+      ],
+      "output_type": "CanaryInjectResponse",
+      "error_cases": [
+        {
+          "name": "registry_not_initialized",
+          "condition": "Registry is not initialized",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "REGISTRY_NOT_INITIALIZED"
+          }
+        },
+        {
+          "name": "empty_tiers",
+          "condition": "No tiers specified",
+          "error_type": "USAGE_ERROR",
+          "error_data": {
+            "exit_code": "2",
+            "error_code": "EMPTY_TIERS"
+          }
+        },
+        {
+          "name": "invalid_tier",
+          "condition": "One or more tiers not recognized",
+          "error_type": "USAGE_ERROR",
+          "error_data": {
+            "exit_code": "2",
+            "error_code": "INVALID_TIER"
+          }
+        }
+      ],
+      "preconditions": [
+        "Registry must be initialized",
+        "tiers must be non-empty",
+        "Each tier must be a valid classification tier"
+      ],
+      "postconditions": [
+        "Canary data is injected for all specified tiers",
+        "Each canary is recognizable as synthetic (never plausible real data)",
+        "Each canary is globally unique per run",
+        "run_id is a new UUID v4",
+        "Exit code is SUCCESS_0"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "writes_file",
+          "target": "registry canary storage",
+          "description": "Persists canary data and run metadata."
+        },
+        {
+          "kind": "mutates_state",
+          "target": "canary injection targets",
+          "description": "Injects synthetic canary records into tier-appropriate locations."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "cmd_canary_results",
+      "description": "Command: `arbiter canary results --run <run_id>`. Produces a taint escape report for a canary run. Delegates to canary_engine.get_canary_results.",
+      "inputs": [
+        {
+          "name": "ctx",
+          "type_ref": "CliContext",
+          "required": true,
+          "default": "",
+          "description": "Shared CLI context.",
+          "validators": []
+        },
+        {
+          "name": "run_id",
+          "type_ref": "RunId",
+          "required": true,
+          "default": "",
+          "description": "Canary run ID. Validated by RunIdType.",
+          "validators": []
+        }
+      ],
+      "output_type": "CanaryResultsResponse",
+      "error_cases": [
+        {
+          "name": "registry_not_initialized",
+          "condition": "Registry is not initialized",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "REGISTRY_NOT_INITIALIZED"
+          }
+        },
+        {
+          "name": "run_not_found",
+          "condition": "run_id does not correspond to a canary run",
+          "error_type": "NOT_FOUND",
+          "error_data": {
+            "exit_code": "4",
+            "error_code": "RUN_NOT_FOUND"
+          }
+        }
+      ],
+      "preconditions": [
+        "Registry must be initialized",
+        "run_id must correspond to a canary run"
+      ],
+      "postconditions": [
+        "total_escapes equals len(escapes)",
+        "escape_rate equals total_escapes / total_canaries (or 0.0 if total_canaries is 0)",
+        "Exit code is SUCCESS_0"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "registry canary run data",
+          "description": "Reads canary injection records and detected escapes."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "cmd_watch",
+      "description": "Command: `arbiter watch [--http-port PORT] [--otlp-port PORT]`. Starts OTLP subscriber and HTTP API in a single process. Blocking command that handles SIGINT/SIGTERM for graceful shutdown. Cold-start target: ready in under 3 seconds. Delegates to otlp_subscriber and http_api components.",
+      "inputs": [
+        {
+          "name": "ctx",
+          "type_ref": "CliContext",
+          "required": true,
+          "default": "",
+          "description": "Shared CLI context.",
+          "validators": []
+        },
+        {
+          "name": "http_port",
+          "type_ref": "int",
+          "required": true,
+          "default": "0",
+          "description": "Port for HTTP API. Defaults to config value.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1024 <= value <= 65535",
+              "error_message": "HTTP port must be between 1024 and 65535."
+            }
+          ]
+        },
+        {
+          "name": "otlp_port",
+          "type_ref": "int",
+          "required": true,
+          "default": "0",
+          "description": "Port for OTLP gRPC subscriber. Defaults to config value.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1024 <= value <= 65535",
+              "error_message": "OTLP port must be between 1024 and 65535."
+            }
+          ]
+        }
+      ],
+      "output_type": "WatchStatus",
+      "error_cases": [
+        {
+          "name": "registry_not_initialized",
+          "condition": "Registry is not initialized",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "REGISTRY_NOT_INITIALIZED"
+          }
+        },
+        {
+          "name": "port_in_use",
+          "condition": "One or both ports are already bound",
+          "error_type": "IO_ERROR",
+          "error_data": {
+            "exit_code": "3",
+            "error_code": "PORT_IN_USE"
+          }
+        },
+        {
+          "name": "port_conflict",
+          "condition": "http_port and otlp_port are the same",
+          "error_type": "USAGE_ERROR",
+          "error_data": {
+            "exit_code": "2",
+            "error_code": "PORT_CONFLICT"
+          }
+        },
+        {
+          "name": "cold_start_timeout",
+          "condition": "Servers not ready within cold_start_timeout_s",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "COLD_START_TIMEOUT"
+          }
+        }
+      ],
+      "preconditions": [
+        "Registry must be initialized",
+        "http_port and otlp_port must be different",
+        "Ports must not be in use"
+      ],
+      "postconditions": [
+        "OTLP subscriber is listening on otlp_port",
+        "HTTP API is listening on http_port",
+        "WatchStatus.ready is true before cold_start_timeout_s",
+        "On SIGINT/SIGTERM, both servers shut down gracefully",
+        "Exit code is SUCCESS_0 on clean shutdown"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "network_call",
+          "target": "HTTP API server on http_port",
+          "description": "Starts HTTP API server accepting JSON requests."
+        },
+        {
+          "kind": "network_call",
+          "target": "OTLP gRPC server on otlp_port",
+          "description": "Starts OTLP gRPC subscriber for telemetry ingestion."
+        },
+        {
+          "kind": "reads_file",
+          "target": "registry data",
+          "description": "Reads registry data for serving API requests and processing telemetry."
+        },
+        {
+          "kind": "writes_file",
+          "target": "trust ledger and registry",
+          "description": "Writes trust events and findings based on incoming telemetry."
+        },
+        {
+          "kind": "logging",
+          "target": "stdout/stderr",
+          "description": "Logs server lifecycle events and errors."
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 3000,
+        "max_memory_mb": null,
+        "complexity": "O(1) for cold start; O(V+E) per telemetry event processing"
+      }
+    },
+    {
+      "name": "cmd_findings",
+      "description": "Command: `arbiter findings --node <node>`. Lists consistency findings for a specific node. Delegates to findings_engine.get_findings.",
+      "inputs": [
+        {
+          "name": "ctx",
+          "type_ref": "CliContext",
+          "required": true,
+          "default": "",
+          "description": "Shared CLI context.",
+          "validators": []
+        },
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Node to query findings for. Validated by NodeIdType.",
+          "validators": []
+        }
+      ],
+      "output_type": "FindingsResponse",
+      "error_cases": [
+        {
+          "name": "registry_not_initialized",
+          "condition": "Registry is not initialized",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "REGISTRY_NOT_INITIALIZED"
+          }
+        },
+        {
+          "name": "node_not_found",
+          "condition": "node_id does not exist in the access graph",
+          "error_type": "NOT_FOUND",
+          "error_data": {
+            "exit_code": "4",
+            "error_code": "NODE_NOT_FOUND"
+          }
+        }
+      ],
+      "preconditions": [
+        "Registry must be initialized",
+        "node_id must exist in the access graph"
+      ],
+      "postconditions": [
+        "total equals len(findings)",
+        "Each finding includes node_id, severity, and human-readable message",
+        "Exit code is SUCCESS_0"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "registry findings data",
+          "description": "Reads consistency findings for the specified node."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "cmd_conflicts",
+      "description": "Command: `arbiter conflicts [--unresolved]`. Lists conflicts, optionally filtered to only unresolved ones. Delegates to conflicts_engine.list_conflicts.",
+      "inputs": [
+        {
+          "name": "ctx",
+          "type_ref": "CliContext",
+          "required": true,
+          "default": "",
+          "description": "Shared CLI context.",
+          "validators": []
+        },
+        {
+          "name": "unresolved_only",
+          "type_ref": "bool",
+          "required": true,
+          "default": "false",
+          "description": "If true, return only unresolved conflicts.",
+          "validators": []
+        }
+      ],
+      "output_type": "ConflictsResponse",
+      "error_cases": [
+        {
+          "name": "registry_not_initialized",
+          "condition": "Registry is not initialized",
+          "error_type": "DOMAIN_ERROR",
+          "error_data": {
+            "exit_code": "1",
+            "error_code": "REGISTRY_NOT_INITIALIZED"
+          }
+        }
+      ],
+      "preconditions": [
+        "Registry must be initialized"
+      ],
+      "postconditions": [
+        "total equals len(conflicts)",
+        "If unresolved_only is true, all returned conflicts have resolved=false",
+        "Exit code is SUCCESS_0"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "registry conflicts data",
+          "description": "Reads conflict records from registry."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "format_output",
+      "description": "Pure helper that formats a Pydantic response model for CLI output. In JSON mode, calls .model_dump(mode='json') and serializes. In text mode, produces a human-readable formatted string. Used by all commands after receiving engine response.",
+      "inputs": [
+        {
+          "name": "response",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "Pydantic response model instance (one of the *Response types).",
+          "validators": []
+        },
+        {
+          "name": "output_format",
+          "type_ref": "OutputFormat",
+          "required": true,
+          "default": "",
+          "description": "Resolved output format (text or json, never auto).",
+          "validators": []
+        }
+      ],
+      "output_type": "str",
+      "error_cases": [],
+      "preconditions": [
+        "output_format is 'text' or 'json' (never 'auto')",
+        "response is a Pydantic BaseModel instance"
+      ],
+      "postconditions": [
+        "If json: output is valid JSON matching response.model_dump(mode='json')",
+        "If text: output is non-empty human-readable string",
+        "No trailing newline added (caller handles)"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure formatting function with no side effects."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "format_error",
+      "description": "Pure helper that formats a CliError for stderr output. In JSON mode, serializes the CliError model. In text mode, produces 'Error [{error_code}]: {message}' with optional node/field context.",
+      "inputs": [
+        {
+          "name": "error",
+          "type_ref": "CliError",
+          "required": true,
+          "default": "",
+          "description": "The structured error to format.",
+          "validators": []
+        },
+        {
+          "name": "output_format",
+          "type_ref": "OutputFormat",
+          "required": true,
+          "default": "",
+          "description": "Resolved output format (text or json, never auto).",
+          "validators": []
+        }
+      ],
+      "output_type": "str",
+      "error_cases": [],
+      "preconditions": [
+        "output_format is 'text' or 'json' (never 'auto')"
+      ],
+      "postconditions": [
+        "If json: output is valid JSON matching error.model_dump(mode='json')",
+        "If text: output includes error_code and message, plus node_id/field if non-empty",
+        "Error messages include the specific node, field, or domain that caused the error"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure formatting function with no side effects."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "map_exception_to_exit_code",
+      "description": "Pure function used by ArbiterGroup.invoke() to map domain exceptions to ExitCode values. Maps known exception types to their corresponding exit codes per the ExitCode enum.",
+      "inputs": [
+        {
+          "name": "exception",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The caught exception instance.",
+          "validators": []
+        }
+      ],
+      "output_type": "ExitCode",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returns DOMAIN_ERROR_1 for domain logic exceptions",
+        "Returns USAGE_ERROR_2 for validation/input exceptions",
+        "Returns IO_ERROR_3 for filesystem/network exceptions",
+        "Returns NOT_FOUND_4 for entity-not-found exceptions",
+        "Returns DOMAIN_ERROR_1 for unrecognized exceptions (safe default)"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure mapping function with no side effects."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "resolve_output_format",
+      "description": "Pure function that resolves OutputFormat.auto to text or json based on TTY detection. Called during CliContext construction.",
+      "inputs": [
+        {
+          "name": "requested_format",
+          "type_ref": "OutputFormat",
+          "required": true,
+          "default": "",
+          "description": "The user-requested format (may be auto).",
+          "validators": []
+        },
+        {
+          "name": "is_tty",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether stdout is a TTY.",
+          "validators": []
+        }
+      ],
+      "output_type": "OutputFormat",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "If requested_format is 'text' or 'json', returns it unchanged",
+        "If requested_format is 'auto' and is_tty is true, returns 'text'",
+        "If requested_format is 'auto' and is_tty is false, returns 'json'",
+        "Return value is never 'auto'"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure function with no side effects."
+        }
+      ],
+      "performance_budget": null
+    }
+  ],
+  "dependencies": [
+    "trust_engine",
+    "authority_engine",
+    "blast_radius_engine",
+    "soak_engine",
+    "report_engine",
+    "canary_engine",
+    "findings_engine",
+    "conflicts_engine",
+    "registry",
+    "config",
+    "otlp_subscriber",
+    "http_api"
+  ],
+  "dependency_contracts": {
+    "trust_engine": [
+      "compute_trust_score",
+      "get_trust_history",
+      "reset_taint"
+    ],
+    "authority_engine": [
+      "get_authority_map"
+    ],
+    "blast_radius_engine": [
+      "compute_blast_radius"
+    ],
+    "soak_engine": [
+      "compute_soak_duration"
+    ],
+    "report_engine": [
+      "generate_report"
+    ],
+    "canary_engine": [
+      "inject_canaries",
+      "get_canary_results"
+    ],
+    "findings_engine": [
+      "get_findings"
+    ],
+    "conflicts_engine": [
+      "list_conflicts"
+    ],
+    "registry": [
+      "initialize_registry",
+      "ingest_access_graph"
+    ],
+    "config": [
+      "load_config"
+    ],
+    "otlp_subscriber": [
+      "start_subscriber",
+      "stop_subscriber"
+    ],
+    "http_api": [
+      "start_http_server",
+      "stop_http_server"
+    ]
+  },
+  "invariants": [
+    "CLI is a thin adapter layer — all business logic is delegated to engine dependencies",
+    "Trust and authority are never conflated: trust commands use trust_engine, authority commands use authority_engine",
+    "Trust is earned (computed from ledger), authority is declared (from manifests)",
+    "All policy calculations use raw trust score, never display tiers",
+    "The trust ledger is append-only — no updates, no deletes",
+    "Canary patterns are always recognizable as synthetic (never plausible real data)",
+    "All errors written to stderr, all normal output to stdout",
+    "JSON output is always .model_dump(mode='json') of the Pydantic response model",
+    "Error messages always include the specific node, field, or domain that caused the error",
+    "Exit codes are deterministic for a given error condition",
+    "CliContext.output_format is never 'auto' after resolution in group callback",
+    "All timestamps are UTC (datetime.now(timezone.utc))",
+    "All file I/O uses pathlib",
+    "No async — all operations are synchronous",
+    "Every command is testable via CliRunner with mocked engine dependencies",
+    "Each CLI module file is under 300 lines",
+    "Custom ParamTypes (NodeIdType, RunIdType, TierType, VersionType) delegate validation to corresponding Pydantic types/enums",
+    "ArbiterGroup.invoke() wraps super().invoke() in try/except for centralized error handling",
+    "Watch command cold start completes in under 3 seconds"
+  ],
+  "requires": [
+    "click",
+    "pydantic>=2.0",
+    "PyYAML",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "grpcio"
+  ],
+  "processing_register": "rigorous-analytical"
+}

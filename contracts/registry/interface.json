@@ -1,0 +1,1546 @@
+{
+  "component_id": "registry",
+  "name": "Access Graph Store & Authority Map",
+  "description": "Manages ingested access_graph.json and the derived authority map. Access graph store: validates and persists the access graph, enforces that no two nodes claim authority for the same domain (C004, FA-A-003). Authority map: exclusive domain-to-node mapping, queryable by domain or node. Validates that classification registry authoritative_node entries match access graph authority declarations (FA-A-030). Provides graph traversal primitives (neighbors, BFS/DFS iterators) for blast radius computation. Handles re-registration by replacing the full graph atomically (with authority exclusivity re-checked). Loads classification registry from classifications.yaml with field_pattern/tier/authoritative_node/canary_pattern entries.",
+  "version": 1,
+  "types": [
+    {
+      "name": "DataClassificationTier",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "PUBLIC",
+        "INTERNAL",
+        "CONFIDENTIAL",
+        "RESTRICTED"
+      ],
+      "inner_types": [],
+      "description": "Data classification tiers with integer ordering. Higher ordinal = more sensitive. Used in classification rules and blast radius calculations."
+    },
+    {
+      "name": "FindingSeverity",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "INFO",
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "CRITICAL"
+      ],
+      "inner_types": [],
+      "description": "Severity levels for findings/violations discovered during validation or auditing."
+    },
+    {
+      "name": "RelationType",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "READS",
+        "WRITES",
+        "CALLS",
+        "DEPENDS_ON",
+        "MANAGES"
+      ],
+      "inner_types": [],
+      "description": "The type of relationship represented by an edge in the access graph."
+    },
+    {
+      "name": "Edge",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "target",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The node_id of the edge target.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "Edge target node_id must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "relation_type",
+          "type_ref": "RelationType",
+          "required": true,
+          "default": "",
+          "description": "The type of relationship this edge represents.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A directed edge in the access graph from the owning node to a target node. Frozen Pydantic model."
+    },
+    {
+      "name": "GraphNode",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this node within the access graph.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "node_id must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "authority_domains",
+          "type_ref": "list",
+          "required": true,
+          "default": "[]",
+          "description": "List of domain strings this node declares authority over. May be empty.",
+          "validators": []
+        },
+        {
+          "name": "edges",
+          "type_ref": "list",
+          "required": true,
+          "default": "[]",
+          "description": "Outgoing edges from this node. List of Edge structs.",
+          "validators": []
+        },
+        {
+          "name": "metadata",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Arbitrary key-value metadata associated with this node.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A node in the access graph representing a component/service. Frozen Pydantic model. Each node declares zero or more authority_domains it is authoritative for."
+    },
+    {
+      "name": "AccessGraph",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "nodes",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping of node_id (str) to GraphNode. Keys must match each GraphNode's node_id field.",
+          "validators": []
+        },
+        {
+          "name": "graph_version",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Version string for this graph snapshot (e.g. SHA256 of source file or monotonic counter).",
+          "validators": []
+        },
+        {
+          "name": "created_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of when this graph was ingested.",
+          "validators": []
+        },
+        {
+          "name": "metadata",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Arbitrary key-value metadata for the graph.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The complete access graph snapshot. Frozen Pydantic model with a model_validator that enforces domain authority exclusivity across all nodes. Contains a dict of node_id -> GraphNode plus metadata."
+    },
+    {
+      "name": "AuthorityMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "domain_to_node",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping of domain string to the single node_id that holds authority. Exclusivity guaranteed by construction.",
+          "validators": []
+        },
+        {
+          "name": "node_to_domains",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Reverse mapping of node_id to list of domain strings it is authoritative for.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Derived, frozen mapping of domain -> authoritative node_id. Built during AccessGraph validation. Provides O(1) domain-to-node and O(n) node-to-domains lookups."
+    },
+    {
+      "name": "ClassificationRule",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "field_pattern",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "fnmatch/regex pattern to match field names against.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "field_pattern must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "tier",
+          "type_ref": "DataClassificationTier",
+          "required": true,
+          "default": "",
+          "description": "The data classification tier for fields matching this pattern.",
+          "validators": []
+        },
+        {
+          "name": "authoritative_node",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The node_id that should be authoritative for data matching this rule.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "authoritative_node must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "canary_pattern",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Optional pattern for generating canary fingerprints for this rule. Empty string if not applicable.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single classification rule from classifications.yaml. Frozen Pydantic model. Maps a field pattern to a classification tier, an authoritative node, and an optional canary pattern."
+    },
+    {
+      "name": "ClassificationRegistry",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "rules",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Ordered list of ClassificationRule entries. Earlier rules take precedence on pattern overlap.",
+          "validators": []
+        },
+        {
+          "name": "source_path",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Path to the classifications.yaml file this registry was loaded from. Empty string for in-memory constructed registries.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Collection of classification rules loaded from classifications.yaml. Frozen Pydantic model."
+    },
+    {
+      "name": "GraphSnapshot",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "access_graph",
+          "type_ref": "AccessGraph",
+          "required": true,
+          "default": "",
+          "description": "The validated access graph.",
+          "validators": []
+        },
+        {
+          "name": "authority_map",
+          "type_ref": "AuthorityMap",
+          "required": true,
+          "default": "",
+          "description": "The derived authority map for the access graph.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "An atomic snapshot of the current store state: the validated AccessGraph and its derived AuthorityMap, held together as a single unit for atomic swap on re-registration."
+    },
+    {
+      "name": "TraversalResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "visited_nodes",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Ordered list of node_id strings in visitation order.",
+          "validators": []
+        },
+        {
+          "name": "traversed_edges",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of Edge structs traversed during the walk, in traversal order.",
+          "validators": []
+        },
+        {
+          "name": "depth_map",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping of node_id to its depth (int) from the start node.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result from a BFS or DFS traversal: the ordered list of visited node_ids and the edges traversed."
+    },
+    {
+      "name": "NeighborEntry",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The neighbor's node_id.",
+          "validators": []
+        },
+        {
+          "name": "edge",
+          "type_ref": "Edge",
+          "required": true,
+          "default": "",
+          "description": "The edge from the source node to this neighbor.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single neighbor of a node: the target node_id and the edge connecting them."
+    },
+    {
+      "name": "ValidationFinding",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "severity",
+          "type_ref": "FindingSeverity",
+          "required": true,
+          "default": "",
+          "description": "Severity of this finding.",
+          "validators": []
+        },
+        {
+          "name": "rule_index",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Index of the ClassificationRule in the registry that triggered this finding.",
+          "validators": []
+        },
+        {
+          "name": "field_pattern",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The field_pattern of the offending rule.",
+          "validators": []
+        },
+        {
+          "name": "authoritative_node",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The authoritative_node referenced by the rule.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable description of the finding including specific node/domain context.",
+          "validators": []
+        },
+        {
+          "name": "error_code",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Machine-readable error code (e.g. FA-A-030).",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single finding from cross-validation of classification registry against the access graph (FA-A-030)."
+    },
+    {
+      "name": "RegistryError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message including specific node/domain/field context.",
+          "validators": []
+        },
+        {
+          "name": "error_code",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Machine-readable error code.",
+          "validators": []
+        },
+        {
+          "name": "context",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Structured context: node_id, domain, field, etc.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Base error type for all registry errors. Carries structured context for diagnostics."
+    },
+    {
+      "name": "DuplicateAuthorityError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message.",
+          "validators": []
+        },
+        {
+          "name": "error_code",
+          "type_ref": "str",
+          "required": true,
+          "default": "C004",
+          "description": "Machine-readable error code, always 'C004'.",
+          "validators": []
+        },
+        {
+          "name": "domain",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The domain that has conflicting authority declarations.",
+          "validators": []
+        },
+        {
+          "name": "claiming_nodes",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of node_id strings that all claim authority for the domain.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Error raised when two or more nodes declare authority for the same domain (C004/FA-A-003)."
+    },
+    {
+      "name": "NodeNotFoundError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message.",
+          "validators": []
+        },
+        {
+          "name": "error_code",
+          "type_ref": "str",
+          "required": true,
+          "default": "NODE_NOT_FOUND",
+          "description": "Machine-readable error code.",
+          "validators": []
+        },
+        {
+          "name": "node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The node_id that was not found.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Error raised when a referenced node_id does not exist in the access graph."
+    },
+    {
+      "name": "AuthorityMismatchError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message.",
+          "validators": []
+        },
+        {
+          "name": "error_code",
+          "type_ref": "str",
+          "required": true,
+          "default": "FA-A-030",
+          "description": "Machine-readable error code, always 'FA-A-030'.",
+          "validators": []
+        },
+        {
+          "name": "rule_index",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Index of the offending rule in the classification registry.",
+          "validators": []
+        },
+        {
+          "name": "authoritative_node",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The authoritative_node declared in the classification rule.",
+          "validators": []
+        },
+        {
+          "name": "expected_domains",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Domains the rule expects the node to be authoritative for.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Error raised during classification cross-validation (FA-A-030) when a classification rule's authoritative_node does not match graph authority declarations."
+    },
+    {
+      "name": "InvalidGraphError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message.",
+          "validators": []
+        },
+        {
+          "name": "error_code",
+          "type_ref": "str",
+          "required": true,
+          "default": "INVALID_GRAPH",
+          "description": "Machine-readable error code.",
+          "validators": []
+        },
+        {
+          "name": "details",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of specific validation failure description strings.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Error raised when the access graph fails structural validation (dangling edges, missing node_ids, etc.)."
+    },
+    {
+      "name": "ClassificationRegistryError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message.",
+          "validators": []
+        },
+        {
+          "name": "error_code",
+          "type_ref": "str",
+          "required": true,
+          "default": "CLASSIFICATION_REGISTRY_ERROR",
+          "description": "Machine-readable error code.",
+          "validators": []
+        },
+        {
+          "name": "source_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Path to the classifications.yaml file that failed validation.",
+          "validators": []
+        },
+        {
+          "name": "details",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of specific validation failure description strings.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Error raised when the classification registry YAML is malformed or fails schema validation."
+    },
+    {
+      "name": "TraversalPredicate",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A callable (GraphNode) -> bool used as an optional predicate for early termination in BFS/DFS. When it returns False for a node, that node's subtree is pruned."
+    }
+  ],
+  "functions": [
+    {
+      "name": "register_graph",
+      "description": "Validates and atomically registers a new access graph into the store. Parses the input dict into an AccessGraph model, enforces structural validity (no dangling edges, node_id key consistency), builds the AuthorityMap with exclusivity checking (C004/FA-A-003), and performs an atomic validate-then-swap to replace the current snapshot. If validation fails, the previous snapshot remains unchanged.",
+      "inputs": [
+        {
+          "name": "graph_data",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Raw dict representing the access graph (e.g. parsed from access_graph.json). Must conform to the AccessGraph schema.",
+          "validators": []
+        }
+      ],
+      "output_type": "GraphSnapshot",
+      "error_cases": [
+        {
+          "name": "duplicate_authority",
+          "condition": "Two or more nodes in graph_data declare authority for the same domain",
+          "error_type": "DuplicateAuthorityError",
+          "error_data": {
+            "domain": "the contested domain",
+            "claiming_nodes": "list of conflicting node_ids"
+          }
+        },
+        {
+          "name": "invalid_graph_structure",
+          "condition": "Graph has dangling edges (target node_id not in nodes dict) or node_id key mismatches",
+          "error_type": "InvalidGraphError",
+          "error_data": {
+            "details": "list of specific structural failures"
+          }
+        },
+        {
+          "name": "empty_graph",
+          "condition": "graph_data is empty or contains no nodes",
+          "error_type": "InvalidGraphError",
+          "error_data": {
+            "details": "['Graph must contain at least one node']"
+          }
+        },
+        {
+          "name": "schema_validation_error",
+          "condition": "graph_data does not conform to AccessGraph Pydantic schema",
+          "error_type": "InvalidGraphError",
+          "error_data": {
+            "details": "Pydantic validation error details"
+          }
+        }
+      ],
+      "preconditions": [
+        "graph_data is a non-empty dict",
+        "graph_data contains a 'nodes' key with at least one node entry"
+      ],
+      "postconditions": [
+        "The store's current snapshot is the newly validated GraphSnapshot",
+        "The AuthorityMap in the snapshot has no duplicate domain assignments",
+        "All edge targets in the graph reference existing node_ids",
+        "The previous snapshot is fully replaced (atomic swap)"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Replaces the current graph snapshot in the store (mutable state)"
+      ],
+      "structured_side_effects": [
+        {
+          "kind": "mutates_state",
+          "target": "AccessGraphStore.current_snapshot",
+          "description": "Atomically replaces the current GraphSnapshot with the newly validated one"
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "register_graph_from_file",
+      "description": "Loads access_graph.json from the given file path and delegates to register_graph. Thin I/O wrapper that reads JSON via pathlib, then calls register_graph with the parsed dict.",
+      "inputs": [
+        {
+          "name": "file_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Path to the access_graph.json file. Resolved via pathlib.Path.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "file_path must be non-empty"
+            }
+          ]
+        }
+      ],
+      "output_type": "GraphSnapshot",
+      "error_cases": [
+        {
+          "name": "file_not_found",
+          "condition": "The file at file_path does not exist",
+          "error_type": "RegistryError",
+          "error_data": {
+            "error_code": "FILE_NOT_FOUND",
+            "context": "{'file_path': '<path>'}"
+          }
+        },
+        {
+          "name": "file_not_readable",
+          "condition": "The file at file_path is not readable or is not valid JSON",
+          "error_type": "RegistryError",
+          "error_data": {
+            "error_code": "FILE_READ_ERROR",
+            "context": "{'file_path': '<path>'}"
+          }
+        },
+        {
+          "name": "duplicate_authority",
+          "condition": "Delegated from register_graph",
+          "error_type": "DuplicateAuthorityError",
+          "error_data": {}
+        },
+        {
+          "name": "invalid_graph_structure",
+          "condition": "Delegated from register_graph",
+          "error_type": "InvalidGraphError",
+          "error_data": {}
+        }
+      ],
+      "preconditions": [
+        "file_path points to an existing, readable JSON file"
+      ],
+      "postconditions": [
+        "The store's current snapshot is the newly validated GraphSnapshot from the file",
+        "All register_graph postconditions hold"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "access_graph.json",
+          "description": "Reads the access graph JSON file from the filesystem via pathlib"
+        },
+        {
+          "kind": "mutates_state",
+          "target": "AccessGraphStore.current_snapshot",
+          "description": "Atomically replaces the current GraphSnapshot"
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "get_authority",
+      "description": "Returns the node_id that holds exclusive authority for the given domain, or None if no node is authoritative for that domain.",
+      "inputs": [
+        {
+          "name": "domain",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The domain string to look up authority for.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "domain must be non-empty"
+            }
+          ]
+        }
+      ],
+      "output_type": "str",
+      "error_cases": [
+        {
+          "name": "no_graph_registered",
+          "condition": "No graph has been registered yet (store has no current snapshot)",
+          "error_type": "RegistryError",
+          "error_data": {
+            "error_code": "NO_GRAPH",
+            "message": "No access graph has been registered"
+          }
+        }
+      ],
+      "preconditions": [
+        "A graph has been registered (current snapshot is not None)"
+      ],
+      "postconditions": [
+        "If a node is authoritative, returns that node_id; otherwise returns empty string to represent no authority (caller checks for empty)",
+        "The store state is unchanged"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure read from in-memory snapshot"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 1,
+        "max_memory_mb": null,
+        "complexity": "O(1)"
+      }
+    },
+    {
+      "name": "get_domains_for_node",
+      "description": "Returns the list of domains that a given node is authoritative for. Returns an empty list if the node exists but has no authority domains.",
+      "inputs": [
+        {
+          "name": "node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The node_id to look up domains for.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "node_id must be non-empty"
+            }
+          ]
+        }
+      ],
+      "output_type": "list",
+      "error_cases": [
+        {
+          "name": "no_graph_registered",
+          "condition": "No graph has been registered yet",
+          "error_type": "RegistryError",
+          "error_data": {
+            "error_code": "NO_GRAPH"
+          }
+        },
+        {
+          "name": "node_not_found",
+          "condition": "node_id does not exist in the current access graph",
+          "error_type": "NodeNotFoundError",
+          "error_data": {
+            "node_id": "the missing node_id"
+          }
+        }
+      ],
+      "preconditions": [
+        "A graph has been registered (current snapshot is not None)"
+      ],
+      "postconditions": [
+        "Returns a list of domain strings (possibly empty) that the given node is authoritative for",
+        "The store state is unchanged"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure read from in-memory snapshot"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 1,
+        "max_memory_mb": null,
+        "complexity": "O(1)"
+      }
+    },
+    {
+      "name": "get_node",
+      "description": "Returns the GraphNode for a given node_id from the current access graph snapshot.",
+      "inputs": [
+        {
+          "name": "node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The node_id to retrieve.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "node_id must be non-empty"
+            }
+          ]
+        }
+      ],
+      "output_type": "GraphNode",
+      "error_cases": [
+        {
+          "name": "no_graph_registered",
+          "condition": "No graph has been registered yet",
+          "error_type": "RegistryError",
+          "error_data": {
+            "error_code": "NO_GRAPH"
+          }
+        },
+        {
+          "name": "node_not_found",
+          "condition": "node_id does not exist in the current access graph",
+          "error_type": "NodeNotFoundError",
+          "error_data": {
+            "node_id": "the missing node_id"
+          }
+        }
+      ],
+      "preconditions": [
+        "A graph has been registered (current snapshot is not None)"
+      ],
+      "postconditions": [
+        "Returns the GraphNode with the given node_id",
+        "The store state is unchanged"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure read from in-memory snapshot"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 1,
+        "max_memory_mb": null,
+        "complexity": "O(1)"
+      }
+    },
+    {
+      "name": "get_all_node_ids",
+      "description": "Returns a list of all node_ids in the current access graph.",
+      "inputs": [],
+      "output_type": "list",
+      "error_cases": [
+        {
+          "name": "no_graph_registered",
+          "condition": "No graph has been registered yet",
+          "error_type": "RegistryError",
+          "error_data": {
+            "error_code": "NO_GRAPH"
+          }
+        }
+      ],
+      "preconditions": [
+        "A graph has been registered (current snapshot is not None)"
+      ],
+      "postconditions": [
+        "Returns a list of all node_id strings in the current graph",
+        "The store state is unchanged"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure read from in-memory snapshot"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 5,
+        "max_memory_mb": null,
+        "complexity": "O(n)"
+      }
+    },
+    {
+      "name": "neighbors",
+      "description": "Returns the list of direct neighbors (outgoing edges) for a given node_id. Each entry includes the target node_id and the connecting edge.",
+      "inputs": [
+        {
+          "name": "node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The node_id to get neighbors for.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "node_id must be non-empty"
+            }
+          ]
+        }
+      ],
+      "output_type": "list",
+      "error_cases": [
+        {
+          "name": "no_graph_registered",
+          "condition": "No graph has been registered yet",
+          "error_type": "RegistryError",
+          "error_data": {
+            "error_code": "NO_GRAPH"
+          }
+        },
+        {
+          "name": "node_not_found",
+          "condition": "node_id does not exist in the current access graph",
+          "error_type": "NodeNotFoundError",
+          "error_data": {
+            "node_id": "the missing node_id"
+          }
+        }
+      ],
+      "preconditions": [
+        "A graph has been registered (current snapshot is not None)"
+      ],
+      "postconditions": [
+        "Returns a list of NeighborEntry structs for all outgoing edges from the given node",
+        "The store state is unchanged"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure read from in-memory snapshot"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 2,
+        "max_memory_mb": null,
+        "complexity": "O(degree)"
+      }
+    },
+    {
+      "name": "bfs",
+      "description": "Performs breadth-first traversal from a start node. Uses a visited-set for cycle detection. Supports optional max_depth to limit traversal depth, and an optional predicate for early termination (prune subtrees where predicate returns False). Returns a TraversalResult with visited nodes in BFS order, traversed edges, and depth map.",
+      "inputs": [
+        {
+          "name": "start_node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The node_id to start BFS from.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "start_node_id must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "max_depth",
+          "type_ref": "int",
+          "required": false,
+          "default": "-1",
+          "description": "Maximum depth to traverse. -1 means unlimited. Must be >= -1.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "min=-1",
+              "error_message": "max_depth must be >= -1"
+            }
+          ]
+        },
+        {
+          "name": "relation_types",
+          "type_ref": "list",
+          "required": false,
+          "default": "[]",
+          "description": "Optional list of RelationType variant strings to filter edges by. Empty list means traverse all edge types.",
+          "validators": []
+        }
+      ],
+      "output_type": "TraversalResult",
+      "error_cases": [
+        {
+          "name": "no_graph_registered",
+          "condition": "No graph has been registered yet",
+          "error_type": "RegistryError",
+          "error_data": {
+            "error_code": "NO_GRAPH"
+          }
+        },
+        {
+          "name": "start_node_not_found",
+          "condition": "start_node_id does not exist in the current access graph",
+          "error_type": "NodeNotFoundError",
+          "error_data": {
+            "node_id": "the missing start_node_id"
+          }
+        }
+      ],
+      "preconditions": [
+        "A graph has been registered (current snapshot is not None)",
+        "start_node_id exists in the current access graph"
+      ],
+      "postconditions": [
+        "visited_nodes[0] == start_node_id",
+        "All nodes in visited_nodes are reachable from start_node_id within max_depth (if specified)",
+        "No node appears more than once in visited_nodes (cycle-safe)",
+        "depth_map[start_node_id] == 0",
+        "If max_depth >= 0, all depths in depth_map are <= max_depth",
+        "The store state is unchanged"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure computation over in-memory graph snapshot"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 100,
+        "max_memory_mb": 256,
+        "complexity": "O(V + E)"
+      }
+    },
+    {
+      "name": "dfs",
+      "description": "Performs depth-first traversal from a start node. Uses a visited-set for cycle detection. Supports optional max_depth to limit traversal depth, and an optional predicate for early termination (prune subtrees where predicate returns False). Returns a TraversalResult with visited nodes in DFS order, traversed edges, and depth map.",
+      "inputs": [
+        {
+          "name": "start_node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The node_id to start DFS from.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "start_node_id must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "max_depth",
+          "type_ref": "int",
+          "required": false,
+          "default": "-1",
+          "description": "Maximum depth to traverse. -1 means unlimited. Must be >= -1.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "min=-1",
+              "error_message": "max_depth must be >= -1"
+            }
+          ]
+        },
+        {
+          "name": "relation_types",
+          "type_ref": "list",
+          "required": false,
+          "default": "[]",
+          "description": "Optional list of RelationType variant strings to filter edges by. Empty list means traverse all edge types.",
+          "validators": []
+        }
+      ],
+      "output_type": "TraversalResult",
+      "error_cases": [
+        {
+          "name": "no_graph_registered",
+          "condition": "No graph has been registered yet",
+          "error_type": "RegistryError",
+          "error_data": {
+            "error_code": "NO_GRAPH"
+          }
+        },
+        {
+          "name": "start_node_not_found",
+          "condition": "start_node_id does not exist in the current access graph",
+          "error_type": "NodeNotFoundError",
+          "error_data": {
+            "node_id": "the missing start_node_id"
+          }
+        }
+      ],
+      "preconditions": [
+        "A graph has been registered (current snapshot is not None)",
+        "start_node_id exists in the current access graph"
+      ],
+      "postconditions": [
+        "visited_nodes[0] == start_node_id",
+        "All nodes in visited_nodes are reachable from start_node_id within max_depth (if specified)",
+        "No node appears more than once in visited_nodes (cycle-safe)",
+        "depth_map[start_node_id] == 0",
+        "If max_depth >= 0, all depths in depth_map are <= max_depth",
+        "The store state is unchanged"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure computation over in-memory graph snapshot"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 100,
+        "max_memory_mb": 256,
+        "complexity": "O(V + E)"
+      }
+    },
+    {
+      "name": "load_classification_registry",
+      "description": "Loads and validates a ClassificationRegistry from a classifications.yaml file. Parses YAML via PyYAML, validates each rule against the ClassificationRule Pydantic model, and returns a frozen ClassificationRegistry. Does NOT cross-validate against the access graph — use validate_classifications_against_graph for that.",
+      "inputs": [
+        {
+          "name": "file_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Path to the classifications.yaml file. Resolved via pathlib.Path.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "file_path must be non-empty"
+            }
+          ]
+        }
+      ],
+      "output_type": "ClassificationRegistry",
+      "error_cases": [
+        {
+          "name": "file_not_found",
+          "condition": "The file at file_path does not exist",
+          "error_type": "ClassificationRegistryError",
+          "error_data": {
+            "source_path": "<path>",
+            "details": "['File not found']"
+          }
+        },
+        {
+          "name": "file_not_readable",
+          "condition": "The file at file_path is not readable or is not valid YAML",
+          "error_type": "ClassificationRegistryError",
+          "error_data": {
+            "source_path": "<path>",
+            "details": "['YAML parse error: ...']"
+          }
+        },
+        {
+          "name": "schema_validation_error",
+          "condition": "One or more rules do not conform to ClassificationRule schema",
+          "error_type": "ClassificationRegistryError",
+          "error_data": {
+            "source_path": "<path>",
+            "details": "list of validation errors"
+          }
+        }
+      ],
+      "preconditions": [
+        "file_path points to an existing, readable YAML file"
+      ],
+      "postconditions": [
+        "The returned ClassificationRegistry contains all rules from the file in order",
+        "Every rule has a non-empty field_pattern, a valid DataClassificationTier, and a non-empty authoritative_node",
+        "The store state is unchanged (classification registry is returned, not stored internally)"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "classifications.yaml",
+          "description": "Reads the classification registry YAML file from the filesystem via pathlib"
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "validate_classifications_against_graph",
+      "description": "Cross-validates a ClassificationRegistry against the current access graph (FA-A-030). For each classification rule, checks that the authoritative_node exists in the graph and that the node actually declares authority for at least one domain. Returns a list of ValidationFinding structs. Raises AuthorityMismatchError if any CRITICAL findings are found (strict mode) or returns all findings for caller evaluation (lenient mode).",
+      "inputs": [
+        {
+          "name": "classification_registry",
+          "type_ref": "ClassificationRegistry",
+          "required": true,
+          "default": "",
+          "description": "The classification registry to validate against the current access graph.",
+          "validators": []
+        },
+        {
+          "name": "strict",
+          "type_ref": "bool",
+          "required": false,
+          "default": "true",
+          "description": "If true, raises AuthorityMismatchError on the first CRITICAL finding. If false, collects and returns all findings.",
+          "validators": []
+        }
+      ],
+      "output_type": "list",
+      "error_cases": [
+        {
+          "name": "no_graph_registered",
+          "condition": "No graph has been registered yet",
+          "error_type": "RegistryError",
+          "error_data": {
+            "error_code": "NO_GRAPH"
+          }
+        },
+        {
+          "name": "authority_mismatch_strict",
+          "condition": "strict=true and a classification rule references a node that does not exist in the graph or does not declare expected authority",
+          "error_type": "AuthorityMismatchError",
+          "error_data": {
+            "rule_index": "index of offending rule",
+            "authoritative_node": "the mismatched node_id"
+          }
+        }
+      ],
+      "preconditions": [
+        "A graph has been registered (current snapshot is not None)",
+        "classification_registry is a valid ClassificationRegistry"
+      ],
+      "postconditions": [
+        "Returns a list of ValidationFinding structs (possibly empty if all rules pass)",
+        "If strict=true and any CRITICAL finding exists, an AuthorityMismatchError is raised instead of returning",
+        "The store state is unchanged"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure validation over in-memory data"
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "get_current_snapshot",
+      "description": "Returns the current GraphSnapshot (AccessGraph + AuthorityMap) or None if no graph has been registered yet.",
+      "inputs": [],
+      "output_type": "GraphSnapshot",
+      "error_cases": [
+        {
+          "name": "no_graph_registered",
+          "condition": "No graph has been registered yet",
+          "error_type": "RegistryError",
+          "error_data": {
+            "error_code": "NO_GRAPH"
+          }
+        }
+      ],
+      "preconditions": [],
+      "postconditions": [
+        "Returns the current GraphSnapshot if a graph has been registered, or raises if none registered",
+        "The store state is unchanged"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure read from in-memory store"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 1,
+        "max_memory_mb": null,
+        "complexity": "O(1)"
+      }
+    },
+    {
+      "name": "build_authority_map",
+      "description": "Builds an AuthorityMap from an AccessGraph by scanning all nodes' authority_domains. Enforces domain exclusivity: if any domain is claimed by multiple nodes, raises DuplicateAuthorityError. This is a pure function (classmethod/staticmethod) used internally by register_graph and can be called standalone for testing.",
+      "inputs": [
+        {
+          "name": "access_graph",
+          "type_ref": "AccessGraph",
+          "required": true,
+          "default": "",
+          "description": "The access graph to derive the authority map from.",
+          "validators": []
+        }
+      ],
+      "output_type": "AuthorityMap",
+      "error_cases": [
+        {
+          "name": "duplicate_authority",
+          "condition": "Two or more nodes declare authority for the same domain",
+          "error_type": "DuplicateAuthorityError",
+          "error_data": {
+            "domain": "the contested domain",
+            "claiming_nodes": "list of conflicting node_ids"
+          }
+        }
+      ],
+      "preconditions": [
+        "access_graph is a valid AccessGraph model"
+      ],
+      "postconditions": [
+        "Every domain in every node's authority_domains appears exactly once in domain_to_node",
+        "node_to_domains is the exact inverse of domain_to_node",
+        "len(domain_to_node) == total number of unique authority domain declarations across all nodes"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure function — no side effects"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 10,
+        "max_memory_mb": null,
+        "complexity": "O(N * D) where N=nodes, D=avg domains per node"
+      }
+    },
+    {
+      "name": "classify_field",
+      "description": "Matches a field name against the classification registry rules using fnmatch/regex patterns. Returns the first matching ClassificationRule, or None if no rule matches. Rules are evaluated in order; first match wins.",
+      "inputs": [
+        {
+          "name": "field_name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The field name to classify.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "field_name must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "classification_registry",
+          "type_ref": "ClassificationRegistry",
+          "required": true,
+          "default": "",
+          "description": "The classification registry to match against.",
+          "validators": []
+        }
+      ],
+      "output_type": "ClassificationRule",
+      "error_cases": [],
+      "preconditions": [
+        "classification_registry is a valid ClassificationRegistry"
+      ],
+      "postconditions": [
+        "If a match is found, returns the first matching ClassificationRule (by rule order)",
+        "If no match is found, returns None (the output type is effectively Optional[ClassificationRule])",
+        "No state is mutated"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure pattern matching — no side effects"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 5,
+        "max_memory_mb": null,
+        "complexity": "O(R) where R=number of rules"
+      }
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "No two nodes in the access graph may declare authority for the same domain (exclusivity invariant, C004/FA-A-003)",
+    "The AuthorityMap is always a derived artifact of the current AccessGraph snapshot; it is never independently mutated",
+    "The trust ledger is append-only — the registry never modifies or deletes previously persisted graph snapshots except by atomic full replacement",
+    "Authority is declared (from manifests/graph), never computed from trust scores — trust and authority are distinct",
+    "All timestamps are UTC (datetime with timezone.utc)",
+    "AccessGraph, GraphNode, Edge, AuthorityMap, ClassificationRule, and ClassificationRegistry are frozen Pydantic models — immutable after construction",
+    "Re-registration replaces the full graph atomically: validate-then-swap guarantees the store is never in a partially updated state",
+    "BFS/DFS traversals are cycle-safe via visited-set tracking",
+    "Classification registry cross-validation (FA-A-030) ensures every authoritative_node in classification rules exists and declares the expected authority in the access graph",
+    "All error objects carry structured context (node_id, domain, field) for machine-readable diagnostics"
+  ],
+  "requires": [
+    "pydantic>=2.0",
+    "PyYAML",
+    "pathlib"
+  ],
+  "processing_register": "rigorous-analytical"
+}

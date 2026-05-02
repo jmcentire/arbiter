@@ -1,0 +1,1633 @@
+{
+  "component_id": "models",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "enum_trust_tier_members",
+      "description": "TrustTier enum has exactly the 5 expected members",
+      "function": "TrustTier",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All 5 members exist: PROBATIONARY, LOW, ESTABLISHED, HIGH, TRUSTED"
+      ]
+    },
+    {
+      "id": "enum_data_tier_members",
+      "description": "DataTier enum has exactly the 5 expected members",
+      "function": "DataTier",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All 5 members exist: PUBLIC, PII, FINANCIAL, AUTH, COMPLIANCE"
+      ]
+    },
+    {
+      "id": "enum_blast_tier_members",
+      "description": "BlastTier enum has exactly the 3 expected members",
+      "function": "BlastTier",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All 3 members exist: AUTO_MERGE, SOAK, HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "enum_finding_severity_members",
+      "description": "FindingSeverity enum has exactly the 5 expected members",
+      "function": "FindingSeverity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All 5 members exist: INFO, LOW, MEDIUM, HIGH, CRITICAL"
+      ]
+    },
+    {
+      "id": "enum_trust_event_type_members",
+      "description": "TrustEventType enum has exactly the 9 expected members",
+      "function": "TrustEventType",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All 9 members exist"
+      ]
+    },
+    {
+      "id": "enum_str_serialization",
+      "description": "All enums are StrEnum and serialize to stable string values",
+      "function": "TrustTier",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "str(member) returns a string",
+        "Enum values are strings"
+      ]
+    },
+    {
+      "id": "score_to_tier_probationary_zero",
+      "description": "score_to_tier returns PROBATIONARY for score 0.0",
+      "function": "score_to_tier",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "score": "0.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns TrustTier.PROBATIONARY"
+      ]
+    },
+    {
+      "id": "score_to_tier_probationary_boundary",
+      "description": "score_to_tier returns PROBATIONARY for score just below 0.2",
+      "function": "score_to_tier",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "score": "0.19999"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns TrustTier.PROBATIONARY"
+      ]
+    },
+    {
+      "id": "score_to_tier_low_at_02",
+      "description": "score_to_tier returns LOW for score exactly 0.2",
+      "function": "score_to_tier",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "score": "0.2"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns TrustTier.LOW"
+      ]
+    },
+    {
+      "id": "score_to_tier_low_boundary",
+      "description": "score_to_tier returns LOW for score just below 0.4",
+      "function": "score_to_tier",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "score": "0.39999"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns TrustTier.LOW"
+      ]
+    },
+    {
+      "id": "score_to_tier_established_at_04",
+      "description": "score_to_tier returns ESTABLISHED for score exactly 0.4",
+      "function": "score_to_tier",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "score": "0.4"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns TrustTier.ESTABLISHED"
+      ]
+    },
+    {
+      "id": "score_to_tier_established_boundary",
+      "description": "score_to_tier returns ESTABLISHED for score just below 0.6",
+      "function": "score_to_tier",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "score": "0.59999"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns TrustTier.ESTABLISHED"
+      ]
+    },
+    {
+      "id": "score_to_tier_high_at_06",
+      "description": "score_to_tier returns HIGH for score exactly 0.6",
+      "function": "score_to_tier",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "score": "0.6"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns TrustTier.HIGH"
+      ]
+    },
+    {
+      "id": "score_to_tier_high_boundary",
+      "description": "score_to_tier returns HIGH for score just below 0.8",
+      "function": "score_to_tier",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "score": "0.79999"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns TrustTier.HIGH"
+      ]
+    },
+    {
+      "id": "score_to_tier_trusted_at_08",
+      "description": "score_to_tier returns TRUSTED for score exactly 0.8",
+      "function": "score_to_tier",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "score": "0.8"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns TrustTier.TRUSTED"
+      ]
+    },
+    {
+      "id": "score_to_tier_trusted_at_10",
+      "description": "score_to_tier returns TRUSTED for score exactly 1.0",
+      "function": "score_to_tier",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "score": "1.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns TrustTier.TRUSTED"
+      ]
+    },
+    {
+      "id": "score_to_tier_negative_error",
+      "description": "score_to_tier raises error for negative score",
+      "function": "score_to_tier",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "score": "-0.1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "score_out_of_range",
+      "assertions": []
+    },
+    {
+      "id": "score_to_tier_above_one_error",
+      "description": "score_to_tier raises error for score above 1.0",
+      "function": "score_to_tier",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "score": "1.1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "score_out_of_range",
+      "assertions": []
+    },
+    {
+      "id": "score_to_tier_deterministic",
+      "description": "score_to_tier is deterministic - same input always yields same output",
+      "function": "score_to_tier",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Calling with same score repeatedly returns same tier"
+      ]
+    },
+    {
+      "id": "create_trust_ledger_entry_happy",
+      "description": "Create a valid trust ledger entry with standard inputs",
+      "function": "create_trust_ledger_entry",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "service-a",
+        "event": "AUDIT_PASS",
+        "weight": "0.1",
+        "score_before": "0.5",
+        "sequence_number": "0",
+        "detail": "Passed audit"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "entry.node == 'service-a'",
+        "entry.score_after == 0.6",
+        "entry.sequence_number == 0",
+        "entry.ts ends with Z or +00:00"
+      ]
+    },
+    {
+      "id": "create_trust_ledger_entry_clamp_upper",
+      "description": "score_after is clamped to 1.0 when score_before + weight > 1.0",
+      "function": "create_trust_ledger_entry",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "node1",
+        "event": "AUDIT_PASS",
+        "weight": "0.5",
+        "score_before": "0.8",
+        "sequence_number": "1",
+        "detail": "test"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "entry.score_after == 1.0"
+      ]
+    },
+    {
+      "id": "create_trust_ledger_entry_clamp_lower",
+      "description": "score_after is clamped to 0.0 when score_before + weight < 0.0",
+      "function": "create_trust_ledger_entry",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "node1",
+        "event": "DECAY",
+        "weight": "-0.5",
+        "score_before": "0.2",
+        "sequence_number": "2",
+        "detail": "decay"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "entry.score_after == 0.0"
+      ]
+    },
+    {
+      "id": "create_trust_ledger_entry_score_zero",
+      "description": "Creating entry with score_before=0.0 and positive weight works",
+      "function": "create_trust_ledger_entry",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "node1",
+        "event": "INITIAL",
+        "weight": "0.5",
+        "score_before": "0.0",
+        "sequence_number": "0",
+        "detail": "init"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "entry.score_after == 0.5"
+      ]
+    },
+    {
+      "id": "create_trust_ledger_entry_score_one",
+      "description": "Creating entry with score_before=1.0 and zero weight keeps score at 1.0",
+      "function": "create_trust_ledger_entry",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "node1",
+        "event": "AUDIT_PASS",
+        "weight": "0.0",
+        "score_before": "1.0",
+        "sequence_number": "3",
+        "detail": "no change"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "entry.score_after == 1.0"
+      ]
+    },
+    {
+      "id": "create_trust_ledger_entry_invalid_node",
+      "description": "Invalid node ID (contains spaces) raises error",
+      "function": "create_trust_ledger_entry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "invalid node",
+        "event": "AUDIT_PASS",
+        "weight": "0.1",
+        "score_before": "0.5",
+        "sequence_number": "0",
+        "detail": "test"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_node_id",
+      "assertions": []
+    },
+    {
+      "id": "create_trust_ledger_entry_empty_node",
+      "description": "Empty node ID raises error",
+      "function": "create_trust_ledger_entry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "",
+        "event": "AUDIT_PASS",
+        "weight": "0.1",
+        "score_before": "0.5",
+        "sequence_number": "0",
+        "detail": "test"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_node_id",
+      "assertions": []
+    },
+    {
+      "id": "create_trust_ledger_entry_weight_too_high",
+      "description": "Weight > 1.0 raises weight_out_of_range",
+      "function": "create_trust_ledger_entry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "node1",
+        "event": "AUDIT_PASS",
+        "weight": "1.5",
+        "score_before": "0.5",
+        "sequence_number": "0",
+        "detail": "test"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "weight_out_of_range",
+      "assertions": []
+    },
+    {
+      "id": "create_trust_ledger_entry_weight_too_low",
+      "description": "Weight < -1.0 raises weight_out_of_range",
+      "function": "create_trust_ledger_entry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "node1",
+        "event": "AUDIT_PASS",
+        "weight": "-1.5",
+        "score_before": "0.5",
+        "sequence_number": "0",
+        "detail": "test"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "weight_out_of_range",
+      "assertions": []
+    },
+    {
+      "id": "create_trust_ledger_entry_score_out_of_range_high",
+      "description": "score_before > 1.0 raises score_out_of_range",
+      "function": "create_trust_ledger_entry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "node1",
+        "event": "AUDIT_PASS",
+        "weight": "0.1",
+        "score_before": "1.5",
+        "sequence_number": "0",
+        "detail": "test"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "score_out_of_range",
+      "assertions": []
+    },
+    {
+      "id": "create_trust_ledger_entry_score_out_of_range_low",
+      "description": "score_before < 0.0 raises score_out_of_range",
+      "function": "create_trust_ledger_entry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "node1",
+        "event": "AUDIT_PASS",
+        "weight": "0.1",
+        "score_before": "-0.1",
+        "sequence_number": "0",
+        "detail": "test"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "score_out_of_range",
+      "assertions": []
+    },
+    {
+      "id": "create_trust_ledger_entry_missing_detail_audit_fail",
+      "description": "AUDIT_FAIL with empty detail raises missing_detail_for_critical_event",
+      "function": "create_trust_ledger_entry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "node1",
+        "event": "AUDIT_FAIL",
+        "weight": "-0.2",
+        "score_before": "0.5",
+        "sequence_number": "0",
+        "detail": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "missing_detail_for_critical_event",
+      "assertions": []
+    },
+    {
+      "id": "create_trust_ledger_entry_missing_detail_access_violation",
+      "description": "ACCESS_VIOLATION with empty detail raises missing_detail_for_critical_event",
+      "function": "create_trust_ledger_entry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "node1",
+        "event": "ACCESS_VIOLATION",
+        "weight": "-0.3",
+        "score_before": "0.5",
+        "sequence_number": "0",
+        "detail": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "missing_detail_for_critical_event",
+      "assertions": []
+    },
+    {
+      "id": "create_trust_ledger_entry_negative_sequence",
+      "description": "Negative sequence_number raises negative_sequence",
+      "function": "create_trust_ledger_entry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "node1",
+        "event": "AUDIT_PASS",
+        "weight": "0.1",
+        "score_before": "0.5",
+        "sequence_number": "-1",
+        "detail": "test"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "negative_sequence",
+      "assertions": []
+    },
+    {
+      "id": "create_trust_ledger_entry_frozen",
+      "description": "Returned TrustLedgerEntry is frozen/immutable",
+      "function": "create_trust_ledger_entry",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Attempting to set an attribute raises an error"
+      ]
+    },
+    {
+      "id": "create_trust_ledger_entry_utc_timestamp",
+      "description": "Returned entry has a valid UTC ISO 8601 timestamp",
+      "function": "create_trust_ledger_entry",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "ts ends with Z or +00:00"
+      ]
+    },
+    {
+      "id": "create_trust_ledger_entry_weight_boundary_positive",
+      "description": "Weight exactly 1.0 is accepted",
+      "function": "create_trust_ledger_entry",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "node1",
+        "event": "MANUAL_OVERRIDE",
+        "weight": "1.0",
+        "score_before": "0.0",
+        "sequence_number": "0",
+        "detail": "max boost"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "entry.score_after == 1.0"
+      ]
+    },
+    {
+      "id": "create_trust_ledger_entry_weight_boundary_negative",
+      "description": "Weight exactly -1.0 is accepted",
+      "function": "create_trust_ledger_entry",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "node1",
+        "event": "MANUAL_OVERRIDE",
+        "weight": "-1.0",
+        "score_before": "1.0",
+        "sequence_number": "0",
+        "detail": "max penalty"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "entry.score_after == 0.0"
+      ]
+    },
+    {
+      "id": "create_trust_ledger_entry_node_with_dots_dashes",
+      "description": "Node ID with dots and dashes is valid",
+      "function": "create_trust_ledger_entry",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "my-service.v2_build-123",
+        "event": "AUDIT_PASS",
+        "weight": "0.1",
+        "score_before": "0.5",
+        "sequence_number": "0",
+        "detail": "ok"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "entry.node == 'my-service.v2_build-123'"
+      ]
+    },
+    {
+      "id": "create_trust_ledger_entry_audit_fail_with_detail",
+      "description": "AUDIT_FAIL with non-empty detail succeeds",
+      "function": "create_trust_ledger_entry",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node": "node1",
+        "event": "AUDIT_FAIL",
+        "weight": "-0.2",
+        "score_before": "0.5",
+        "sequence_number": "5",
+        "detail": "checksum mismatch"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "entry.detail == 'checksum mismatch'",
+        "entry.score_after == 0.3"
+      ]
+    },
+    {
+      "id": "create_ledger_checkpoint_happy",
+      "description": "Create a valid checkpoint with standard inputs",
+      "function": "create_ledger_checkpoint",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "sequence_number": "100",
+        "checksum": "a",
+        "entry_count": "50"
+      },
+      "input_description": "checksum is 64 'a' chars",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "checkpoint.sequence_number == 100",
+        "checkpoint.entry_count == 50",
+        "checkpoint is frozen"
+      ]
+    },
+    {
+      "id": "create_ledger_checkpoint_invalid_checksum_uppercase",
+      "description": "Uppercase hex checksum raises invalid_checksum_format",
+      "function": "create_ledger_checkpoint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "sequence_number": "0",
+        "checksum": "A*64",
+        "entry_count": "1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_checksum_format",
+      "assertions": []
+    },
+    {
+      "id": "create_ledger_checkpoint_invalid_checksum_short",
+      "description": "Short checksum raises invalid_checksum_format",
+      "function": "create_ledger_checkpoint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "sequence_number": "0",
+        "checksum": "abcd",
+        "entry_count": "1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_checksum_format",
+      "assertions": []
+    },
+    {
+      "id": "create_ledger_checkpoint_zero_entry_count",
+      "description": "entry_count of 0 raises zero_entry_count",
+      "function": "create_ledger_checkpoint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "sequence_number": "0",
+        "checksum": "a*64",
+        "entry_count": "0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "zero_entry_count",
+      "assertions": []
+    },
+    {
+      "id": "create_ledger_checkpoint_negative_sequence",
+      "description": "Negative sequence_number raises negative_sequence",
+      "function": "create_ledger_checkpoint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "sequence_number": "-1",
+        "checksum": "a*64",
+        "entry_count": "1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "negative_sequence",
+      "assertions": []
+    },
+    {
+      "id": "create_ledger_checkpoint_frozen",
+      "description": "Returned LedgerCheckpoint is frozen/immutable",
+      "function": "create_ledger_checkpoint",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Attempting to set an attribute raises an error"
+      ]
+    },
+    {
+      "id": "create_ledger_checkpoint_utc_timestamp",
+      "description": "Returned checkpoint has a valid UTC timestamp",
+      "function": "create_ledger_checkpoint",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "ts ends with Z or +00:00"
+      ]
+    },
+    {
+      "id": "create_ledger_checkpoint_min_entry_count",
+      "description": "entry_count of 1 is accepted",
+      "function": "create_ledger_checkpoint",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "sequence_number": "0",
+        "checksum": "0*64",
+        "entry_count": "1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "checkpoint.entry_count == 1"
+      ]
+    },
+    {
+      "id": "build_access_graph_happy",
+      "description": "Build a valid graph with two interconnected nodes",
+      "function": "build_access_graph",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Graph has 2 nodes",
+        "Referential integrity holds"
+      ]
+    },
+    {
+      "id": "build_access_graph_single_node_no_edges",
+      "description": "Build a graph with a single node and no edges",
+      "function": "build_access_graph",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Graph has 1 node"
+      ]
+    },
+    {
+      "id": "build_access_graph_dangling_edge",
+      "description": "Edge to nonexistent node raises dangling_edge error",
+      "function": "build_access_graph",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "dangling_edge",
+      "assertions": []
+    },
+    {
+      "id": "build_access_graph_id_key_mismatch",
+      "description": "Node id not matching dict key raises id_key_mismatch",
+      "function": "build_access_graph",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "id_key_mismatch",
+      "assertions": []
+    },
+    {
+      "id": "build_access_graph_empty_graph",
+      "description": "Empty nodes dict raises empty_graph error",
+      "function": "build_access_graph",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "empty_graph",
+      "assertions": []
+    },
+    {
+      "id": "build_access_graph_referential_integrity",
+      "description": "All edge targets in returned graph exist as node keys",
+      "function": "build_access_graph",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "For every node, every edge target is a key in graph.nodes"
+      ]
+    },
+    {
+      "id": "build_access_graph_cardinality_preserved",
+      "description": "Returned graph has same number of nodes as input",
+      "function": "build_access_graph",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(graph.nodes) == len(input_nodes)"
+      ]
+    },
+    {
+      "id": "build_access_graph_self_loop",
+      "description": "A node with an edge to itself is valid",
+      "function": "build_access_graph",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Graph is constructed successfully"
+      ]
+    },
+    {
+      "id": "build_access_graph_three_node_chain",
+      "description": "Three-node chain A->B->C is valid",
+      "function": "build_access_graph",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Graph has 3 nodes"
+      ]
+    },
+    {
+      "id": "parse_ledger_line_trust_entry",
+      "description": "Parse a valid TrustLedgerEntry JSON line",
+      "function": "parse_ledger_line",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Result is a TrustLedgerEntry",
+        "All fields match input"
+      ]
+    },
+    {
+      "id": "parse_ledger_line_checkpoint",
+      "description": "Parse a valid LedgerCheckpoint JSON line",
+      "function": "parse_ledger_line",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Result is a LedgerCheckpoint",
+        "All fields match input"
+      ]
+    },
+    {
+      "id": "parse_ledger_line_invalid_json",
+      "description": "Non-JSON string raises invalid_json",
+      "function": "parse_ledger_line",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "line": "not json at all"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_json",
+      "assertions": []
+    },
+    {
+      "id": "parse_ledger_line_empty",
+      "description": "Empty string raises empty_line",
+      "function": "parse_ledger_line",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "line": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "empty_line",
+      "assertions": []
+    },
+    {
+      "id": "parse_ledger_line_whitespace_only",
+      "description": "Whitespace-only string raises empty_line",
+      "function": "parse_ledger_line",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "line": "   "
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "empty_line",
+      "assertions": []
+    },
+    {
+      "id": "parse_ledger_line_unknown_schema",
+      "description": "Valid JSON not matching any schema raises unknown_schema",
+      "function": "parse_ledger_line",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "line": "{\"foo\": \"bar\"}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "unknown_schema",
+      "assertions": []
+    },
+    {
+      "id": "parse_ledger_line_validation_failure",
+      "description": "JSON matching schema but with invalid field values raises validation_failure",
+      "function": "parse_ledger_line",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "validation_failure",
+      "assertions": []
+    },
+    {
+      "id": "parse_ledger_line_float_fidelity",
+      "description": "IEEE 754 float values round-trip exactly through parse",
+      "function": "parse_ledger_line",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Parsed score_before and score_after are exactly equal to original floats"
+      ]
+    },
+    {
+      "id": "serialize_ledger_line_entry",
+      "description": "Serialize a TrustLedgerEntry to valid JSON string",
+      "function": "serialize_ledger_line",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Output is valid JSON",
+        "No embedded newlines"
+      ]
+    },
+    {
+      "id": "serialize_ledger_line_checkpoint",
+      "description": "Serialize a LedgerCheckpoint to valid JSON string",
+      "function": "serialize_ledger_line",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Output is valid JSON",
+        "No embedded newlines"
+      ]
+    },
+    {
+      "id": "serialize_ledger_line_roundtrip",
+      "description": "parse_ledger_line(serialize_ledger_line(entry)) equals original entry",
+      "function": "serialize_ledger_line",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Round-trip produces equal entry"
+      ]
+    },
+    {
+      "id": "serialize_ledger_line_no_newlines",
+      "description": "Serialized output contains no newline characters",
+      "function": "serialize_ledger_line",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "No \\n in output"
+      ]
+    },
+    {
+      "id": "serialize_ledger_line_deterministic_keys",
+      "description": "JSON keys are in deterministic sorted order",
+      "function": "serialize_ledger_line",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Keys appear in sorted order"
+      ]
+    },
+    {
+      "id": "serialize_ledger_line_invalid_type",
+      "description": "Non-LedgerLine input raises invalid_entry_type",
+      "function": "serialize_ledger_line",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_entry_type",
+      "assertions": []
+    },
+    {
+      "id": "serialize_ledger_line_float_fidelity",
+      "description": "Float trust scores maintain IEEE 754 fidelity through serialization",
+      "function": "serialize_ledger_line",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Deserialized floats are bit-identical to originals"
+      ]
+    },
+    {
+      "id": "create_error_response_happy",
+      "description": "Create error response with all context fields",
+      "function": "create_error_response",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "error_code": "not_found",
+        "message": "Node not found",
+        "node": "service-a",
+        "field": "",
+        "domain": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "error_code == 'not_found'",
+        "message == 'Node not found'",
+        "details contains node"
+      ]
+    },
+    {
+      "id": "create_error_response_all_context",
+      "description": "Create error response with node, field, and domain",
+      "function": "create_error_response",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "error_code": "validation_error",
+        "message": "Invalid field",
+        "node": "svc-1",
+        "field": "trust_score",
+        "domain": "auth/core"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "details contains all three context keys"
+      ]
+    },
+    {
+      "id": "create_error_response_empty_code",
+      "description": "Empty error_code raises empty_error_code",
+      "function": "create_error_response",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "error_code": "",
+        "message": "test",
+        "node": "n",
+        "field": "",
+        "domain": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "empty_error_code",
+      "assertions": []
+    },
+    {
+      "id": "create_error_response_empty_message",
+      "description": "Empty message raises empty_message",
+      "function": "create_error_response",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "error_code": "err",
+        "message": "",
+        "node": "n",
+        "field": "",
+        "domain": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "empty_message",
+      "assertions": []
+    },
+    {
+      "id": "create_error_response_details_specificity",
+      "description": "Non-empty context fields appear in details dict",
+      "function": "create_error_response",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Only non-empty context values appear in details"
+      ]
+    },
+    {
+      "id": "validate_canary_fingerprint_happy",
+      "description": "Fingerprint with embedded UUID v4 returns True",
+      "function": "validate_canary_fingerprint",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "fingerprint": "canary-12345678-1234-4abc-9abc-123456789abc-data"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns True"
+      ]
+    },
+    {
+      "id": "validate_canary_fingerprint_missing_uuid",
+      "description": "Fingerprint without UUID v4 raises missing_uuid",
+      "function": "validate_canary_fingerprint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "fingerprint": "just-a-regular-string"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "missing_uuid",
+      "assertions": []
+    },
+    {
+      "id": "validate_canary_fingerprint_empty",
+      "description": "Empty fingerprint raises empty_fingerprint",
+      "function": "validate_canary_fingerprint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "fingerprint": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "empty_fingerprint",
+      "assertions": []
+    },
+    {
+      "id": "validate_canary_fingerprint_uuid_not_v4",
+      "description": "Fingerprint with UUID v1 (not v4) raises missing_uuid",
+      "function": "validate_canary_fingerprint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "fingerprint": "canary-12345678-1234-1abc-9abc-123456789abc"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "missing_uuid",
+      "assertions": []
+    },
+    {
+      "id": "validate_canary_fingerprint_bare_uuid",
+      "description": "Bare UUID v4 string is valid",
+      "function": "validate_canary_fingerprint",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "fingerprint": "12345678-1234-4abc-8abc-123456789abc"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns True"
+      ]
+    },
+    {
+      "id": "classify_field_match_fnmatch",
+      "description": "Field matching fnmatch pattern returns correct DataTier",
+      "function": "classify_field",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns the matched rule's data_tier"
+      ]
+    },
+    {
+      "id": "classify_field_match_regex",
+      "description": "Field matching regex pattern returns correct DataTier",
+      "function": "classify_field",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns the matched rule's data_tier"
+      ]
+    },
+    {
+      "id": "classify_field_no_match_returns_public",
+      "description": "Field matching no rules returns DataTier.PUBLIC",
+      "function": "classify_field",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns DataTier.PUBLIC"
+      ]
+    },
+    {
+      "id": "classify_field_empty_rules",
+      "description": "Empty rules list returns DataTier.PUBLIC",
+      "function": "classify_field",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns DataTier.PUBLIC"
+      ]
+    },
+    {
+      "id": "classify_field_first_match_wins",
+      "description": "When multiple rules match, first rule's tier is returned",
+      "function": "classify_field",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns first matching rule's tier, not second"
+      ]
+    },
+    {
+      "id": "classify_field_empty_field_name",
+      "description": "Empty field_name raises empty_field_name",
+      "function": "classify_field",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "field_name": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "empty_field_name",
+      "assertions": []
+    },
+    {
+      "id": "classify_field_invalid_regex",
+      "description": "Rule with invalid regex pattern raises invalid_regex_pattern",
+      "function": "classify_field",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_regex_pattern",
+      "assertions": []
+    },
+    {
+      "id": "struct_trust_ledger_entry_frozen",
+      "description": "TrustLedgerEntry instances reject attribute mutation",
+      "function": "TrustLedgerEntry",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Setting attribute raises TypeError or ValidationError"
+      ]
+    },
+    {
+      "id": "struct_ledger_checkpoint_frozen",
+      "description": "LedgerCheckpoint instances reject attribute mutation",
+      "function": "LedgerCheckpoint",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Setting attribute raises TypeError or ValidationError"
+      ]
+    },
+    {
+      "id": "struct_access_graph_node_frozen",
+      "description": "AccessGraphNode instances reject attribute mutation",
+      "function": "AccessGraphNode",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Setting attribute raises TypeError or ValidationError"
+      ]
+    },
+    {
+      "id": "struct_trust_ledger_entry_extra_forbid",
+      "description": "TrustLedgerEntry rejects unexpected fields",
+      "function": "TrustLedgerEntry",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Construction with extra field raises ValidationError"
+      ]
+    },
+    {
+      "id": "struct_ledger_checkpoint_extra_forbid",
+      "description": "LedgerCheckpoint rejects unexpected fields",
+      "function": "LedgerCheckpoint",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Construction with extra field raises ValidationError"
+      ]
+    },
+    {
+      "id": "integration_ledger_roundtrip",
+      "description": "Create entries, serialize to JSONL, parse back, verify equality",
+      "function": "serialize_ledger_line",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Multiple entries round-trip through serialize/parse correctly"
+      ]
+    },
+    {
+      "id": "integration_graph_with_trust_tiers",
+      "description": "Build graph with nodes at different trust tiers and verify",
+      "function": "build_access_graph",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Graph nodes have correct trust tiers"
+      ]
+    },
+    {
+      "id": "score_to_tier_midpoints",
+      "description": "score_to_tier returns correct tier for midpoint of each bracket",
+      "function": "score_to_tier",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "0.1->PROBATIONARY, 0.3->LOW, 0.5->ESTABLISHED, 0.7->HIGH, 0.9->TRUSTED"
+      ]
+    },
+    {
+      "id": "create_trust_ledger_entry_all_event_types",
+      "description": "All TrustEventType values can be used to create entries",
+      "function": "create_trust_ledger_entry",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Entry created for each event type"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for models component.\nTests all enums, primitives, structs, and functions defined in the contract.\nRun with: pytest contract_test.py -v\n\"\"\"\n\nimport json\nimport re\nimport pytest\nfrom unittest.mock import MagicMock\n\n# Import everything from the models module\nfrom models import (\n    TrustTier,\n    DataTier,\n    BlastTier,\n    FindingSeverity,\n    TrustEventType,\n    TrustLedgerEntry,\n    LedgerCheckpoint,\n    AccessGraphNode,\n    AccessGraph,\n    ConsistencyFinding,\n    AccessFinding,\n    TaintFinding,\n    ConflictRecord,\n    StigmerySignal,\n    CanaryRecord,\n    FeedbackReportSection,\n    FeedbackReport,\n    ErrorResponse,\n    ClassificationRule,\n    create_trust_ledger_entry,\n    create_ledger_checkpoint,\n    build_access_graph,\n    parse_ledger_line,\n    serialize_ledger_line,\n    create_error_response,\n    validate_canary_fingerprint,\n    score_to_tier,\n    classify_field,\n)\n\n\n# ============================================================\n# Helper constants\n# ============================================================\nVALID_SHA256 = \"a\" * 64\nVALID_SHA256_ZEROS = \"0\" * 64\nVALID_NODE_ID = \"service-a\"\nVALID_UTC_TS = \"2024-01-01T00:00:00+00:00\"\nVALID_UUID_V4 = \"12345678-1234-4abc-8abc-123456789abc\"\n\n\ndef _is_utc_timestamp(ts: str) -> bool:\n    \"\"\"Check if timestamp ends with Z or +00:00.\"\"\"\n    return ts.endswith(\"Z\") or ts.endswith(\"+00:00\")\n\n\n# ============================================================\n# Enum Tests\n# ============================================================\nclass TestTrustTierEnum:\n    def test_trust_tier_has_all_members(self):\n        expected = {\"PROBATIONARY\", \"LOW\", \"ESTABLISHED\", \"HIGH\", \"TRUSTED\"}\n        actual = {m.name for m in TrustTier}\n        assert actual == expected, f\"TrustTier members mismatch: {actual}\"\n\n    def test_trust_tier_member_count(self):\n        assert len(TrustTier) == 5\n\n    def test_trust_tier_is_str(self):\n        for member in TrustTier:\n            assert isinstance(member, str), f\"{member} is not a str\"\n            assert isinstance(member.value, str), f\"{member.value} is not a str\"\n\n\nclass TestDataTierEnum:\n    def test_data_tier_has_all_members(self):\n        expected = {\"PUBLIC\", \"PII\", \"FINANCIAL\", \"AUTH\", \"COMPLIANCE\"}\n        actual = {m.name for m in DataTier}\n        assert actual == expected\n\n    def test_data_tier_member_count(self):\n        assert len(DataTier) == 5\n\n    def test_data_tier_is_str(self):\n        for member in DataTier:\n            assert isinstance(member, str)\n\n\nclass TestBlastTierEnum:\n    def test_blast_tier_has_all_members(self):\n        expected = {\"AUTO_MERGE\", \"SOAK\", \"HUMAN_GATE\"}\n        actual = {m.name for m in BlastTier}\n        assert actual == expected\n\n    def test_blast_tier_member_count(self):\n        assert len(BlastTier) == 3\n\n\nclass TestFindingSeverityEnum:\n    def test_finding_severity_has_all_members(self):\n        expected = {\"INFO\", \"LOW\", \"MEDIUM\", \"HIGH\", \"CRITICAL\"}\n        actual = {m.name for m in FindingSeverity}\n        assert actual == expected\n\n    def test_finding_severity_member_count(self):\n        assert len(FindingSeverity) == 5\n\n\nclass TestTrustEventTypeEnum:\n    def test_trust_event_type_has_all_members(self):\n        expected = {\n            \"AUDIT_PASS\", \"AUDIT_FAIL\", \"CONSISTENCY_CHECK\",\n            \"ACCESS_VIOLATION\", \"TAINT_DETECTED\", \"CANARY_TRIGGERED\",\n            \"MANUAL_OVERRIDE\", \"DECAY\", \"INITIAL\",\n        }\n        actual = {m.name for m in TrustEventType}\n        assert actual == expected\n\n    def test_trust_event_type_member_count(self):\n        assert len(TrustEventType) == 9\n\n    def test_trust_event_type_is_str(self):\n        for member in TrustEventType:\n            assert isinstance(member, str)\n\n\nclass TestEnumSerializationStability:\n    \"\"\"All enums use StrEnum with explicit string values for stable serialization.\"\"\"\n\n    @pytest.mark.parametrize(\"enum_cls\", [TrustTier, DataTier, BlastTier, FindingSeverity, TrustEventType])\n    def test_enum_values_are_strings(self, enum_cls):\n        for member in enum_cls:\n            assert isinstance(member.value, str), f\"{enum_cls.__name__}.{member.name}.value is not str\"\n\n    @pytest.mark.parametrize(\"enum_cls\", [TrustTier, DataTier, BlastTier, FindingSeverity, TrustEventType])\n    def test_enum_str_returns_value(self, enum_cls):\n        for member in enum_cls:\n            # StrEnum: str(member) should work and be a string\n            s = str(member)\n            assert isinstance(s, str)\n            assert len(s) > 0\n\n\n# ============================================================\n# score_to_tier Tests\n# ============================================================\nclass TestScoreToTier:\n    def test_score_0_returns_probationary(self):\n        assert score_to_tier(0.0) == TrustTier.PROBATIONARY\n\n    def test_score_just_below_02_returns_probationary(self):\n        assert score_to_tier(0.19999) == TrustTier.PROBATIONARY\n\n    def test_score_02_returns_low(self):\n        assert score_to_tier(0.2) == TrustTier.LOW\n\n    def test_score_just_below_04_returns_low(self):\n        assert score_to_tier(0.39999) == TrustTier.LOW\n\n    def test_score_04_returns_established(self):\n        assert score_to_tier(0.4) == TrustTier.ESTABLISHED\n\n    def test_score_just_below_06_returns_established(self):\n        assert score_to_tier(0.59999) == TrustTier.ESTABLISHED\n\n    def test_score_06_returns_high(self):\n        assert score_to_tier(0.6) == TrustTier.HIGH\n\n    def test_score_just_below_08_returns_high(self):\n        assert score_to_tier(0.79999) == TrustTier.HIGH\n\n    def test_score_08_returns_trusted(self):\n        assert score_to_tier(0.8) == TrustTier.TRUSTED\n\n    def test_score_10_returns_trusted(self):\n        assert score_to_tier(1.0) == TrustTier.TRUSTED\n\n    def test_midpoints(self):\n        assert score_to_tier(0.1) == TrustTier.PROBATIONARY\n        assert score_to_tier(0.3) == TrustTier.LOW\n        assert score_to_tier(0.5) == TrustTier.ESTABLISHED\n        assert score_to_tier(0.7) == TrustTier.HIGH\n        assert score_to_tier(0.9) == TrustTier.TRUSTED\n\n    def test_negative_score_raises(self):\n        with pytest.raises((ValueError, Exception)):\n            score_to_tier(-0.1)\n\n    def test_above_one_raises(self):\n        with pytest.raises((ValueError, Exception)):\n            score_to_tier(1.1)\n\n    def test_deterministic(self):\n        \"\"\"Same input always yields same output.\"\"\"\n        for score in [0.0, 0.15, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95, 1.0]:\n            tier1 = score_to_tier(score)\n            tier2 = score_to_tier(score)\n            assert tier1 == tier2, f\"Non-deterministic for score {score}\"\n\n\n# ============================================================\n# create_trust_ledger_entry Tests\n# ============================================================\nclass TestCreateTrustLedgerEntry:\n    def test_happy_path_audit_pass(self):\n        entry = create_trust_ledger_entry(\n            node=\"service-a\",\n            event=TrustEventType.AUDIT_PASS,\n            weight=0.1,\n            score_before=0.5,\n            sequence_number=0,\n            detail=\"Passed audit\",\n        )\n        assert entry.node == \"service-a\"\n        assert entry.event == TrustEventType.AUDIT_PASS\n        assert entry.weight == 0.1\n        assert entry.score_before == 0.5\n        assert entry.score_after == pytest.approx(0.6)\n        assert entry.sequence_number == 0\n        assert entry.detail == \"Passed audit\"\n        assert _is_utc_timestamp(entry.ts)\n\n    def test_audit_fail_with_detail(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.AUDIT_FAIL,\n            weight=-0.2,\n            score_before=0.5,\n            sequence_number=5,\n            detail=\"checksum mismatch\",\n        )\n        assert entry.detail == \"checksum mismatch\"\n        assert entry.score_after == pytest.approx(0.3)\n\n    def test_clamp_upper_to_one(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.AUDIT_PASS,\n            weight=0.5,\n            score_before=0.8,\n            sequence_number=1,\n            detail=\"test\",\n        )\n        assert entry.score_after == 1.0\n\n    def test_clamp_lower_to_zero(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.DECAY,\n            weight=-0.5,\n            score_before=0.2,\n            sequence_number=2,\n            detail=\"decay\",\n        )\n        assert entry.score_after == 0.0\n\n    def test_score_before_zero_with_positive_weight(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.INITIAL,\n            weight=0.5,\n            score_before=0.0,\n            sequence_number=0,\n            detail=\"init\",\n        )\n        assert entry.score_after == 0.5\n\n    def test_score_before_one_with_zero_weight(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.AUDIT_PASS,\n            weight=0.0,\n            score_before=1.0,\n            sequence_number=3,\n            detail=\"no change\",\n        )\n        assert entry.score_after == 1.0\n\n    def test_weight_exactly_one(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.MANUAL_OVERRIDE,\n            weight=1.0,\n            score_before=0.0,\n            sequence_number=0,\n            detail=\"max boost\",\n        )\n        assert entry.score_after == 1.0\n\n    def test_weight_exactly_negative_one(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.MANUAL_OVERRIDE,\n            weight=-1.0,\n            score_before=1.0,\n            sequence_number=0,\n            detail=\"max penalty\",\n        )\n        assert entry.score_after == 0.0\n\n    def test_node_with_dots_dashes_underscores(self):\n        entry = create_trust_ledger_entry(\n            node=\"my-service.v2_build-123\",\n            event=TrustEventType.AUDIT_PASS,\n            weight=0.1,\n            score_before=0.5,\n            sequence_number=0,\n            detail=\"ok\",\n        )\n        assert entry.node == \"my-service.v2_build-123\"\n\n    def test_all_event_types_accepted(self):\n        for evt in TrustEventType:\n            detail = \"required detail\" if evt in (TrustEventType.AUDIT_FAIL, TrustEventType.ACCESS_VIOLATION) else \"test\"\n            entry = create_trust_ledger_entry(\n                node=\"node1\",\n                event=evt,\n                weight=0.0,\n                score_before=0.5,\n                sequence_number=0,\n                detail=detail,\n            )\n            assert entry.event == evt\n\n    def test_error_invalid_node_spaces(self):\n        with pytest.raises((ValueError, Exception)):\n            create_trust_ledger_entry(\n                node=\"invalid node\",\n                event=TrustEventType.AUDIT_PASS,\n                weight=0.1,\n                score_before=0.5,\n                sequence_number=0,\n                detail=\"test\",\n            )\n\n    def test_error_empty_node(self):\n        with pytest.raises((ValueError, Exception)):\n            create_trust_ledger_entry(\n                node=\"\",\n                event=TrustEventType.AUDIT_PASS,\n                weight=0.1,\n                score_before=0.5,\n                sequence_number=0,\n                detail=\"test\",\n            )\n\n    def test_error_weight_too_high(self):\n        with pytest.raises((ValueError, Exception)):\n            create_trust_ledger_entry(\n                node=\"node1\",\n                event=TrustEventType.AUDIT_PASS,\n                weight=1.5,\n                score_before=0.5,\n                sequence_number=0,\n                detail=\"test\",\n            )\n\n    def test_error_weight_too_low(self):\n        with pytest.raises((ValueError, Exception)):\n            create_trust_ledger_entry(\n                node=\"node1\",\n                event=TrustEventType.AUDIT_PASS,\n                weight=-1.5,\n                score_before=0.5,\n                sequence_number=0,\n                detail=\"test\",\n            )\n\n    def test_error_score_before_above_one(self):\n        with pytest.raises((ValueError, Exception)):\n            create_trust_ledger_entry(\n                node=\"node1\",\n                event=TrustEventType.AUDIT_PASS,\n                weight=0.1,\n                score_before=1.5,\n                sequence_number=0,\n                detail=\"test\",\n            )\n\n    def test_error_score_before_below_zero(self):\n        with pytest.raises((ValueError, Exception)):\n            create_trust_ledger_entry(\n                node=\"node1\",\n                event=TrustEventType.AUDIT_PASS,\n                weight=0.1,\n                score_before=-0.1,\n                sequence_number=0,\n                detail=\"test\",\n            )\n\n    def test_error_audit_fail_empty_detail(self):\n        with pytest.raises((ValueError, Exception)):\n            create_trust_ledger_entry(\n                node=\"node1\",\n                event=TrustEventType.AUDIT_FAIL,\n                weight=-0.2,\n                score_before=0.5,\n                sequence_number=0,\n                detail=\"\",\n            )\n\n    def test_error_access_violation_empty_detail(self):\n        with pytest.raises((ValueError, Exception)):\n            create_trust_ledger_entry(\n                node=\"node1\",\n                event=TrustEventType.ACCESS_VIOLATION,\n                weight=-0.3,\n                score_before=0.5,\n                sequence_number=0,\n                detail=\"\",\n            )\n\n    def test_error_negative_sequence(self):\n        with pytest.raises((ValueError, Exception)):\n            create_trust_ledger_entry(\n                node=\"node1\",\n                event=TrustEventType.AUDIT_PASS,\n                weight=0.1,\n                score_before=0.5,\n                sequence_number=-1,\n                detail=\"test\",\n            )\n\n    def test_returned_entry_is_frozen(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.AUDIT_PASS,\n            weight=0.1,\n            score_before=0.5,\n            sequence_number=0,\n            detail=\"test\",\n        )\n        with pytest.raises((TypeError, ValueError, AttributeError, Exception)):\n            entry.node = \"changed\"\n\n    def test_utc_timestamp_format(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.AUDIT_PASS,\n            weight=0.1,\n            score_before=0.5,\n            sequence_number=0,\n            detail=\"test\",\n        )\n        assert _is_utc_timestamp(entry.ts), f\"Timestamp {entry.ts} is not UTC\"\n\n    def test_sequence_number_preserved(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.AUDIT_PASS,\n            weight=0.1,\n            score_before=0.5,\n            sequence_number=42,\n            detail=\"test\",\n        )\n        assert entry.sequence_number == 42\n\n\n# ============================================================\n# create_ledger_checkpoint Tests\n# ============================================================\nclass TestCreateLedgerCheckpoint:\n    def test_happy_path(self):\n        cp = create_ledger_checkpoint(\n            sequence_number=100,\n            checksum=VALID_SHA256,\n            entry_count=50,\n        )\n        assert cp.sequence_number == 100\n        assert cp.checksum == VALID_SHA256\n        assert cp.entry_count == 50\n        assert _is_utc_timestamp(cp.ts)\n\n    def test_min_entry_count_one(self):\n        cp = create_ledger_checkpoint(\n            sequence_number=0,\n            checksum=VALID_SHA256_ZEROS,\n            entry_count=1,\n        )\n        assert cp.entry_count == 1\n\n    def test_sequence_zero(self):\n        cp = create_ledger_checkpoint(\n            sequence_number=0,\n            checksum=VALID_SHA256,\n            entry_count=1,\n        )\n        assert cp.sequence_number == 0\n\n    def test_error_invalid_checksum_uppercase(self):\n        with pytest.raises((ValueError, Exception)):\n            create_ledger_checkpoint(\n                sequence_number=0,\n                checksum=\"A\" * 64,\n                entry_count=1,\n            )\n\n    def test_error_invalid_checksum_short(self):\n        with pytest.raises((ValueError, Exception)):\n            create_ledger_checkpoint(\n                sequence_number=0,\n                checksum=\"abcd\",\n                entry_count=1,\n            )\n\n    def test_error_invalid_checksum_with_non_hex(self):\n        with pytest.raises((ValueError, Exception)):\n            create_ledger_checkpoint(\n                sequence_number=0,\n                checksum=\"g\" * 64,\n                entry_count=1,\n            )\n\n    def test_error_zero_entry_count(self):\n        with pytest.raises((ValueError, Exception)):\n            create_ledger_checkpoint(\n                sequence_number=0,\n                checksum=VALID_SHA256,\n                entry_count=0,\n            )\n\n    def test_error_negative_entry_count(self):\n        with pytest.raises((ValueError, Exception)):\n            create_ledger_checkpoint(\n                sequence_number=0,\n                checksum=VALID_SHA256,\n                entry_count=-5,\n            )\n\n    def test_error_negative_sequence(self):\n        with pytest.raises((ValueError, Exception)):\n            create_ledger_checkpoint(\n                sequence_number=-1,\n                checksum=VALID_SHA256,\n                entry_count=1,\n            )\n\n    def test_frozen(self):\n        cp = create_ledger_checkpoint(\n            sequence_number=0,\n            checksum=VALID_SHA256,\n            entry_count=1,\n        )\n        with pytest.raises((TypeError, ValueError, AttributeError, Exception)):\n            cp.checksum = \"b\" * 64\n\n    def test_utc_timestamp(self):\n        cp = create_ledger_checkpoint(\n            sequence_number=0,\n            checksum=VALID_SHA256,\n            entry_count=1,\n        )\n        assert _is_utc_timestamp(cp.ts)\n\n\n# ============================================================\n# build_access_graph Tests\n# ============================================================\ndef _make_node(node_id, edges=None, trust_tier=None, data_access=None, authority_domains=None, metadata=None):\n    \"\"\"Helper to create AccessGraphNode instances.\"\"\"\n    return AccessGraphNode(\n        id=node_id,\n        data_access=data_access or [],\n        authority_domains=authority_domains or [],\n        edges=edges or [],\n        trust_tier=trust_tier or TrustTier.ESTABLISHED,\n        metadata=metadata or {},\n    )\n\n\nclass TestBuildAccessGraph:\n    def test_happy_path_two_nodes(self):\n        node_a = _make_node(\"node-a\", edges=[\"node-b\"])\n        node_b = _make_node(\"node-b\", edges=[\"node-a\"])\n        graph = build_access_graph({\"node-a\": node_a, \"node-b\": node_b})\n        assert len(graph.nodes) == 2\n        assert \"node-a\" in graph.nodes\n        assert \"node-b\" in graph.nodes\n\n    def test_single_node_no_edges(self):\n        node = _make_node(\"solo\")\n        graph = build_access_graph({\"solo\": node})\n        assert len(graph.nodes) == 1\n\n    def test_three_node_chain(self):\n        a = _make_node(\"a\", edges=[\"b\"])\n        b = _make_node(\"b\", edges=[\"c\"])\n        c = _make_node(\"c\")\n        graph = build_access_graph({\"a\": a, \"b\": b, \"c\": c})\n        assert len(graph.nodes) == 3\n\n    def test_self_loop(self):\n        node = _make_node(\"self-ref\", edges=[\"self-ref\"])\n        graph = build_access_graph({\"self-ref\": node})\n        assert len(graph.nodes) == 1\n        assert \"self-ref\" in graph.nodes[\"self-ref\"].edges\n\n    def test_error_dangling_edge(self):\n        node = _make_node(\"a\", edges=[\"nonexistent\"])\n        with pytest.raises((ValueError, Exception)):\n            build_access_graph({\"a\": node})\n\n    def test_error_id_key_mismatch(self):\n        node = _make_node(\"wrong-id\")\n        with pytest.raises((ValueError, Exception)):\n            build_access_graph({\"correct-key\": node})\n\n    def test_error_empty_graph(self):\n        with pytest.raises((ValueError, Exception)):\n            build_access_graph({})\n\n    def test_referential_integrity(self):\n        a = _make_node(\"a\", edges=[\"b\", \"c\"])\n        b = _make_node(\"b\", edges=[\"c\"])\n        c = _make_node(\"c\", edges=[\"a\"])\n        graph = build_access_graph({\"a\": a, \"b\": b, \"c\": c})\n        for nid, node in graph.nodes.items():\n            for edge_target in node.edges:\n                assert edge_target in graph.nodes, f\"Dangling edge {edge_target} from {nid}\"\n\n    def test_cardinality_preserved(self):\n        nodes = {}\n        for i in range(5):\n            nid = f\"node-{i}\"\n            nodes[nid] = _make_node(nid)\n        graph = build_access_graph(nodes)\n        assert len(graph.nodes) == 5\n\n    def test_graph_with_different_trust_tiers(self):\n        a = _make_node(\"a\", trust_tier=TrustTier.PROBATIONARY)\n        b = _make_node(\"b\", trust_tier=TrustTier.TRUSTED)\n        graph = build_access_graph({\"a\": a, \"b\": b})\n        assert graph.nodes[\"a\"].trust_tier == TrustTier.PROBATIONARY\n        assert graph.nodes[\"b\"].trust_tier == TrustTier.TRUSTED\n\n\n# ============================================================\n# parse_ledger_line Tests\n# ============================================================\nclass TestParseLedgerLine:\n    def _make_entry_json(self, **overrides):\n        \"\"\"Create a valid TrustLedgerEntry JSON string.\"\"\"\n        data = {\n            \"ts\": \"2024-01-01T00:00:00+00:00\",\n            \"node\": \"node1\",\n            \"event\": str(TrustEventType.AUDIT_PASS.value),\n            \"weight\": 0.1,\n            \"score_before\": 0.5,\n            \"score_after\": 0.6,\n            \"sequence_number\": 0,\n            \"detail\": \"test\",\n        }\n        data.update(overrides)\n        return json.dumps(data)\n\n    def _make_checkpoint_json(self, **overrides):\n        \"\"\"Create a valid LedgerCheckpoint JSON string.\"\"\"\n        data = {\n            \"ts\": \"2024-01-01T00:00:00+00:00\",\n            \"sequence_number\": 100,\n            \"checksum\": VALID_SHA256,\n            \"entry_count\": 50,\n        }\n        data.update(overrides)\n        return json.dumps(data)\n\n    def test_parse_trust_entry(self):\n        line = self._make_entry_json()\n        result = parse_ledger_line(line)\n        assert isinstance(result, TrustLedgerEntry)\n        assert result.node == \"node1\"\n        assert result.score_before == 0.5\n        assert result.score_after == 0.6\n\n    def test_parse_checkpoint(self):\n        line = self._make_checkpoint_json()\n        result = parse_ledger_line(line)\n        assert isinstance(result, LedgerCheckpoint)\n        assert result.sequence_number == 100\n        assert result.checksum == VALID_SHA256\n        assert result.entry_count == 50\n\n    def test_error_invalid_json(self):\n        with pytest.raises((ValueError, Exception)):\n            parse_ledger_line(\"not json at all\")\n\n    def test_error_empty_line(self):\n        with pytest.raises((ValueError, Exception)):\n            parse_ledger_line(\"\")\n\n    def test_error_whitespace_only(self):\n        with pytest.raises((ValueError, Exception)):\n            parse_ledger_line(\"   \")\n\n    def test_error_unknown_schema(self):\n        with pytest.raises((ValueError, Exception)):\n            parse_ledger_line('{\"foo\": \"bar\"}')\n\n    def test_error_validation_failure(self):\n        # Valid structure but invalid score (> 1.0)\n        bad_json = self._make_entry_json(score_before=2.0, score_after=2.1)\n        with pytest.raises((ValueError, Exception)):\n            parse_ledger_line(bad_json)\n\n    def test_float_fidelity(self):\n        \"\"\"IEEE 754 float values round-trip exactly.\"\"\"\n        # Use a value that's tricky in IEEE 754\n        score = 0.1 + 0.2  # 0.30000000000000004\n        line = self._make_entry_json(\n            score_before=score,\n            score_after=min(score + 0.1, 1.0),\n            weight=0.1,\n        )\n        result = parse_ledger_line(line)\n        assert result.score_before == score\n\n\n# ============================================================\n# serialize_ledger_line Tests\n# ============================================================\nclass TestSerializeLedgerLine:\n    def test_serialize_entry(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.AUDIT_PASS,\n            weight=0.1,\n            score_before=0.5,\n            sequence_number=0,\n            detail=\"test\",\n        )\n        result = serialize_ledger_line(entry)\n        assert isinstance(result, str)\n        # Must be valid JSON\n        parsed = json.loads(result)\n        assert isinstance(parsed, dict)\n        # No embedded newlines\n        assert \"\\n\" not in result\n\n    def test_serialize_checkpoint(self):\n        cp = create_ledger_checkpoint(\n            sequence_number=100,\n            checksum=VALID_SHA256,\n            entry_count=50,\n        )\n        result = serialize_ledger_line(cp)\n        assert isinstance(result, str)\n        parsed = json.loads(result)\n        assert isinstance(parsed, dict)\n        assert \"\\n\" not in result\n\n    def test_roundtrip_entry(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.AUDIT_PASS,\n            weight=0.1,\n            score_before=0.5,\n            sequence_number=0,\n            detail=\"test\",\n        )\n        serialized = serialize_ledger_line(entry)\n        deserialized = parse_ledger_line(serialized)\n        assert isinstance(deserialized, TrustLedgerEntry)\n        assert deserialized.node == entry.node\n        assert deserialized.score_before == entry.score_before\n        assert deserialized.score_after == entry.score_after\n        assert deserialized.weight == entry.weight\n        assert deserialized.sequence_number == entry.sequence_number\n        assert deserialized.detail == entry.detail\n        assert deserialized.ts == entry.ts\n\n    def test_roundtrip_checkpoint(self):\n        cp = create_ledger_checkpoint(\n            sequence_number=100,\n            checksum=VALID_SHA256,\n            entry_count=50,\n        )\n        serialized = serialize_ledger_line(cp)\n        deserialized = parse_ledger_line(serialized)\n        assert isinstance(deserialized, LedgerCheckpoint)\n        assert deserialized.sequence_number == cp.sequence_number\n        assert deserialized.checksum == cp.checksum\n        assert deserialized.entry_count == cp.entry_count\n\n    def test_no_newlines_in_output(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.AUDIT_PASS,\n            weight=0.0,\n            score_before=0.5,\n            sequence_number=0,\n            detail=\"a detail with\\nno embedded newlines expected\",\n        )\n        serialized = serialize_ledger_line(entry)\n        assert \"\\n\" not in serialized\n\n    def test_deterministic_key_order(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.AUDIT_PASS,\n            weight=0.1,\n            score_before=0.5,\n            sequence_number=0,\n            detail=\"test\",\n        )\n        s1 = serialize_ledger_line(entry)\n        s2 = serialize_ledger_line(entry)\n        assert s1 == s2, \"Serialization is not deterministic\"\n        # Verify keys are sorted\n        parsed = json.loads(s1)\n        keys = list(parsed.keys())\n        assert keys == sorted(keys), f\"Keys not sorted: {keys}\"\n\n    def test_error_invalid_type(self):\n        with pytest.raises((TypeError, ValueError, AttributeError, Exception)):\n            serialize_ledger_line(\"not a ledger line\")\n\n    def test_error_invalid_type_dict(self):\n        with pytest.raises((TypeError, ValueError, AttributeError, Exception)):\n            serialize_ledger_line({\"some\": \"dict\"})\n\n    def test_float_fidelity(self):\n        \"\"\"IEEE 754 float round-trip fidelity.\"\"\"\n        # Use a tricky float\n        tricky_score = 0.1 + 0.2  # 0.30000000000000004\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.AUDIT_PASS,\n            weight=0.0,\n            score_before=tricky_score,\n            sequence_number=0,\n            detail=\"fidelity test\",\n        )\n        serialized = serialize_ledger_line(entry)\n        deserialized = parse_ledger_line(serialized)\n        assert deserialized.score_before == entry.score_before\n        assert deserialized.score_after == entry.score_after\n\n\n# ============================================================\n# create_error_response Tests\n# ============================================================\nclass TestCreateErrorResponse:\n    def test_happy_path_with_node(self):\n        resp = create_error_response(\n            error_code=\"not_found\",\n            message=\"Node not found\",\n            node=\"service-a\",\n            field=\"\",\n            domain=\"\",\n        )\n        assert resp.error_code == \"not_found\"\n        assert resp.message == \"Node not found\"\n        assert \"node\" in resp.details\n        assert resp.details[\"node\"] == \"service-a\"\n\n    def test_all_context_fields(self):\n        resp = create_error_response(\n            error_code=\"validation_error\",\n            message=\"Invalid field\",\n            node=\"svc-1\",\n            field=\"trust_score\",\n            domain=\"auth/core\",\n        )\n        assert resp.details.get(\"node\") == \"svc-1\"\n        assert resp.details.get(\"field\") == \"trust_score\"\n        assert resp.details.get(\"domain\") == \"auth/core\"\n\n    def test_only_field_provided(self):\n        resp = create_error_response(\n            error_code=\"invalid_field\",\n            message=\"Bad field\",\n            node=\"\",\n            field=\"score\",\n            domain=\"\",\n        )\n        assert resp.error_code == \"invalid_field\"\n        # field should be in details\n        assert \"field\" in resp.details\n        assert resp.details[\"field\"] == \"score\"\n\n    def test_only_domain_provided(self):\n        resp = create_error_response(\n            error_code=\"domain_error\",\n            message=\"Bad domain\",\n            node=\"\",\n            field=\"\",\n            domain=\"auth/core\",\n        )\n        assert \"domain\" in resp.details\n        assert resp.details[\"domain\"] == \"auth/core\"\n\n    def test_error_empty_code(self):\n        with pytest.raises((ValueError, Exception)):\n            create_error_response(\n                error_code=\"\",\n                message=\"test\",\n                node=\"n\",\n                field=\"\",\n                domain=\"\",\n            )\n\n    def test_error_empty_message(self):\n        with pytest.raises((ValueError, Exception)):\n            create_error_response(\n                error_code=\"err\",\n                message=\"\",\n                node=\"n\",\n                field=\"\",\n                domain=\"\",\n            )\n\n    def test_details_only_contains_nonempty(self):\n        \"\"\"Non-empty context values appear, empty ones should not.\"\"\"\n        resp = create_error_response(\n            error_code=\"err\",\n            message=\"msg\",\n            node=\"mynode\",\n            field=\"\",\n            domain=\"\",\n        )\n        assert resp.details.get(\"node\") == \"mynode\"\n        # Empty values should not be in details (or if present, should be empty)\n        # The contract says \"contains non-empty keys for provided values\"\n        # So we check node is there for sure\n        assert \"node\" in resp.details\n\n\n# ============================================================\n# validate_canary_fingerprint Tests\n# ============================================================\nclass TestValidateCanaryFingerprint:\n    def test_happy_path_embedded_uuid(self):\n        result = validate_canary_fingerprint(\n            f\"canary-{VALID_UUID_V4}-data\"\n        )\n        assert result is True\n\n    def test_bare_uuid_v4(self):\n        result = validate_canary_fingerprint(VALID_UUID_V4)\n        assert result is True\n\n    def test_error_missing_uuid(self):\n        with pytest.raises((ValueError, Exception)):\n            validate_canary_fingerprint(\"just-a-regular-string\")\n\n    def test_error_empty_fingerprint(self):\n        with pytest.raises((ValueError, Exception)):\n            validate_canary_fingerprint(\"\")\n\n    def test_error_uuid_v1_not_v4(self):\n        \"\"\"UUID v1 (version digit is 1, not 4) should not pass.\"\"\"\n        with pytest.raises((ValueError, Exception)):\n            validate_canary_fingerprint(\"canary-12345678-1234-1abc-9abc-123456789abc\")\n\n    def test_error_uuid_v3_not_v4(self):\n        \"\"\"UUID v3 (version digit is 3, not 4) should not pass.\"\"\"\n        with pytest.raises((ValueError, Exception)):\n            validate_canary_fingerprint(\"canary-12345678-1234-3abc-9abc-123456789abc\")\n\n    def test_uuid_v4_variant_8(self):\n        # variant byte is 8 (valid: 8, 9, a, b)\n        assert validate_canary_fingerprint(\"prefix-12345678-1234-4abc-8abc-123456789abc\") is True\n\n    def test_uuid_v4_variant_9(self):\n        assert validate_canary_fingerprint(\"prefix-12345678-1234-4abc-9abc-123456789abc\") is True\n\n    def test_uuid_v4_variant_a(self):\n        assert validate_canary_fingerprint(\"prefix-12345678-1234-4abc-aabc-123456789abc\") is True\n\n    def test_uuid_v4_variant_b(self):\n        assert validate_canary_fingerprint(\"prefix-12345678-1234-4abc-babc-123456789abc\") is True\n\n    def test_error_uuid_v4_wrong_variant(self):\n        \"\"\"Variant byte c is not valid for UUID v4 ([89ab] required).\"\"\"\n        with pytest.raises((ValueError, Exception)):\n            validate_canary_fingerprint(\"prefix-12345678-1234-4abc-cabc-123456789abc\")\n\n\n# ============================================================\n# classify_field Tests\n# ============================================================\nclass TestClassifyField:\n    def test_match_fnmatch_pattern(self):\n        rules = [\n            ClassificationRule(\n                field_pattern=\"*password*\",\n                data_tier=DataTier.AUTH,\n                is_regex=False,\n                description=\"Password fields\",\n            ),\n        ]\n        result = classify_field(\"user_password_hash\", rules)\n        assert result == DataTier.AUTH\n\n    def test_match_regex_pattern(self):\n        rules = [\n            ClassificationRule(\n                field_pattern=r\"^ssn_\\d+$\",\n                data_tier=DataTier.PII,\n                is_regex=True,\n                description=\"SSN fields\",\n            ),\n        ]\n        result = classify_field(\"ssn_123\", rules)\n        assert result == DataTier.PII\n\n    def test_no_match_returns_public(self):\n        rules = [\n            ClassificationRule(\n                field_pattern=\"*password*\",\n                data_tier=DataTier.AUTH,\n                is_regex=False,\n                description=\"Password fields\",\n            ),\n        ]\n        result = classify_field(\"username\", rules)\n        assert result == DataTier.PUBLIC\n\n    def test_empty_rules_returns_public(self):\n        result = classify_field(\"anything\", [])\n        assert result == DataTier.PUBLIC\n\n    def test_first_match_wins(self):\n        rules = [\n            ClassificationRule(\n                field_pattern=\"*secret*\",\n                data_tier=DataTier.AUTH,\n                is_regex=False,\n                description=\"Auth secrets\",\n            ),\n            ClassificationRule(\n                field_pattern=\"*secret*\",\n                data_tier=DataTier.PII,\n                is_regex=False,\n                description=\"PII secrets\",\n            ),\n        ]\n        result = classify_field(\"my_secret_key\", rules)\n        assert result == DataTier.AUTH, \"First matching rule should win, not second\"\n\n    def test_error_empty_field_name(self):\n        with pytest.raises((ValueError, Exception)):\n            classify_field(\"\", [])\n\n    def test_error_invalid_regex(self):\n        rules = [\n            ClassificationRule(\n                field_pattern=\"[invalid(\",\n                data_tier=DataTier.PII,\n                is_regex=True,\n                description=\"Bad regex\",\n            ),\n        ]\n        with pytest.raises((ValueError, re.error, Exception)):\n            classify_field(\"test_field\", rules)\n\n    def test_fnmatch_exact_match(self):\n        rules = [\n            ClassificationRule(\n                field_pattern=\"credit_card\",\n                data_tier=DataTier.FINANCIAL,\n                is_regex=False,\n                description=\"Exact credit card field\",\n            ),\n        ]\n        result = classify_field(\"credit_card\", rules)\n        assert result == DataTier.FINANCIAL\n\n    def test_fnmatch_no_partial_without_wildcard(self):\n        rules = [\n            ClassificationRule(\n                field_pattern=\"credit_card\",\n                data_tier=DataTier.FINANCIAL,\n                is_regex=False,\n                description=\"Exact match only\",\n            ),\n        ]\n        result = classify_field(\"credit_card_number\", rules)\n        # fnmatch without wildcards only matches exact\n        assert result == DataTier.PUBLIC\n\n    def test_regex_full_match(self):\n        rules = [\n            ClassificationRule(\n                field_pattern=r\"^email$\",\n                data_tier=DataTier.PII,\n                is_regex=True,\n                description=\"Email field exact\",\n            ),\n        ]\n        result = classify_field(\"email\", rules)\n        assert result == DataTier.PII\n\n\n# ============================================================\n# Struct Immutability & Extra Forbid Tests\n# ============================================================\nclass TestStructImmutability:\n    def test_trust_ledger_entry_frozen(self):\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.AUDIT_PASS,\n            weight=0.1,\n            score_before=0.5,\n            sequence_number=0,\n            detail=\"test\",\n        )\n        with pytest.raises((TypeError, ValueError, AttributeError, Exception)):\n            entry.detail = \"modified\"\n\n    def test_ledger_checkpoint_frozen(self):\n        cp = create_ledger_checkpoint(\n            sequence_number=0,\n            checksum=VALID_SHA256,\n            entry_count=1,\n        )\n        with pytest.raises((TypeError, ValueError, AttributeError, Exception)):\n            cp.entry_count = 999\n\n    def test_access_graph_node_frozen(self):\n        node = _make_node(\"n1\")\n        with pytest.raises((TypeError, ValueError, AttributeError, Exception)):\n            node.id = \"changed\"\n\n\nclass TestStructExtraForbid:\n    def test_trust_ledger_entry_rejects_extra(self):\n        \"\"\"TrustLedgerEntry with extra='forbid' should reject unknown fields.\"\"\"\n        with pytest.raises((TypeError, ValueError, Exception)):\n            TrustLedgerEntry(\n                ts=\"2024-01-01T00:00:00+00:00\",\n                node=\"node1\",\n                event=TrustEventType.AUDIT_PASS,\n                weight=0.1,\n                score_before=0.5,\n                score_after=0.6,\n                sequence_number=0,\n                detail=\"test\",\n                unknown_field=\"should_fail\",\n            )\n\n    def test_ledger_checkpoint_rejects_extra(self):\n        with pytest.raises((TypeError, ValueError, Exception)):\n            LedgerCheckpoint(\n                ts=\"2024-01-01T00:00:00+00:00\",\n                sequence_number=0,\n                checksum=VALID_SHA256,\n                entry_count=1,\n                unknown_field=\"should_fail\",\n            )\n\n\n# ============================================================\n# Integration Tests\n# ============================================================\nclass TestIntegration:\n    def test_ledger_roundtrip_multiple_entries(self):\n        \"\"\"Create multiple entries, serialize to JSONL, parse back, verify equality.\"\"\"\n        entries = []\n        for i in range(5):\n            entry = create_trust_ledger_entry(\n                node=f\"node-{i}\",\n                event=TrustEventType.AUDIT_PASS,\n                weight=0.05,\n                score_before=0.5,\n                sequence_number=i,\n                detail=f\"entry {i}\",\n            )\n            entries.append(entry)\n\n        # Add a checkpoint\n        cp = create_ledger_checkpoint(\n            sequence_number=5,\n            checksum=VALID_SHA256,\n            entry_count=5,\n        )\n        entries.append(cp)\n\n        # Serialize all to JSONL\n        lines = [serialize_ledger_line(e) for e in entries]\n\n        # Verify no embedded newlines\n        for line in lines:\n            assert \"\\n\" not in line\n\n        # Parse back\n        parsed = [parse_ledger_line(line) for line in lines]\n\n        # Verify first 5 are entries, last is checkpoint\n        for i in range(5):\n            assert isinstance(parsed[i], TrustLedgerEntry)\n            assert parsed[i].node == f\"node-{i}\"\n            assert parsed[i].sequence_number == i\n        assert isinstance(parsed[5], LedgerCheckpoint)\n        assert parsed[5].entry_count == 5\n\n    def test_graph_build_with_trust_and_data(self):\n        \"\"\"Build a graph with varying trust tiers and data access.\"\"\"\n        nodes = {\n            \"frontend\": _make_node(\n                \"frontend\",\n                edges=[\"backend\"],\n                trust_tier=TrustTier.HIGH,\n                data_access=[DataTier.PUBLIC],\n            ),\n            \"backend\": _make_node(\n                \"backend\",\n                edges=[\"database\"],\n                trust_tier=TrustTier.TRUSTED,\n                data_access=[DataTier.PII, DataTier.FINANCIAL],\n            ),\n            \"database\": _make_node(\n                \"database\",\n                edges=[],\n                trust_tier=TrustTier.TRUSTED,\n                data_access=[DataTier.PII, DataTier.FINANCIAL, DataTier.AUTH],\n            ),\n        }\n        graph = build_access_graph(nodes)\n        assert len(graph.nodes) == 3\n        assert graph.nodes[\"frontend\"].trust_tier == TrustTier.HIGH\n        assert graph.nodes[\"backend\"].trust_tier == TrustTier.TRUSTED\n        assert DataTier.AUTH in graph.nodes[\"database\"].data_access\n\n    def test_classify_then_error_response(self):\n        \"\"\"Classify a field, and if it's sensitive, create an error response.\"\"\"\n        rules = [\n            ClassificationRule(\n                field_pattern=\"*ssn*\",\n                data_tier=DataTier.PII,\n                is_regex=False,\n                description=\"SSN fields\",\n            ),\n        ]\n        tier = classify_field(\"user_ssn\", rules)\n        assert tier == DataTier.PII\n\n        resp = create_error_response(\n            error_code=\"unauthorized_access\",\n            message=\"Cannot access PII field\",\n            node=\"frontend\",\n            field=\"user_ssn\",\n            domain=\"\",\n        )\n        assert resp.error_code == \"unauthorized_access\"\n        assert resp.details.get(\"field\") == \"user_ssn\"\n\n    def test_score_to_tier_used_for_display_only(self):\n        \"\"\"Verify that score_to_tier is consistent with the raw score used in entries.\"\"\"\n        entry = create_trust_ledger_entry(\n            node=\"node1\",\n            event=TrustEventType.AUDIT_PASS,\n            weight=0.3,\n            score_before=0.5,\n            sequence_number=0,\n            detail=\"test\",\n        )\n        # score_after should be 0.8 -> TRUSTED tier\n        assert entry.score_after == pytest.approx(0.8)\n        tier = score_to_tier(entry.score_after)\n        assert tier == TrustTier.TRUSTED\n\n    def test_canary_fingerprint_in_canary_record(self):\n        \"\"\"Validate a canary fingerprint and use it in a CanaryRecord.\"\"\"\n        fp = f\"canary-{VALID_UUID_V4}-data\"\n        assert validate_canary_fingerprint(fp) is True\n\n        record = CanaryRecord(\n            ts=\"2024-01-01T00:00:00+00:00\",\n            canary_id=\"c-001\",\n            fingerprint=fp,\n            data_tier=DataTier.PII,\n            target_node=\"backend\",\n            triggered=False,\n            triggered_at=\"\",\n            triggered_by_node=\"\",\n        )\n        assert record.fingerprint == fp\n        assert record.triggered is False\n"
+}

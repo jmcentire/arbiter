@@ -1,0 +1,1479 @@
+{
+  "component_id": "conflicts",
+  "name": "Conflict Resolver",
+  "description": "Detects and resolves conflicts following the three-step protocol (C009). Detection: two or more nodes produce different values for the same field within the same domain during the same circuit execution, identified by correlating OTLP spans by execution ID with buffering/windowing (rabbit hole patch — configurable window timeout). Step 1: authority check — authoritative node wins if trust > authority_override_floor (0.4), else human review. Step 2: trust arbitration — higher-trust node wins if trust delta > threshold (0.2). Step 3: unresolvable — flag to human, emit to Stigmergy as high-weight signal, block deploy if protected tier. Maintains append-only conflict records with resolution status in JSONL format with SHA256 checksums. Provides unresolved conflict list for CLI and report. Supports N-way conflicts (not just pairwise). Trust scores are snapshotted at detection time for deterministic resolution.",
+  "version": 1,
+  "types": [
+    {
+      "name": "ResolutionStatus",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "DETECTED",
+        "AUTHORITY_RESOLVED",
+        "TRUST_RESOLVED",
+        "UNRESOLVABLE",
+        "HUMAN_REVIEWED"
+      ],
+      "inner_types": [],
+      "description": "Lifecycle status of a conflict record. Transitions: DETECTED -> (AUTHORITY_RESOLVED | TRUST_RESOLVED | UNRESOLVABLE) -> HUMAN_REVIEWED (only from UNRESOLVABLE)."
+    },
+    {
+      "name": "ResolutionStrategy",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "AUTHORITY",
+        "TRUST_ARBITRATION",
+        "HUMAN"
+      ],
+      "inner_types": [],
+      "description": "Which step of the three-step protocol resolved the conflict."
+    },
+    {
+      "name": "ConflictErrorCode",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "CONFLICT_NOT_FOUND",
+        "CONFLICT_ALREADY_RESOLVED",
+        "INVALID_EXECUTION_ID",
+        "WINDOW_TIMEOUT_EXPIRED",
+        "TRUST_LOOKUP_FAILED",
+        "AUTHORITY_LOOKUP_FAILED",
+        "SIGNAL_EMISSION_FAILED",
+        "STORE_WRITE_FAILED",
+        "STORE_READ_FAILED",
+        "CHECKSUM_MISMATCH",
+        "INVALID_CONFIG",
+        "INVALID_HUMAN_REVIEW",
+        "DUPLICATE_SPAN",
+        "TIER_LOOKUP_FAILED",
+        "EMPTY_COMPETING_VALUES",
+        "NO_CONFLICT_DETECTED"
+      ],
+      "inner_types": [],
+      "description": "Machine-readable error codes for all conflict resolver error responses. Included in all error payloads per operating procedures."
+    },
+    {
+      "name": "NodeValue",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier of the reporting node.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "node_id must not be empty"
+            }
+          ]
+        },
+        {
+          "name": "value_serialized",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "JSON-serialized value reported by this node. Serialized at ingestion for deterministic comparison.",
+          "validators": []
+        },
+        {
+          "name": "trust_score_snapshot",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Trust score of the node at conflict detection time, snapshotted from trust ledger.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "trust_score_snapshot must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "is_authoritative",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether this node is declared authoritative for the domain+field per the authority registry.",
+          "validators": []
+        },
+        {
+          "name": "span_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "OTLP span ID from which this value was extracted, for traceability.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single node's reported value for a contested field, with trust score snapshotted at detection time. Value is serialized as a JSON-compatible string to ensure deterministic comparison and storage."
+    },
+    {
+      "name": "Resolution",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "strategy",
+          "type_ref": "ResolutionStrategy",
+          "required": true,
+          "default": "",
+          "description": "Which step of the three-step protocol produced this resolution.",
+          "validators": []
+        },
+        {
+          "name": "winner_node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Node ID of the winning node. Empty string if strategy is HUMAN and not yet decided.",
+          "validators": []
+        },
+        {
+          "name": "resolved_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "UTC ISO-8601 timestamp when resolution was determined. Must be UTC per operating procedures.",
+          "validators": []
+        },
+        {
+          "name": "rationale",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable explanation of why this resolution was chosen, including specific node IDs, trust scores, and thresholds.",
+          "validators": []
+        },
+        {
+          "name": "reviewed_by",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Identity of human reviewer if strategy is HUMAN. Empty string if not human-reviewed.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The outcome of conflict resolution: which strategy was used, who won, and rationale."
+    },
+    {
+      "name": "ConflictRecord",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "conflict_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Globally unique conflict identifier (UUID4 string).",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+              "error_message": "conflict_id must be a valid UUID4"
+            }
+          ]
+        },
+        {
+          "name": "execution_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Circuit execution ID that produced the conflicting values.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "execution_id must not be empty"
+            }
+          ]
+        },
+        {
+          "name": "domain",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Domain in which the conflict occurred.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "domain must not be empty"
+            }
+          ]
+        },
+        {
+          "name": "field",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Field name that has conflicting values.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "field must not be empty"
+            }
+          ]
+        },
+        {
+          "name": "data_tier",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Classification tier of the field from the field classifier, used for deploy-blocking decisions. Empty string if tier lookup failed (degraded mode).",
+          "validators": []
+        },
+        {
+          "name": "competing_values",
+          "type_ref": "list[NodeValue]",
+          "required": true,
+          "default": "",
+          "description": "All competing node values. Must contain at least 2 entries (a conflict requires disagreement).",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=2",
+              "error_message": "A conflict requires at least 2 competing values"
+            }
+          ]
+        },
+        {
+          "name": "detected_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "UTC ISO-8601 timestamp when the conflict was detected.",
+          "validators": []
+        },
+        {
+          "name": "status",
+          "type_ref": "ResolutionStatus",
+          "required": true,
+          "default": "",
+          "description": "Current lifecycle status of this conflict.",
+          "validators": []
+        },
+        {
+          "name": "resolution",
+          "type_ref": "Resolution",
+          "required": false,
+          "default": "",
+          "description": "Resolution details. Only present when status is not DETECTED.",
+          "validators": []
+        },
+        {
+          "name": "blocks_deploy",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "True if this conflict blocks deployment. Set based on data_tier being a protected tier and status being UNRESOLVABLE or DETECTED.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single conflict instance: N nodes producing different values for the same (execution_id, domain, field) tuple. Append-only — once written to the conflict log, records are never modified in place; resolution is appended as a new log entry referencing the conflict_id."
+    },
+    {
+      "name": "ConflictResolverConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "window_timeout_seconds",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "How long to buffer spans for a given (execution_id, domain, field) window before closing it and checking for conflicts. Lazy timeout — checked on next ingest or explicit flush.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.1 <= value <= 3600.0",
+              "error_message": "window_timeout_seconds must be between 0.1 and 3600.0"
+            }
+          ]
+        },
+        {
+          "name": "authority_override_floor",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.4",
+          "description": "Minimum trust score an authoritative node must have to win via authority check (Step 1). Below this, conflict goes to human review.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "authority_override_floor must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "trust_delta_threshold",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.2",
+          "description": "Minimum trust score difference between the highest and second-highest trust nodes for trust arbitration to win (Step 2).",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "trust_delta_threshold must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "checkpoint_interval",
+          "type_ref": "int",
+          "required": false,
+          "default": "100",
+          "description": "Number of conflict log entries between SHA256 checksum lines in the JSONL conflict log. Matches trust ledger pattern.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 100000",
+              "error_message": "checkpoint_interval must be between 1 and 100000"
+            }
+          ]
+        },
+        {
+          "name": "conflict_log_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Path to the append-only JSONL conflict log file. Must use pathlib internally.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "conflict_log_path must not be empty"
+            }
+          ]
+        },
+        {
+          "name": "protected_tiers",
+          "type_ref": "list[str]",
+          "required": false,
+          "default": "[]",
+          "description": "List of data classification tier names that block deploy when unresolved conflicts exist.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for the conflict resolver. Loaded from YAML config per operating procedures. All thresholds validated to [0.0, 1.0]."
+    },
+    {
+      "name": "ConflictSignal",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "signal_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Always 'conflict_unresolvable'.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^conflict_unresolvable$",
+              "error_message": "signal_type must be 'conflict_unresolvable'"
+            }
+          ]
+        },
+        {
+          "name": "conflict_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "References the ConflictRecord.conflict_id.",
+          "validators": []
+        },
+        {
+          "name": "execution_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Circuit execution ID.",
+          "validators": []
+        },
+        {
+          "name": "domain",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Domain of the conflict.",
+          "validators": []
+        },
+        {
+          "name": "field",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Contested field name.",
+          "validators": []
+        },
+        {
+          "name": "competing_node_ids",
+          "type_ref": "list[str]",
+          "required": true,
+          "default": "",
+          "description": "Node IDs of all competing nodes.",
+          "validators": []
+        },
+        {
+          "name": "max_trust_score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Highest trust score among competing nodes.",
+          "validators": []
+        },
+        {
+          "name": "trust_delta",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Difference between highest and second-highest trust scores.",
+          "validators": []
+        },
+        {
+          "name": "weight",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Signal weight. Always 1.0 for unresolvable conflicts (high-weight).",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value == 1.0",
+              "error_message": "weight must be 1.0 for unresolvable conflicts"
+            }
+          ]
+        },
+        {
+          "name": "emitted_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "UTC ISO-8601 timestamp.",
+          "validators": []
+        },
+        {
+          "name": "blocks_deploy",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether this conflict blocks deployment.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Signal emitted to Stigmergy for unresolvable conflicts. High-weight signal per C009 spec."
+    },
+    {
+      "name": "SpanFieldReport",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "span_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "OTLP span ID.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "span_id must not be empty"
+            }
+          ]
+        },
+        {
+          "name": "execution_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Circuit execution ID extracted from span attributes.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "execution_id must not be empty"
+            }
+          ]
+        },
+        {
+          "name": "node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Node that produced this span.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "node_id must not be empty"
+            }
+          ]
+        },
+        {
+          "name": "domain",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Domain of the reported field.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "domain must not be empty"
+            }
+          ]
+        },
+        {
+          "name": "field",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Field name.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "field must not be empty"
+            }
+          ]
+        },
+        {
+          "name": "value_serialized",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "JSON-serialized field value reported by the node.",
+          "validators": []
+        },
+        {
+          "name": "reported_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "UTC ISO-8601 timestamp from the span.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Extracted field report from an OTLP span. This is the input to the conflict detector. Produced by the OTLP subscriber layer."
+    },
+    {
+      "name": "ConflictSummary",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "total_conflicts",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of conflict records.",
+          "validators": []
+        },
+        {
+          "name": "unresolved_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of conflicts with status DETECTED or UNRESOLVABLE.",
+          "validators": []
+        },
+        {
+          "name": "authority_resolved_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Conflicts resolved by authority check.",
+          "validators": []
+        },
+        {
+          "name": "trust_resolved_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Conflicts resolved by trust arbitration.",
+          "validators": []
+        },
+        {
+          "name": "human_reviewed_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Conflicts resolved by human review.",
+          "validators": []
+        },
+        {
+          "name": "deploy_blocking_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of conflicts currently blocking deployment.",
+          "validators": []
+        },
+        {
+          "name": "domains_affected",
+          "type_ref": "list[str]",
+          "required": true,
+          "default": "",
+          "description": "Distinct domains with unresolved conflicts.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Summary statistics for CLI and reporting."
+    },
+    {
+      "name": "TrustLookup",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "lookup_trust_score",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Callable protocol: (node_id: str) -> float. Returns raw trust score from ledger.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Protocol type for trust score lookup dependency. Implemented via composition, not inheritance."
+    },
+    {
+      "name": "AuthorityLookup",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "is_authoritative",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Callable protocol: (node_id: str, domain: str, field: str) -> bool. Returns whether node is declared authoritative.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Protocol type for authority registry dependency. Implemented via composition, not inheritance."
+    },
+    {
+      "name": "SignalEmitter",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "emit_signal",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Callable protocol: (signal: ConflictSignal) -> None. Emits to Stigmergy.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Protocol type for stigmergy signal emission dependency. Implemented via composition, not inheritance."
+    },
+    {
+      "name": "ConflictStore",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "append",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Callable protocol: (record: ConflictRecord) -> None. Appends record to JSONL log.",
+          "validators": []
+        },
+        {
+          "name": "load_all",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Callable protocol: () -> list[ConflictRecord]. Loads and verifies all records from log.",
+          "validators": []
+        },
+        {
+          "name": "verify_checksums",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Callable protocol: () -> bool. Verifies all SHA256 checksum lines in the log.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Protocol type for conflict persistence. Append-only JSONL store with SHA256 checksums at checkpoint_interval boundaries. Matches trust ledger pattern."
+    }
+  ],
+  "functions": [
+    {
+      "name": "ingest",
+      "description": "Ingests a span field report into the conflict detection buffer. Buffers by (execution_id, domain, field) key. When a window closes (lazy timeout checked on each ingest call), emits any detected conflicts where 2+ distinct values exist for the same key. Deduplicates by (node_id, span_id) to handle retransmitted spans. If only one distinct value exists after window close, no conflict is emitted.",
+      "inputs": [
+        {
+          "name": "span_report",
+          "type_ref": "SpanFieldReport",
+          "required": true,
+          "default": "",
+          "description": "Extracted field report from an OTLP span.",
+          "validators": []
+        }
+      ],
+      "output_type": "list[ConflictRecord]",
+      "error_cases": [
+        {
+          "name": "trust_lookup_failed",
+          "condition": "Trust ledger lookup fails for a node during conflict detection snapshot",
+          "error_type": "ConflictResolutionError",
+          "error_data": {
+            "error_code": "TRUST_LOOKUP_FAILED",
+            "node_id": "the node whose trust could not be looked up"
+          }
+        },
+        {
+          "name": "authority_lookup_failed",
+          "condition": "Authority registry lookup fails for a node during conflict detection snapshot",
+          "error_type": "ConflictResolutionError",
+          "error_data": {
+            "error_code": "AUTHORITY_LOOKUP_FAILED",
+            "node_id": "the node whose authority could not be looked up"
+          }
+        },
+        {
+          "name": "store_write_failed",
+          "condition": "Conflict store append fails during persistence",
+          "error_type": "ConflictStoreError",
+          "error_data": {
+            "error_code": "STORE_WRITE_FAILED",
+            "conflict_id": "the conflict that failed to persist"
+          }
+        },
+        {
+          "name": "duplicate_span",
+          "condition": "Span with same node_id + span_id already in buffer (not an error, silently ignored)",
+          "error_type": "None",
+          "error_data": {
+            "error_code": "DUPLICATE_SPAN"
+          }
+        },
+        {
+          "name": "tier_lookup_failed",
+          "condition": "Field classifier tier lookup fails; conflict is still detected with empty data_tier (degraded mode)",
+          "error_type": "None",
+          "error_data": {
+            "error_code": "TIER_LOOKUP_FAILED",
+            "domain": "affected domain",
+            "field": "affected field"
+          }
+        }
+      ],
+      "preconditions": [
+        "span_report passes all field validators",
+        "ConflictDetector has been initialized with valid ConflictResolverConfig",
+        "TrustLookup and AuthorityLookup dependencies are available for snapshot at detection time"
+      ],
+      "postconditions": [
+        "Returned list contains only newly detected conflicts (status=DETECTED) from windows that closed during this call",
+        "Each returned ConflictRecord has competing_values.length >= 2",
+        "Each NodeValue.trust_score_snapshot reflects the trust score at detection time, not ingestion time",
+        "Each NodeValue.is_authoritative reflects current authority registry state",
+        "All returned ConflictRecords have been persisted to the conflict store",
+        "span_report is buffered if its window has not yet closed",
+        "Duplicate spans (same node_id + span_id) are silently dropped"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Buffers span data in memory",
+        "Persists detected ConflictRecords to JSONL conflict log",
+        "Snapshots trust scores from trust ledger",
+        "Queries authority registry"
+      ],
+      "structured_side_effects": [
+        {
+          "kind": "mutates_state",
+          "target": "in-memory span buffer keyed by (execution_id, domain, field)",
+          "description": "Adds span to buffer or closes window and clears buffer entry"
+        },
+        {
+          "kind": "writes_file",
+          "target": "conflict_log_path (JSONL)",
+          "description": "Appends newly detected ConflictRecord entries"
+        },
+        {
+          "kind": "network_call",
+          "target": "trust_ledger",
+          "description": "Snapshots trust scores for all nodes in a closing window"
+        },
+        {
+          "kind": "network_call",
+          "target": "authority_registry",
+          "description": "Checks authority status for all nodes in a closing window"
+        },
+        {
+          "kind": "network_call",
+          "target": "field_classifier",
+          "description": "Looks up data tier for the contested field"
+        },
+        {
+          "kind": "logging",
+          "target": "conflict detection events",
+          "description": "Logs window open, close, and conflict detection events"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 50,
+        "max_memory_mb": null,
+        "complexity": "O(W) where W is the number of windows checked for timeout on this call"
+      }
+    },
+    {
+      "name": "flush",
+      "description": "Force-closes all open detection windows regardless of timeout, emitting any detected conflicts. Used during shutdown, circuit completion, or manual CLI trigger. After flush, the buffer is empty.",
+      "inputs": [],
+      "output_type": "list[ConflictRecord]",
+      "error_cases": [
+        {
+          "name": "trust_lookup_failed",
+          "condition": "Trust ledger lookup fails for a node during flush",
+          "error_type": "ConflictResolutionError",
+          "error_data": {
+            "error_code": "TRUST_LOOKUP_FAILED"
+          }
+        },
+        {
+          "name": "authority_lookup_failed",
+          "condition": "Authority registry lookup fails during flush",
+          "error_type": "ConflictResolutionError",
+          "error_data": {
+            "error_code": "AUTHORITY_LOOKUP_FAILED"
+          }
+        },
+        {
+          "name": "store_write_failed",
+          "condition": "Conflict store append fails during flush persistence",
+          "error_type": "ConflictStoreError",
+          "error_data": {
+            "error_code": "STORE_WRITE_FAILED"
+          }
+        }
+      ],
+      "preconditions": [
+        "ConflictDetector has been initialized with valid ConflictResolverConfig"
+      ],
+      "postconditions": [
+        "All open windows are closed and evaluated for conflicts",
+        "Returned list contains all newly detected conflicts from flushed windows",
+        "In-memory buffer is empty after flush completes",
+        "All returned ConflictRecords have been persisted to the conflict store",
+        "Windows with only one distinct value produce no conflict"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Clears in-memory buffer",
+        "Persists detected ConflictRecords to JSONL conflict log"
+      ],
+      "structured_side_effects": [
+        {
+          "kind": "mutates_state",
+          "target": "in-memory span buffer",
+          "description": "Clears all buffer entries after evaluation"
+        },
+        {
+          "kind": "writes_file",
+          "target": "conflict_log_path (JSONL)",
+          "description": "Appends newly detected ConflictRecord entries"
+        },
+        {
+          "kind": "network_call",
+          "target": "trust_ledger",
+          "description": "Snapshots trust scores for nodes in all open windows"
+        },
+        {
+          "kind": "network_call",
+          "target": "authority_registry",
+          "description": "Checks authority for nodes in all open windows"
+        },
+        {
+          "kind": "network_call",
+          "target": "field_classifier",
+          "description": "Looks up data tiers for all contested fields"
+        },
+        {
+          "kind": "logging",
+          "target": "flush events",
+          "description": "Logs flush initiation, window count, and conflicts detected"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 500,
+        "max_memory_mb": null,
+        "complexity": "O(B) where B is total buffered spans across all windows"
+      }
+    },
+    {
+      "name": "resolve",
+      "description": "Runs the three-step conflict resolution protocol on a detected conflict. Step 1: Authority check — if exactly one authoritative node exists and its trust > authority_override_floor, it wins (AUTHORITY_RESOLVED). If authoritative node trust <= floor, skip to Step 3. Step 2: Trust arbitration — sort competing nodes by trust_score_snapshot descending; if delta between #1 and #2 > trust_delta_threshold, #1 wins (TRUST_RESOLVED). For N-way conflicts, only the top-2 trust scores matter for the delta check. Step 3: Unresolvable — set status to UNRESOLVABLE, emit ConflictSignal to stigmergy, set blocks_deploy if data_tier is protected. Returns the updated ConflictRecord. The original DETECTED record and the resolved record are both in the append-only log.",
+      "inputs": [
+        {
+          "name": "conflict",
+          "type_ref": "ConflictRecord",
+          "required": true,
+          "default": "",
+          "description": "The conflict to resolve. Must have status DETECTED.",
+          "validators": []
+        }
+      ],
+      "output_type": "ConflictRecord",
+      "error_cases": [
+        {
+          "name": "already_resolved",
+          "condition": "conflict.status is not DETECTED",
+          "error_type": "ConflictResolutionError",
+          "error_data": {
+            "error_code": "CONFLICT_ALREADY_RESOLVED",
+            "conflict_id": "the conflict_id",
+            "current_status": "the current status"
+          }
+        },
+        {
+          "name": "signal_emission_failed",
+          "condition": "Stigmergy signal emission fails during Step 3 (unresolvable)",
+          "error_type": "ConflictResolutionError",
+          "error_data": {
+            "error_code": "SIGNAL_EMISSION_FAILED",
+            "conflict_id": "the conflict_id"
+          }
+        },
+        {
+          "name": "store_write_failed",
+          "condition": "Conflict store append fails when persisting resolution",
+          "error_type": "ConflictStoreError",
+          "error_data": {
+            "error_code": "STORE_WRITE_FAILED",
+            "conflict_id": "the conflict_id"
+          }
+        },
+        {
+          "name": "empty_competing_values",
+          "condition": "conflict.competing_values has fewer than 2 entries (should not happen if preconditions hold)",
+          "error_type": "ConflictResolutionError",
+          "error_data": {
+            "error_code": "EMPTY_COMPETING_VALUES",
+            "conflict_id": "the conflict_id"
+          }
+        }
+      ],
+      "preconditions": [
+        "conflict.status == DETECTED",
+        "conflict.competing_values.length >= 2",
+        "All NodeValue.trust_score_snapshot values are already populated (snapshotted at detection)",
+        "ConflictResolver has been initialized with valid config and all Protocol dependencies"
+      ],
+      "postconditions": [
+        "Returned ConflictRecord.status is one of: AUTHORITY_RESOLVED, TRUST_RESOLVED, UNRESOLVABLE",
+        "Returned ConflictRecord.resolution is populated with strategy, winner_node_id, resolved_at (UTC), and rationale",
+        "If status is AUTHORITY_RESOLVED: resolution.strategy == AUTHORITY and winner is the authoritative node",
+        "If status is TRUST_RESOLVED: resolution.strategy == TRUST_ARBITRATION and winner is the highest-trust node",
+        "If status is UNRESOLVABLE: resolution.strategy == HUMAN and a ConflictSignal has been emitted to stigmergy",
+        "If status is UNRESOLVABLE and data_tier in protected_tiers: blocks_deploy == True",
+        "Resolution is deterministic given the same conflict record and config",
+        "Updated record has been appended to the conflict store (append-only log)",
+        "rationale includes specific node IDs, trust scores, and threshold values used in the decision"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Persists resolved ConflictRecord to JSONL log",
+        "Emits ConflictSignal to stigmergy if unresolvable"
+      ],
+      "structured_side_effects": [
+        {
+          "kind": "writes_file",
+          "target": "conflict_log_path (JSONL)",
+          "description": "Appends the resolved ConflictRecord entry"
+        },
+        {
+          "kind": "network_call",
+          "target": "stigmergy",
+          "description": "Emits ConflictSignal if conflict is unresolvable (Step 3)"
+        },
+        {
+          "kind": "logging",
+          "target": "resolution events",
+          "description": "Logs each step attempted and the final resolution outcome with rationale"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 20,
+        "max_memory_mb": null,
+        "complexity": "O(N log N) where N is number of competing values (sort by trust score)"
+      }
+    },
+    {
+      "name": "submit_human_review",
+      "description": "Records a human review decision for an UNRESOLVABLE conflict. Transitions the conflict from UNRESOLVABLE to HUMAN_REVIEWED with the selected winner node and reviewer identity. Only valid for conflicts with status UNRESOLVABLE.",
+      "inputs": [
+        {
+          "name": "conflict_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "UUID of the conflict to review.",
+          "validators": []
+        },
+        {
+          "name": "winner_node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Node ID selected as the winner by the human reviewer. Must be one of the competing node IDs.",
+          "validators": []
+        },
+        {
+          "name": "reviewed_by",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identity of the human reviewer.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "reviewed_by must not be empty"
+            }
+          ]
+        },
+        {
+          "name": "rationale",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-provided rationale for the decision.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "rationale must not be empty"
+            }
+          ]
+        }
+      ],
+      "output_type": "ConflictRecord",
+      "error_cases": [
+        {
+          "name": "conflict_not_found",
+          "condition": "No conflict with the given conflict_id exists",
+          "error_type": "ConflictNotFoundError",
+          "error_data": {
+            "error_code": "CONFLICT_NOT_FOUND",
+            "conflict_id": "the requested conflict_id"
+          }
+        },
+        {
+          "name": "invalid_status",
+          "condition": "Conflict status is not UNRESOLVABLE",
+          "error_type": "ConflictResolutionError",
+          "error_data": {
+            "error_code": "INVALID_HUMAN_REVIEW",
+            "conflict_id": "the conflict_id",
+            "current_status": "the current status"
+          }
+        },
+        {
+          "name": "invalid_winner",
+          "condition": "winner_node_id is not among the competing node IDs",
+          "error_type": "ConflictResolutionError",
+          "error_data": {
+            "error_code": "INVALID_HUMAN_REVIEW",
+            "conflict_id": "the conflict_id",
+            "winner_node_id": "the invalid winner_node_id"
+          }
+        },
+        {
+          "name": "store_write_failed",
+          "condition": "Conflict store append fails",
+          "error_type": "ConflictStoreError",
+          "error_data": {
+            "error_code": "STORE_WRITE_FAILED",
+            "conflict_id": "the conflict_id"
+          }
+        }
+      ],
+      "preconditions": [
+        "Conflict with conflict_id exists in the store",
+        "Conflict status is UNRESOLVABLE",
+        "winner_node_id is one of the competing node IDs in the conflict"
+      ],
+      "postconditions": [
+        "Returned ConflictRecord.status == HUMAN_REVIEWED",
+        "Returned ConflictRecord.resolution.strategy == HUMAN",
+        "Returned ConflictRecord.resolution.winner_node_id == winner_node_id",
+        "Returned ConflictRecord.resolution.reviewed_by == reviewed_by",
+        "Returned ConflictRecord.blocks_deploy == False (human review clears deploy block)",
+        "Updated record has been appended to the conflict store",
+        "If previous record had blocks_deploy == True, the deploy block is now cleared"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Persists human-reviewed ConflictRecord to JSONL log"
+      ],
+      "structured_side_effects": [
+        {
+          "kind": "writes_file",
+          "target": "conflict_log_path (JSONL)",
+          "description": "Appends the human-reviewed ConflictRecord entry"
+        },
+        {
+          "kind": "mutates_state",
+          "target": "in-memory conflict index",
+          "description": "Updates the latest status for this conflict_id"
+        },
+        {
+          "kind": "logging",
+          "target": "human review events",
+          "description": "Logs human review submission with reviewer identity and conflict_id"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 30,
+        "max_memory_mb": null,
+        "complexity": null
+      }
+    },
+    {
+      "name": "get_unresolved",
+      "description": "Returns all conflicts that are not yet fully resolved (status DETECTED or UNRESOLVABLE), optionally filtered by domain. Used by CLI and report generation. Returns newest-first ordering.",
+      "inputs": [
+        {
+          "name": "domain",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Optional domain filter. If empty string, returns unresolved conflicts across all domains.",
+          "validators": []
+        }
+      ],
+      "output_type": "list[ConflictRecord]",
+      "error_cases": [
+        {
+          "name": "store_read_failed",
+          "condition": "Conflict store read fails",
+          "error_type": "ConflictStoreError",
+          "error_data": {
+            "error_code": "STORE_READ_FAILED"
+          }
+        }
+      ],
+      "preconditions": [],
+      "postconditions": [
+        "All returned records have status DETECTED or UNRESOLVABLE",
+        "If domain is non-empty, all returned records have matching domain",
+        "Results are ordered by detected_at descending (newest first)",
+        "Result is a snapshot — new conflicts detected after this call are not included"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "conflict_log_path (JSONL) or in-memory index",
+          "description": "Reads conflict records to filter unresolved entries"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 100,
+        "max_memory_mb": null,
+        "complexity": "O(C) where C is total conflict records"
+      }
+    },
+    {
+      "name": "has_blocking_conflicts",
+      "description": "Checks whether any unresolved conflicts in the given domain block deployment. A conflict blocks deploy if blocks_deploy == True (determined by data_tier being in protected_tiers and status being DETECTED or UNRESOLVABLE). Used as a deploy gate.",
+      "inputs": [
+        {
+          "name": "domain",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Domain to check for deploy-blocking conflicts.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "domain must not be empty"
+            }
+          ]
+        }
+      ],
+      "output_type": "bool",
+      "error_cases": [
+        {
+          "name": "store_read_failed",
+          "condition": "Conflict store read fails",
+          "error_type": "ConflictStoreError",
+          "error_data": {
+            "error_code": "STORE_READ_FAILED"
+          }
+        }
+      ],
+      "preconditions": [
+        "domain is a non-empty string"
+      ],
+      "postconditions": [
+        "Returns True if and only if at least one conflict exists with domain == domain AND blocks_deploy == True AND status in (DETECTED, UNRESOLVABLE)",
+        "Returns False if no such conflict exists or domain has no conflicts"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "conflict_log_path (JSONL) or in-memory index",
+          "description": "Reads conflict records to check for deploy-blocking entries"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 20,
+        "max_memory_mb": null,
+        "complexity": "O(C_d) where C_d is conflict records in the given domain"
+      }
+    },
+    {
+      "name": "get_summary",
+      "description": "Returns aggregate conflict statistics for CLI display and reporting. Provides counts by resolution status, deploy-blocking count, and list of affected domains.",
+      "inputs": [],
+      "output_type": "ConflictSummary",
+      "error_cases": [
+        {
+          "name": "store_read_failed",
+          "condition": "Conflict store read fails",
+          "error_type": "ConflictStoreError",
+          "error_data": {
+            "error_code": "STORE_READ_FAILED"
+          }
+        }
+      ],
+      "preconditions": [],
+      "postconditions": [
+        "total_conflicts == sum of all status counts",
+        "unresolved_count == count of DETECTED + UNRESOLVABLE",
+        "deploy_blocking_count == count of records where blocks_deploy == True AND status in (DETECTED, UNRESOLVABLE)",
+        "domains_affected contains only domains with unresolved conflicts, deduplicated and sorted"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "conflict_log_path (JSONL) or in-memory index",
+          "description": "Reads all conflict records to compute summary statistics"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 100,
+        "max_memory_mb": null,
+        "complexity": "O(C) where C is total conflict records"
+      }
+    },
+    {
+      "name": "verify_log_integrity",
+      "description": "Verifies the SHA256 checksums in the append-only JSONL conflict log. Returns True if all checksum lines are valid, False otherwise. Used for audit and startup integrity checks.",
+      "inputs": [],
+      "output_type": "bool",
+      "error_cases": [
+        {
+          "name": "store_read_failed",
+          "condition": "Conflict log file cannot be read",
+          "error_type": "ConflictStoreError",
+          "error_data": {
+            "error_code": "STORE_READ_FAILED",
+            "conflict_log_path": "the configured path"
+          }
+        },
+        {
+          "name": "checksum_mismatch",
+          "condition": "A checksum line does not match the computed hash (returns False, does not raise)",
+          "error_type": "None",
+          "error_data": {
+            "error_code": "CHECKSUM_MISMATCH"
+          }
+        }
+      ],
+      "preconditions": [
+        "Conflict log file exists at conflict_log_path"
+      ],
+      "postconditions": [
+        "Returns True if and only if every SHA256 checksum line in the log matches the hash of the preceding N entries (where N is checkpoint_interval)",
+        "Returns True if log is empty (vacuously true)",
+        "Does not modify the log file"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "conflict_log_path (JSONL)",
+          "description": "Reads entire conflict log to verify all SHA256 checksum lines"
+        },
+        {
+          "kind": "logging",
+          "target": "integrity check events",
+          "description": "Logs verification start, any mismatches found, and final result"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": null,
+        "max_memory_mb": null,
+        "complexity": "O(L) where L is total lines in the conflict log"
+      }
+    },
+    {
+      "name": "load_config",
+      "description": "Loads and validates ConflictResolverConfig from a YAML file. All threshold validators are applied. Returns a validated config instance.",
+      "inputs": [
+        {
+          "name": "config_path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Path to the YAML configuration file. Resolved via pathlib.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "config_path must not be empty"
+            }
+          ]
+        }
+      ],
+      "output_type": "ConflictResolverConfig",
+      "error_cases": [
+        {
+          "name": "file_not_found",
+          "condition": "Config file does not exist at config_path",
+          "error_type": "FileNotFoundError",
+          "error_data": {
+            "config_path": "the requested path"
+          }
+        },
+        {
+          "name": "invalid_yaml",
+          "condition": "File content is not valid YAML",
+          "error_type": "ConflictConfigError",
+          "error_data": {
+            "error_code": "INVALID_CONFIG",
+            "config_path": "the requested path"
+          }
+        },
+        {
+          "name": "invalid_config",
+          "condition": "YAML content fails Pydantic validation for ConflictResolverConfig",
+          "error_type": "ConflictConfigError",
+          "error_data": {
+            "error_code": "INVALID_CONFIG",
+            "validation_errors": "pydantic validation error details"
+          }
+        }
+      ],
+      "preconditions": [
+        "File at config_path exists and is readable",
+        "File content is valid YAML"
+      ],
+      "postconditions": [
+        "Returned config passes all ConflictResolverConfig validators",
+        "All threshold values are within [0.0, 1.0]",
+        "checkpoint_interval is >= 1",
+        "window_timeout_seconds is >= 0.1"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "reads_file",
+          "target": "config_path (YAML)",
+          "description": "Reads YAML configuration file from disk via pathlib"
+        }
+      ],
+      "performance_budget": null
+    }
+  ],
+  "dependencies": [
+    "trust_ledger",
+    "authority_registry",
+    "stigmergy",
+    "field_classifier"
+  ],
+  "dependency_contracts": {
+    "trust_ledger": [
+      "lookup_trust_score(node_id: str) -> float",
+      "Trust score computation is deterministic given the same ledger input"
+    ],
+    "authority_registry": [
+      "is_authoritative(node_id: str, domain: str, field: str) -> bool",
+      "Authority is declared from manifests, not computed"
+    ],
+    "stigmergy": [
+      "emit_signal(signal: dict) -> None",
+      "Signals are append-only high-weight entries"
+    ],
+    "field_classifier": [
+      "get_data_tier(domain: str, field: str) -> str",
+      "Returns classification tier for deploy-blocking decisions"
+    ]
+  },
+  "invariants": [
+    "The conflict log is append-only: records are never modified or deleted in place. Resolution is appended as a new log entry referencing the original conflict_id.",
+    "Trust scores in NodeValue.trust_score_snapshot are immutable after detection — they reflect the trust state at detection time, not current trust.",
+    "Resolution is deterministic: given the same ConflictRecord (with snapshotted trust scores and authority flags) and the same ConflictResolverConfig, resolve() always produces the same result.",
+    "A conflict requires at least 2 competing values with distinct value_serialized — a single value or all-identical values never produce a conflict.",
+    "Status transitions are strictly ordered: DETECTED -> (AUTHORITY_RESOLVED | TRUST_RESOLVED | UNRESOLVABLE) -> HUMAN_REVIEWED. No other transitions are valid.",
+    "HUMAN_REVIEWED is only reachable from UNRESOLVABLE. AUTHORITY_RESOLVED and TRUST_RESOLVED are terminal states.",
+    "blocks_deploy is True only when data_tier is in protected_tiers AND status is DETECTED or UNRESOLVABLE. Human review clears the deploy block.",
+    "SHA256 checksum lines appear in the conflict log every checkpoint_interval entries, matching the trust ledger checksum pattern.",
+    "All timestamps are UTC ISO-8601 strings. No local time is ever stored or compared.",
+    "Trust is earned (from ledger), authority is declared (from registry) — the resolver never conflates them. Authority check uses is_authoritative AND trust_score_snapshot; trust arbitration uses only trust_score_snapshot.",
+    "Error messages always include the specific conflict_id, node_id, domain, or field that caused the error, per operating procedures.",
+    "For N-way conflicts (>2 nodes), Step 1 authority check requires exactly one authoritative node among competitors. Step 2 trust arbitration compares the top-2 trust scores regardless of N."
+  ],
+  "requires": [
+    "Python 3.12+",
+    "pydantic >= 2.0",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "PyYAML"
+  ],
+  "processing_register": "rigorous-analytical"
+}

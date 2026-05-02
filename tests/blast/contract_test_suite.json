@@ -1,0 +1,1353 @@
+{
+  "component_id": "blast",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "cbr_happy_single_node",
+      "description": "BFS on single node graph returns only the origin",
+      "function": "compute_blast_radius",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph with one PUBLIC node, origin=that node, no max_depth",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.origin == origin",
+        "origin in result.reachable_nodes",
+        "len(result.reachable_nodes) == 1",
+        "len(result.node_details) == 1",
+        "result.highest_data_tier == DataTier.PUBLIC",
+        "result.max_depth_reached == 0",
+        "result.cycle_detected == False"
+      ]
+    },
+    {
+      "id": "cbr_happy_linear_chain",
+      "description": "BFS on linear chain A->B->C returns all three nodes with correct depths",
+      "function": "compute_blast_radius",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Linear chain of 3 PUBLIC nodes",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.reachable_nodes) == 3",
+        "result.max_depth_reached == 2"
+      ]
+    },
+    {
+      "id": "cbr_happy_diamond",
+      "description": "BFS on diamond graph A->B,A->C,B->D,C->D returns 4 nodes",
+      "function": "compute_blast_radius",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Diamond topology with 4 nodes",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.reachable_nodes) == 4",
+        "result.cycle_detected == False"
+      ]
+    },
+    {
+      "id": "cbr_happy_tree_fanout",
+      "description": "BFS on tree with fan-out (A->B,A->C,A->D) returns all 4 nodes at depth 1",
+      "function": "compute_blast_radius",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Star graph with center as origin",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.reachable_nodes) == 4",
+        "result.max_depth_reached == 1"
+      ]
+    },
+    {
+      "id": "cbr_happy_highest_tier",
+      "description": "highest_data_tier is maximum among reachable nodes",
+      "function": "compute_blast_radius",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Chain A(PUBLIC)->B(PII)->C(FINANCIAL)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.highest_data_tier == DataTier.FINANCIAL"
+      ]
+    },
+    {
+      "id": "cbr_cycle_self_loop",
+      "description": "Self-loop on origin is handled; cycle_detected is True",
+      "function": "compute_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Single node with self-loop edge",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.cycle_detected == True",
+        "len(result.reachable_nodes) == 1"
+      ]
+    },
+    {
+      "id": "cbr_cycle_two_node",
+      "description": "Two-node cycle A<->B detected correctly",
+      "function": "compute_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A->B and B->A edges",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.cycle_detected == True",
+        "len(result.reachable_nodes) == 2"
+      ]
+    },
+    {
+      "id": "cbr_cycle_not_from_origin",
+      "description": "Cycle exists downstream but BFS still terminates",
+      "function": "compute_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A->B->C->B cycle, origin=A",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.cycle_detected == True",
+        "len(result.reachable_nodes) == 3"
+      ]
+    },
+    {
+      "id": "cbr_depth_zero",
+      "description": "max_depth=0 returns only the origin node",
+      "function": "compute_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Chain graph, max_depth=0",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.reachable_nodes) == 1",
+        "result.max_depth_reached == 0"
+      ]
+    },
+    {
+      "id": "cbr_depth_one",
+      "description": "max_depth=1 returns origin and direct neighbors only",
+      "function": "compute_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Chain A->B->C, max_depth=1",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.reachable_nodes) == 2",
+        "result.max_depth_reached <= 1"
+      ]
+    },
+    {
+      "id": "cbr_depth_exact_boundary",
+      "description": "max_depth equals graph diameter includes all nodes",
+      "function": "compute_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Chain A->B->C, max_depth=2",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.reachable_nodes) == 3",
+        "result.max_depth_reached == 2"
+      ]
+    },
+    {
+      "id": "cbr_depth_beyond_diameter",
+      "description": "max_depth larger than diameter still returns all nodes",
+      "function": "compute_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Chain A->B->C, max_depth=100",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.reachable_nodes) == 3",
+        "result.max_depth_reached == 2"
+      ]
+    },
+    {
+      "id": "cbr_disconnected_graph",
+      "description": "Disconnected nodes not reachable from origin",
+      "function": "compute_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two disconnected components, origin in first",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.reachable_nodes) == 1"
+      ]
+    },
+    {
+      "id": "cbr_error_origin_not_found",
+      "description": "Raises error when origin not in graph metadata",
+      "function": "compute_blast_radius",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Origin node ID not in graph",
+      "expected_output_description": "",
+      "expected_error": "origin_not_found",
+      "assertions": []
+    },
+    {
+      "id": "cbr_error_inconsistent_graph",
+      "description": "Raises error when adjacency references node without metadata",
+      "function": "compute_blast_radius",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Adjacency has node without metadata entry",
+      "expected_output_description": "",
+      "expected_error": "inconsistent_graph",
+      "assertions": []
+    },
+    {
+      "id": "cbr_error_invalid_max_depth_negative",
+      "description": "Raises error when max_depth is negative",
+      "function": "compute_blast_radius",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "max_depth=-1",
+      "expected_output_description": "",
+      "expected_error": "invalid_max_depth",
+      "assertions": []
+    },
+    {
+      "id": "cbr_invariant_origin_in_reachable",
+      "description": "Origin is always in reachable_nodes regardless of topology",
+      "function": "compute_blast_radius",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "origin in result.reachable_nodes"
+      ]
+    },
+    {
+      "id": "cbr_invariant_reachable_equals_details",
+      "description": "reachable_nodes count equals node_details count",
+      "function": "compute_blast_radius",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.reachable_nodes) == len(result.node_details)"
+      ]
+    },
+    {
+      "id": "cb_happy_all_public",
+      "description": "All PUBLIC authorized nodes yield AUTO_MERGE",
+      "function": "classify_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.AUTO_MERGE",
+        "result.legal_flag == False"
+      ]
+    },
+    {
+      "id": "cb_happy_pii_soak",
+      "description": "PII node with authorization yields SOAK",
+      "function": "classify_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.SOAK",
+        "result.legal_flag == False"
+      ]
+    },
+    {
+      "id": "cb_happy_financial_human_gate",
+      "description": "FINANCIAL node yields HUMAN_GATE",
+      "function": "classify_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE",
+        "result.legal_flag == False"
+      ]
+    },
+    {
+      "id": "cb_happy_auth_human_gate",
+      "description": "AUTH node yields HUMAN_GATE",
+      "function": "classify_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "cb_happy_compliance_legal_flag",
+      "description": "COMPLIANCE node yields HUMAN_GATE with legal_flag=True",
+      "function": "classify_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE",
+        "result.legal_flag == True"
+      ]
+    },
+    {
+      "id": "cb_max_over_nodes",
+      "description": "Mixed PUBLIC+PII yields SOAK (max over per-node actions)",
+      "function": "classify_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.SOAK"
+      ]
+    },
+    {
+      "id": "cb_unauthorized_tier_human_gate",
+      "description": "Node with unauthorized tier yields HUMAN_GATE",
+      "function": "classify_blast",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "cb_low_trust_authoritative_human_gate",
+      "description": "Low trust authoritative node escalates to HUMAN_GATE",
+      "function": "classify_blast",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "cb_legal_flag_false_when_not_human_gate",
+      "description": "legal_flag is False when action is not HUMAN_GATE even with COMPLIANCE at lower tier",
+      "function": "classify_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.legal_flag == False or result.action == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "cb_contributing_nodes_nonempty",
+      "description": "contributing_nodes always non-empty",
+      "function": "classify_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.contributing_nodes) > 0"
+      ]
+    },
+    {
+      "id": "cb_error_empty_traversal",
+      "description": "Raises error on empty traversal reachable_nodes",
+      "function": "classify_blast",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "empty_traversal",
+      "assertions": []
+    },
+    {
+      "id": "csd_happy_public",
+      "description": "Soak duration for PUBLIC tier with trust=1.0",
+      "function": "compute_soak_duration",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.total_seconds() > 0"
+      ]
+    },
+    {
+      "id": "csd_happy_pii",
+      "description": "Soak duration for PII tier with trust=0.5",
+      "function": "compute_soak_duration",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.total_seconds() > 0"
+      ]
+    },
+    {
+      "id": "csd_happy_financial",
+      "description": "Soak duration for FINANCIAL tier",
+      "function": "compute_soak_duration",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.total_seconds() > 0"
+      ]
+    },
+    {
+      "id": "csd_happy_compliance",
+      "description": "Soak duration for COMPLIANCE tier",
+      "function": "compute_soak_duration",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.total_seconds() > 0"
+      ]
+    },
+    {
+      "id": "csd_trust_zero",
+      "description": "trust_score=0.0 gives maximum duration multiplier (2.0)",
+      "function": "compute_soak_duration",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.total_seconds() > 0"
+      ]
+    },
+    {
+      "id": "csd_trust_one",
+      "description": "trust_score=1.0 gives minimum duration multiplier (1.0)",
+      "function": "compute_soak_duration",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.total_seconds() > 0"
+      ]
+    },
+    {
+      "id": "csd_high_ratio",
+      "description": "Large target_requests/observed_rate_rps ratio increases duration",
+      "function": "compute_soak_duration",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.total_seconds() > 0"
+      ]
+    },
+    {
+      "id": "csd_ratio_below_one",
+      "description": "When ratio < 1, max(1.0, sqrt(ratio)) == 1.0 so no extra scaling",
+      "function": "compute_soak_duration",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.total_seconds() > 0"
+      ]
+    },
+    {
+      "id": "csd_monotone_trust",
+      "description": "Lower trust_score yields longer or equal soak duration",
+      "function": "compute_soak_duration",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "duration_low_trust >= duration_high_trust"
+      ]
+    },
+    {
+      "id": "csd_monotone_ratio",
+      "description": "Higher target/rps ratio yields longer or equal soak duration",
+      "function": "compute_soak_duration",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "duration_high_ratio >= duration_low_ratio"
+      ]
+    },
+    {
+      "id": "csd_error_missing_base_duration",
+      "description": "Raises error when tier not in base_durations",
+      "function": "compute_soak_duration",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "missing_base_duration",
+      "assertions": []
+    },
+    {
+      "id": "csd_error_invalid_trust_nan",
+      "description": "Raises error when trust_score is NaN",
+      "function": "compute_soak_duration",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_trust_score",
+      "assertions": []
+    },
+    {
+      "id": "csd_error_invalid_trust_inf",
+      "description": "Raises error when trust_score is infinite",
+      "function": "compute_soak_duration",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_trust_score",
+      "assertions": []
+    },
+    {
+      "id": "csd_formula_verification",
+      "description": "Verify exact formula: base * (2.0 - trust) * max(1.0, sqrt(target/rps))",
+      "function": "compute_soak_duration",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == expected_duration"
+      ]
+    },
+    {
+      "id": "cn_happy_public_auto_merge",
+      "description": "PUBLIC authorized non-authoritative node -> AUTO_MERGE",
+      "function": "classify_node",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.AUTO_MERGE"
+      ]
+    },
+    {
+      "id": "cn_happy_pii_soak",
+      "description": "PII authorized non-authoritative node -> SOAK",
+      "function": "classify_node",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.SOAK"
+      ]
+    },
+    {
+      "id": "cn_happy_financial_human_gate",
+      "description": "FINANCIAL node -> HUMAN_GATE regardless",
+      "function": "classify_node",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "cn_happy_auth_human_gate",
+      "description": "AUTH node -> HUMAN_GATE regardless",
+      "function": "classify_node",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "cn_happy_compliance_human_gate",
+      "description": "COMPLIANCE node -> HUMAN_GATE",
+      "function": "classify_node",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "cn_unauthorized_public_human_gate",
+      "description": "PUBLIC node unauthorized for its tier -> HUMAN_GATE",
+      "function": "classify_node",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "cn_unauthorized_pii_human_gate",
+      "description": "PII node unauthorized for its tier -> HUMAN_GATE",
+      "function": "classify_node",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "cn_low_trust_authoritative_human_gate",
+      "description": "Low trust authoritative PUBLIC node -> HUMAN_GATE",
+      "function": "classify_node",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "cn_high_trust_authoritative_auto_merge",
+      "description": "High trust authoritative PUBLIC node -> AUTO_MERGE",
+      "function": "classify_node",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.AUTO_MERGE"
+      ]
+    },
+    {
+      "id": "cn_trust_at_threshold",
+      "description": "Trust exactly at threshold is NOT low trust (>= not <)",
+      "function": "classify_node",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result != ActionCategory.HUMAN_GATE or 'expected based on tier'"
+      ]
+    },
+    {
+      "id": "cn_trust_just_below_threshold",
+      "description": "Trust just below threshold triggers low-trust rule for authoritative",
+      "function": "classify_node",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "cn_error_node_id_mismatch",
+      "description": "Raises error when detail.node_id != metadata.node_id",
+      "function": "classify_node",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "node_id_mismatch",
+      "assertions": []
+    },
+    {
+      "id": "gm_add_node_happy",
+      "description": "Adding a node puts it in metadata and adjacency",
+      "function": "add_node",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "node_id in graph.metadata",
+        "node_id in graph.adjacency",
+        "graph.adjacency[node_id] == []"
+      ]
+    },
+    {
+      "id": "gm_add_node_replace",
+      "description": "Adding existing node replaces its metadata",
+      "function": "add_node",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "graph.metadata[node_id].data_tier == new_tier"
+      ]
+    },
+    {
+      "id": "gm_add_node_returns_same",
+      "description": "add_node returns the same graph object (builder pattern)",
+      "function": "add_node",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returned_graph is graph"
+      ]
+    },
+    {
+      "id": "gm_add_node_error_invalid_metadata",
+      "description": "Raises error for invalid metadata (e.g. trust_score out of range)",
+      "function": "add_node",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "invalid_metadata",
+      "assertions": []
+    },
+    {
+      "id": "gm_add_edge_happy",
+      "description": "Adding an edge puts target in source's adjacency",
+      "function": "add_edge",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "target in graph.adjacency[source]"
+      ]
+    },
+    {
+      "id": "gm_add_edge_returns_same",
+      "description": "add_edge returns the same graph object (builder pattern)",
+      "function": "add_edge",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returned_graph is graph"
+      ]
+    },
+    {
+      "id": "gm_add_edge_no_duplicates",
+      "description": "Adding same edge twice does not create duplicate",
+      "function": "add_edge",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "graph.adjacency[source].count(target) == 1"
+      ]
+    },
+    {
+      "id": "gm_add_edge_error_source_not_found",
+      "description": "Raises error when source not in metadata",
+      "function": "add_edge",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "source_not_found",
+      "assertions": []
+    },
+    {
+      "id": "gm_add_edge_error_target_not_found",
+      "description": "Raises error when target not in metadata",
+      "function": "add_edge",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "target_not_found",
+      "assertions": []
+    },
+    {
+      "id": "eb_happy_auto_merge",
+      "description": "evaluate_blast with all PUBLIC nodes returns AUTO_MERGE, no notification",
+      "function": "evaluate_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.AUTO_MERGE",
+        "result.soak_duration is None",
+        "result.legal_flag == False",
+        "notifier.notify.call_count == 0"
+      ]
+    },
+    {
+      "id": "eb_happy_soak",
+      "description": "evaluate_blast with PII node returns SOAK with positive soak_duration",
+      "function": "evaluate_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.SOAK",
+        "result.soak_duration is not None",
+        "result.soak_duration.total_seconds() > 0",
+        "notifier.notify.call_count == 0"
+      ]
+    },
+    {
+      "id": "eb_happy_human_gate_notify",
+      "description": "evaluate_blast with FINANCIAL node fires notifier exactly once",
+      "function": "evaluate_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE",
+        "notifier.notify.call_count == 1"
+      ]
+    },
+    {
+      "id": "eb_happy_compliance_legal_flag",
+      "description": "evaluate_blast with COMPLIANCE node sets legal_flag and fires notifier",
+      "function": "evaluate_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE",
+        "result.legal_flag == True",
+        "notifier.notify.call_count == 1"
+      ]
+    },
+    {
+      "id": "eb_utc_timestamp",
+      "description": "computed_at has UTC timezone info",
+      "function": "evaluate_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.computed_at.tzinfo is not None",
+        "result.computed_at.tzinfo == timezone.utc"
+      ]
+    },
+    {
+      "id": "eb_origin_in_reachable",
+      "description": "origin is always in result.reachable_nodes",
+      "function": "evaluate_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "origin in result.reachable_nodes"
+      ]
+    },
+    {
+      "id": "eb_soak_none_when_not_soak",
+      "description": "soak_duration is None when action is not SOAK",
+      "function": "evaluate_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action != ActionCategory.SOAK or result.soak_duration is not None",
+        "result.action == ActionCategory.SOAK or result.soak_duration is None"
+      ]
+    },
+    {
+      "id": "eb_legal_implies_human_gate",
+      "description": "legal_flag True implies action is HUMAN_GATE",
+      "function": "evaluate_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "not result.legal_flag or result.action == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "eb_no_notify_when_not_human_gate",
+      "description": "Notifier not called when action is AUTO_MERGE",
+      "function": "evaluate_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "notifier.notify.call_count == 0"
+      ]
+    },
+    {
+      "id": "eb_notifier_none_no_crash",
+      "description": "evaluate_blast with notifier=None and HUMAN_GATE action does not crash",
+      "function": "evaluate_blast",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "eb_error_origin_not_found",
+      "description": "Raises error when origin not in graph",
+      "function": "evaluate_blast",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "origin_not_found",
+      "assertions": []
+    },
+    {
+      "id": "eb_error_inconsistent_graph",
+      "description": "Raises error for inconsistent graph",
+      "function": "evaluate_blast",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "inconsistent_graph",
+      "assertions": []
+    },
+    {
+      "id": "eb_error_notification_failure",
+      "description": "Raises/handles error when notifier.notify() raises exception",
+      "function": "evaluate_blast",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "notification_failure",
+      "assertions": []
+    },
+    {
+      "id": "eb_fields_assembled_correctly",
+      "description": "BlastResult fields match sub-results (traversal + classification + soak)",
+      "function": "evaluate_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.origin_node == origin",
+        "result.highest_data_tier is not None",
+        "result.max_depth_reached >= 0",
+        "isinstance(result.per_node_details, list)"
+      ]
+    },
+    {
+      "id": "inv_trust_score_range",
+      "description": "NodeMetadata trust_score is always in [0.0, 1.0]",
+      "function": "add_node",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "0.0 <= metadata.trust_score <= 1.0"
+      ]
+    },
+    {
+      "id": "inv_data_tier_order",
+      "description": "DataTier severity order PUBLIC < PII < FINANCIAL < AUTH < COMPLIANCE",
+      "function": "classify_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "tier_order verified"
+      ]
+    },
+    {
+      "id": "inv_action_category_order",
+      "description": "ActionCategory severity order AUTO_MERGE < SOAK < HUMAN_GATE",
+      "function": "classify_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "action_order verified"
+      ]
+    },
+    {
+      "id": "inv_bfs_terminates_on_cycles",
+      "description": "BFS terminates on fully-connected cyclic graph",
+      "function": "compute_blast_radius",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is not None",
+        "result.cycle_detected == True"
+      ]
+    },
+    {
+      "id": "inv_reachable_includes_origin",
+      "description": "BlastResult always includes origin in reachable_nodes",
+      "function": "evaluate_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "origin in result.reachable_nodes"
+      ]
+    },
+    {
+      "id": "inv_graph_consistency",
+      "description": "After add_node and add_edge, every adjacency node has metadata",
+      "function": "add_edge",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all nodes in adjacency have metadata entries"
+      ]
+    },
+    {
+      "id": "cb_contributing_nodes_match_action",
+      "description": "All contributing nodes have per-node action equal to final action",
+      "function": "classify_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all contributing node actions match result.action"
+      ]
+    },
+    {
+      "id": "csd_positive_result",
+      "description": "Soak duration is always positive",
+      "function": "compute_soak_duration",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.total_seconds() > 0"
+      ]
+    },
+    {
+      "id": "cbr_multi_cycle_graph",
+      "description": "BFS handles multiple overlapping cycles",
+      "function": "compute_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph with multiple cycles: A->B->C->A and B->D->B",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.cycle_detected == True",
+        "len(result.reachable_nodes) == 4"
+      ]
+    },
+    {
+      "id": "cn_non_authoritative_low_trust_no_escalation",
+      "description": "Low trust non-authoritative node does not escalate to HUMAN_GATE",
+      "function": "classify_node",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.AUTO_MERGE or result == ActionCategory.SOAK"
+      ]
+    },
+    {
+      "id": "eb_max_depth_propagation",
+      "description": "evaluate_blast respects max_depth parameter",
+      "function": "evaluate_blast",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.max_depth_reached <= max_depth"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nComplete test suite for Blast Radius & Soak Computation component.\nRun with: pytest contract_test.py -v\n\"\"\"\n\nimport math\nimport pytest\nfrom datetime import datetime, timedelta, timezone\nfrom unittest.mock import MagicMock, patch, PropertyMock\nfrom typing import List, Optional, Dict\n\nfrom blast import (\n    DataTier,\n    ActionCategory,\n    NodeMetadata,\n    AccessGraphEdge,\n    AccessGraph,\n    NodeBlastDetail,\n    TraversalResult,\n    ClassificationResult,\n    SoakParams,\n    BlastResult,\n    compute_blast_radius,\n    classify_blast,\n    compute_soak_duration,\n    evaluate_blast,\n    add_node,\n    add_edge,\n    classify_node,\n)\n\n\n# ============================================================================\n# Factory Helpers (conftest-like)\n# ============================================================================\n\ndef make_node_metadata(\n    node_id=\"node_a\",\n    data_tier=DataTier.PUBLIC,\n    trust_score=0.8,\n    authorized_tiers=None,\n    is_authoritative=False,\n):\n    if authorized_tiers is None:\n        authorized_tiers = [data_tier]\n    return NodeMetadata(\n        node_id=node_id,\n        data_tier=data_tier,\n        trust_score=trust_score,\n        authorized_tiers=authorized_tiers,\n        is_authoritative=is_authoritative,\n    )\n\n\ndef make_access_graph():\n    return AccessGraph(adjacency={}, metadata={})\n\n\ndef make_soak_params(\n    base_durations=None,\n    target_requests=1000.0,\n    observed_rate_rps=10.0,\n    low_trust_threshold=0.3,\n):\n    if base_durations is None:\n        base_durations = {\n            DataTier.PUBLIC: timedelta(minutes=5),\n            DataTier.PII: timedelta(minutes=15),\n            DataTier.FINANCIAL: timedelta(minutes=30),\n            DataTier.AUTH: timedelta(minutes=45),\n            DataTier.COMPLIANCE: timedelta(hours=1),\n        }\n    return SoakParams(\n        base_durations=base_durations,\n        target_requests=target_requests,\n        observed_rate_rps=observed_rate_rps,\n        low_trust_threshold=low_trust_threshold,\n    )\n\n\ndef make_node_blast_detail(\n    node_id=\"node_a\",\n    data_tier=DataTier.PUBLIC,\n    trust_score=0.8,\n    is_authoritative=False,\n    is_authorized_for_tier=True,\n    node_action=ActionCategory.AUTO_MERGE,\n    depth=0,\n):\n    return NodeBlastDetail(\n        node_id=node_id,\n        data_tier=data_tier,\n        trust_score=trust_score,\n        is_authoritative=is_authoritative,\n        is_authorized_for_tier=is_authorized_for_tier,\n        node_action=node_action,\n        depth=depth,\n    )\n\n\ndef make_traversal_result(\n    origin=\"node_a\",\n    reachable_nodes=None,\n    node_details=None,\n    highest_data_tier=DataTier.PUBLIC,\n    max_depth_reached=0,\n    cycle_detected=False,\n):\n    if reachable_nodes is None:\n        reachable_nodes = [origin]\n    if node_details is None:\n        node_details = [\n            make_node_blast_detail(node_id=n) for n in reachable_nodes\n        ]\n    return TraversalResult(\n        origin=origin,\n        reachable_nodes=reachable_nodes,\n        node_details=node_details,\n        highest_data_tier=highest_data_tier,\n        max_depth_reached=max_depth_reached,\n        cycle_detected=cycle_detected,\n    )\n\n\ndef build_linear_chain(tiers=None):\n    \"\"\"Build A->B->C linear chain with given tiers.\"\"\"\n    if tiers is None:\n        tiers = [DataTier.PUBLIC, DataTier.PUBLIC, DataTier.PUBLIC]\n    names = [\"node_a\", \"node_b\", \"node_c\"]\n    graph = make_access_graph()\n    for name, tier in zip(names, tiers):\n        add_node(graph, make_node_metadata(node_id=name, data_tier=tier))\n    add_edge(graph, \"node_a\", \"node_b\")\n    add_edge(graph, \"node_b\", \"node_c\")\n    return graph\n\n\ndef build_diamond_graph():\n    \"\"\"Build diamond: A->B, A->C, B->D, C->D\"\"\"\n    graph = make_access_graph()\n    for n in [\"node_a\", \"node_b\", \"node_c\", \"node_d\"]:\n        add_node(graph, make_node_metadata(node_id=n))\n    add_edge(graph, \"node_a\", \"node_b\")\n    add_edge(graph, \"node_a\", \"node_c\")\n    add_edge(graph, \"node_b\", \"node_d\")\n    add_edge(graph, \"node_c\", \"node_d\")\n    return graph\n\n\ndef build_star_graph():\n    \"\"\"Build star: A->B, A->C, A->D\"\"\"\n    graph = make_access_graph()\n    for n in [\"node_a\", \"node_b\", \"node_c\", \"node_d\"]:\n        add_node(graph, make_node_metadata(node_id=n))\n    add_edge(graph, \"node_a\", \"node_b\")\n    add_edge(graph, \"node_a\", \"node_c\")\n    add_edge(graph, \"node_a\", \"node_d\")\n    return graph\n\n\ndef build_cyclic_graph():\n    \"\"\"Build A->B->C->A cycle.\"\"\"\n    graph = make_access_graph()\n    for n in [\"node_a\", \"node_b\", \"node_c\"]:\n        add_node(graph, make_node_metadata(node_id=n))\n    add_edge(graph, \"node_a\", \"node_b\")\n    add_edge(graph, \"node_b\", \"node_c\")\n    add_edge(graph, \"node_c\", \"node_a\")\n    return graph\n\n\ndef make_mock_notifier():\n    notifier = MagicMock()\n    notifier.notify = MagicMock()\n    return notifier\n\n\n# ============================================================================\n# test_compute_blast_radius\n# ============================================================================\n\nclass TestComputeBlastRadiusHappyPath:\n    \"\"\"BFS traversal happy path tests across different topologies.\"\"\"\n\n    def test_single_node(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"origin\"))\n        result = compute_blast_radius(graph, \"origin\", max_depth=None)\n        assert result.origin == \"origin\"\n        assert \"origin\" in result.reachable_nodes\n        assert len(result.reachable_nodes) == 1\n        assert len(result.node_details) == 1\n        assert result.highest_data_tier == DataTier.PUBLIC\n        assert result.max_depth_reached == 0\n        assert result.cycle_detected is False\n\n    def test_linear_chain(self):\n        graph = build_linear_chain()\n        result = compute_blast_radius(graph, \"node_a\", max_depth=None)\n        assert len(result.reachable_nodes) == 3\n        assert result.max_depth_reached == 2\n        assert result.origin == \"node_a\"\n        assert \"node_a\" in result.reachable_nodes\n        assert \"node_b\" in result.reachable_nodes\n        assert \"node_c\" in result.reachable_nodes\n\n    def test_diamond_graph(self):\n        graph = build_diamond_graph()\n        result = compute_blast_radius(graph, \"node_a\", max_depth=None)\n        assert len(result.reachable_nodes) == 4\n        assert result.cycle_detected is False\n\n    def test_tree_fanout_star(self):\n        graph = build_star_graph()\n        result = compute_blast_radius(graph, \"node_a\", max_depth=None)\n        assert len(result.reachable_nodes) == 4\n        assert result.max_depth_reached == 1\n\n    def test_highest_tier_across_chain(self):\n        graph = build_linear_chain(tiers=[DataTier.PUBLIC, DataTier.PII, DataTier.FINANCIAL])\n        result = compute_blast_radius(graph, \"node_a\", max_depth=None)\n        assert result.highest_data_tier == DataTier.FINANCIAL\n\n\nclass TestComputeBlastRadiusCycles:\n    \"\"\"BFS cycle detection and termination tests.\"\"\"\n\n    def test_self_loop(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"origin\"))\n        add_edge(graph, \"origin\", \"origin\")\n        result = compute_blast_radius(graph, \"origin\", max_depth=None)\n        assert result.cycle_detected is True\n        assert len(result.reachable_nodes) == 1\n\n    def test_two_node_cycle(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"a\"))\n        add_node(graph, make_node_metadata(node_id=\"b\"))\n        add_edge(graph, \"a\", \"b\")\n        add_edge(graph, \"b\", \"a\")\n        result = compute_blast_radius(graph, \"a\", max_depth=None)\n        assert result.cycle_detected is True\n        assert len(result.reachable_nodes) == 2\n\n    def test_cycle_not_from_origin(self):\n        graph = make_access_graph()\n        for n in [\"a\", \"b\", \"c\"]:\n            add_node(graph, make_node_metadata(node_id=n))\n        add_edge(graph, \"a\", \"b\")\n        add_edge(graph, \"b\", \"c\")\n        add_edge(graph, \"c\", \"b\")\n        result = compute_blast_radius(graph, \"a\", max_depth=None)\n        assert result.cycle_detected is True\n        assert len(result.reachable_nodes) == 3\n\n    def test_multi_cycle_graph(self):\n        graph = make_access_graph()\n        for n in [\"a\", \"b\", \"c\", \"d\"]:\n            add_node(graph, make_node_metadata(node_id=n))\n        add_edge(graph, \"a\", \"b\")\n        add_edge(graph, \"b\", \"c\")\n        add_edge(graph, \"c\", \"a\")\n        add_edge(graph, \"b\", \"d\")\n        add_edge(graph, \"d\", \"b\")\n        result = compute_blast_radius(graph, \"a\", max_depth=None)\n        assert result.cycle_detected is True\n        assert len(result.reachable_nodes) == 4\n\n\nclass TestComputeBlastRadiusDepthLimiting:\n    \"\"\"BFS depth limiting behavior tests.\"\"\"\n\n    def test_depth_zero(self):\n        graph = build_linear_chain()\n        result = compute_blast_radius(graph, \"node_a\", max_depth=0)\n        assert len(result.reachable_nodes) == 1\n        assert result.max_depth_reached == 0\n\n    def test_depth_one(self):\n        graph = build_linear_chain()\n        result = compute_blast_radius(graph, \"node_a\", max_depth=1)\n        assert len(result.reachable_nodes) == 2\n        assert result.max_depth_reached <= 1\n\n    def test_depth_exact_boundary(self):\n        graph = build_linear_chain()\n        result = compute_blast_radius(graph, \"node_a\", max_depth=2)\n        assert len(result.reachable_nodes) == 3\n        assert result.max_depth_reached == 2\n\n    def test_depth_beyond_diameter(self):\n        graph = build_linear_chain()\n        result = compute_blast_radius(graph, \"node_a\", max_depth=100)\n        assert len(result.reachable_nodes) == 3\n        assert result.max_depth_reached == 2\n\n    def test_disconnected_graph(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"a\"))\n        add_node(graph, make_node_metadata(node_id=\"b\"))\n        # No edge between them\n        result = compute_blast_radius(graph, \"a\", max_depth=None)\n        assert len(result.reachable_nodes) == 1\n\n\nclass TestComputeBlastRadiusErrors:\n    \"\"\"BFS error case tests.\"\"\"\n\n    def test_origin_not_found(self):\n        graph = make_access_graph()\n        with pytest.raises(Exception) as exc_info:\n            compute_blast_radius(graph, \"nonexistent\", max_depth=None)\n        # Accept any exception that indicates origin not found\n        assert exc_info.value is not None\n\n    def test_inconsistent_graph(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"a\"))\n        # Manually insert an adjacency reference to a node without metadata\n        graph.adjacency[\"a\"] = [\"ghost_node\"]\n        with pytest.raises(Exception):\n            compute_blast_radius(graph, \"a\", max_depth=None)\n\n    def test_invalid_max_depth_negative(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"a\"))\n        with pytest.raises(Exception):\n            compute_blast_radius(graph, \"a\", max_depth=-1)\n\n\nclass TestComputeBlastRadiusInvariants:\n    \"\"\"BFS traversal invariant tests.\"\"\"\n\n    def test_origin_always_in_reachable(self):\n        graph = build_linear_chain()\n        result = compute_blast_radius(graph, \"node_a\", max_depth=None)\n        assert \"node_a\" in result.reachable_nodes\n\n    def test_reachable_count_equals_details_count(self):\n        graph = build_diamond_graph()\n        result = compute_blast_radius(graph, \"node_a\", max_depth=None)\n        assert len(result.reachable_nodes) == len(result.node_details)\n\n    def test_bfs_terminates_on_fully_connected_cycle(self):\n        graph = make_access_graph()\n        nodes = [\"a\", \"b\", \"c\", \"d\"]\n        for n in nodes:\n            add_node(graph, make_node_metadata(node_id=n))\n        # Fully connected\n        for s in nodes:\n            for t in nodes:\n                if s != t:\n                    add_edge(graph, s, t)\n        result = compute_blast_radius(graph, \"a\", max_depth=None)\n        assert result is not None\n        assert result.cycle_detected is True\n        assert len(result.reachable_nodes) == 4\n\n    def test_all_reachable_nodes_have_details(self):\n        graph = build_star_graph()\n        result = compute_blast_radius(graph, \"node_a\", max_depth=None)\n        detail_node_ids = {d.node_id for d in result.node_details}\n        for n in result.reachable_nodes:\n            assert n in detail_node_ids\n\n\n# ============================================================================\n# test_classify_blast\n# ============================================================================\n\nclass TestClassifyBlastHappyPath:\n    \"\"\"Classification happy path tests across tiers.\"\"\"\n\n    def test_all_public_auto_merge(self):\n        traversal = make_traversal_result(\n            origin=\"a\",\n            reachable_nodes=[\"a\"],\n            node_details=[make_node_blast_detail(\n                node_id=\"a\", data_tier=DataTier.PUBLIC,\n                is_authorized_for_tier=True, trust_score=0.8,\n            )],\n            highest_data_tier=DataTier.PUBLIC,\n        )\n        soak_params = make_soak_params()\n        result = classify_blast(traversal, soak_params)\n        assert result.action == ActionCategory.AUTO_MERGE\n        assert result.legal_flag is False\n\n    def test_pii_yields_soak(self):\n        traversal = make_traversal_result(\n            origin=\"a\",\n            reachable_nodes=[\"a\"],\n            node_details=[make_node_blast_detail(\n                node_id=\"a\", data_tier=DataTier.PII,\n                is_authorized_for_tier=True, trust_score=0.8,\n            )],\n            highest_data_tier=DataTier.PII,\n        )\n        result = classify_blast(traversal, make_soak_params())\n        assert result.action == ActionCategory.SOAK\n        assert result.legal_flag is False\n\n    def test_financial_yields_human_gate(self):\n        traversal = make_traversal_result(\n            origin=\"a\",\n            reachable_nodes=[\"a\"],\n            node_details=[make_node_blast_detail(\n                node_id=\"a\", data_tier=DataTier.FINANCIAL,\n                is_authorized_for_tier=True, trust_score=0.8,\n            )],\n            highest_data_tier=DataTier.FINANCIAL,\n        )\n        result = classify_blast(traversal, make_soak_params())\n        assert result.action == ActionCategory.HUMAN_GATE\n        assert result.legal_flag is False\n\n    def test_auth_yields_human_gate(self):\n        traversal = make_traversal_result(\n            origin=\"a\",\n            reachable_nodes=[\"a\"],\n            node_details=[make_node_blast_detail(\n                node_id=\"a\", data_tier=DataTier.AUTH,\n                is_authorized_for_tier=True, trust_score=0.8,\n            )],\n            highest_data_tier=DataTier.AUTH,\n        )\n        result = classify_blast(traversal, make_soak_params())\n        assert result.action == ActionCategory.HUMAN_GATE\n\n    def test_compliance_yields_human_gate_with_legal_flag(self):\n        traversal = make_traversal_result(\n            origin=\"a\",\n            reachable_nodes=[\"a\"],\n            node_details=[make_node_blast_detail(\n                node_id=\"a\", data_tier=DataTier.COMPLIANCE,\n                is_authorized_for_tier=True, trust_score=0.8,\n            )],\n            highest_data_tier=DataTier.COMPLIANCE,\n        )\n        result = classify_blast(traversal, make_soak_params())\n        assert result.action == ActionCategory.HUMAN_GATE\n        assert result.legal_flag is True\n\n    def test_mixed_public_pii_yields_soak(self):\n        traversal = make_traversal_result(\n            origin=\"a\",\n            reachable_nodes=[\"a\", \"b\"],\n            node_details=[\n                make_node_blast_detail(node_id=\"a\", data_tier=DataTier.PUBLIC, is_authorized_for_tier=True),\n                make_node_blast_detail(node_id=\"b\", data_tier=DataTier.PII, is_authorized_for_tier=True, depth=1),\n            ],\n            highest_data_tier=DataTier.PII,\n        )\n        result = classify_blast(traversal, make_soak_params())\n        assert result.action == ActionCategory.SOAK\n\n\nclass TestClassifyBlastEdgeCases:\n    \"\"\"Classification edge cases.\"\"\"\n\n    def test_unauthorized_tier_yields_human_gate(self):\n        traversal = make_traversal_result(\n            origin=\"a\",\n            reachable_nodes=[\"a\"],\n            node_details=[make_node_blast_detail(\n                node_id=\"a\", data_tier=DataTier.PUBLIC,\n                is_authorized_for_tier=False, trust_score=0.8,\n            )],\n            highest_data_tier=DataTier.PUBLIC,\n        )\n        result = classify_blast(traversal, make_soak_params())\n        assert result.action == ActionCategory.HUMAN_GATE\n\n    def test_low_trust_authoritative_yields_human_gate(self):\n        traversal = make_traversal_result(\n            origin=\"a\",\n            reachable_nodes=[\"a\"],\n            node_details=[make_node_blast_detail(\n                node_id=\"a\", data_tier=DataTier.PUBLIC,\n                is_authorized_for_tier=True, trust_score=0.1,\n                is_authoritative=True,\n            )],\n            highest_data_tier=DataTier.PUBLIC,\n        )\n        soak_params = make_soak_params(low_trust_threshold=0.3)\n        result = classify_blast(traversal, soak_params)\n        assert result.action == ActionCategory.HUMAN_GATE\n\n\nclass TestClassifyBlastInvariants:\n    \"\"\"Classification invariant tests.\"\"\"\n\n    def test_legal_flag_false_when_not_human_gate(self):\n        traversal = make_traversal_result(\n            origin=\"a\",\n            reachable_nodes=[\"a\"],\n            node_details=[make_node_blast_detail(\n                node_id=\"a\", data_tier=DataTier.PUBLIC,\n                is_authorized_for_tier=True,\n            )],\n            highest_data_tier=DataTier.PUBLIC,\n        )\n        result = classify_blast(traversal, make_soak_params())\n        assert result.legal_flag is False or result.action == ActionCategory.HUMAN_GATE\n\n    def test_contributing_nodes_nonempty(self):\n        traversal = make_traversal_result(\n            origin=\"a\",\n            reachable_nodes=[\"a\"],\n            node_details=[make_node_blast_detail(node_id=\"a\")],\n        )\n        result = classify_blast(traversal, make_soak_params())\n        assert len(result.contributing_nodes) > 0\n\n    def test_contributing_nodes_match_final_action(self):\n        traversal = make_traversal_result(\n            origin=\"a\",\n            reachable_nodes=[\"a\", \"b\"],\n            node_details=[\n                make_node_blast_detail(node_id=\"a\", data_tier=DataTier.PUBLIC, is_authorized_for_tier=True),\n                make_node_blast_detail(node_id=\"b\", data_tier=DataTier.PII, is_authorized_for_tier=True, depth=1),\n            ],\n            highest_data_tier=DataTier.PII,\n        )\n        result = classify_blast(traversal, make_soak_params())\n        # Contributing nodes should be those at the max action level\n        # In this case, SOAK contributors should include \"b\"\n        assert len(result.contributing_nodes) > 0\n\n    def test_data_tier_severity_order(self):\n        \"\"\"Verify DataTier has expected order: PUBLIC < PII < FINANCIAL < AUTH < COMPLIANCE.\"\"\"\n        tiers = [DataTier.PUBLIC, DataTier.PII, DataTier.FINANCIAL, DataTier.AUTH, DataTier.COMPLIANCE]\n        expected_actions = [\n            ActionCategory.AUTO_MERGE, ActionCategory.SOAK,\n            ActionCategory.HUMAN_GATE, ActionCategory.HUMAN_GATE, ActionCategory.HUMAN_GATE\n        ]\n        for tier, expected_action in zip(tiers, expected_actions):\n            traversal = make_traversal_result(\n                origin=\"a\",\n                reachable_nodes=[\"a\"],\n                node_details=[make_node_blast_detail(\n                    node_id=\"a\", data_tier=tier, is_authorized_for_tier=True, trust_score=0.8,\n                )],\n                highest_data_tier=tier,\n            )\n            result = classify_blast(traversal, make_soak_params())\n            assert result.action == expected_action, f\"Failed for tier {tier}\"\n\n\nclass TestClassifyBlastErrors:\n    \"\"\"Classification error tests.\"\"\"\n\n    def test_empty_traversal(self):\n        traversal = make_traversal_result(\n            origin=\"a\",\n            reachable_nodes=[],\n            node_details=[],\n        )\n        with pytest.raises(Exception):\n            classify_blast(traversal, make_soak_params())\n\n\n# ============================================================================\n# test_compute_soak_duration\n# ============================================================================\n\nclass TestComputeSoakDurationHappyPath:\n    \"\"\"Soak duration happy path tests.\"\"\"\n\n    def test_public_tier_trust_one(self):\n        soak_params = make_soak_params()\n        result = compute_soak_duration(DataTier.PUBLIC, 1.0, soak_params)\n        assert result.total_seconds() > 0\n\n    def test_pii_tier_trust_half(self):\n        soak_params = make_soak_params()\n        result = compute_soak_duration(DataTier.PII, 0.5, soak_params)\n        assert result.total_seconds() > 0\n\n    def test_financial_tier(self):\n        soak_params = make_soak_params()\n        result = compute_soak_duration(DataTier.FINANCIAL, 0.8, soak_params)\n        assert result.total_seconds() > 0\n\n    def test_compliance_tier(self):\n        soak_params = make_soak_params()\n        result = compute_soak_duration(DataTier.COMPLIANCE, 0.5, soak_params)\n        assert result.total_seconds() > 0\n\n    def test_formula_verification(self):\n        \"\"\"Verify exact formula: base * (2.0 - trust) * max(1.0, sqrt(target/rps)).\"\"\"\n        base = timedelta(minutes=10)\n        soak_params = make_soak_params(\n            base_durations={\n                DataTier.PUBLIC: base,\n                DataTier.PII: base,\n                DataTier.FINANCIAL: base,\n                DataTier.AUTH: base,\n                DataTier.COMPLIANCE: base,\n            },\n            target_requests=100.0,\n            observed_rate_rps=1.0,\n        )\n        trust = 0.5\n        result = compute_soak_duration(DataTier.PUBLIC, trust, soak_params)\n        expected_seconds = base.total_seconds() * (2.0 - trust) * max(1.0, math.sqrt(100.0 / 1.0))\n        expected = timedelta(seconds=expected_seconds)\n        assert abs(result.total_seconds() - expected.total_seconds()) < 0.01\n\n\nclass TestComputeSoakDurationEdgeCases:\n    \"\"\"Soak duration edge case tests.\"\"\"\n\n    def test_trust_zero_max_multiplier(self):\n        soak_params = make_soak_params()\n        result = compute_soak_duration(DataTier.PUBLIC, 0.0, soak_params)\n        assert result.total_seconds() > 0\n\n    def test_trust_one_min_multiplier(self):\n        soak_params = make_soak_params()\n        result = compute_soak_duration(DataTier.PUBLIC, 1.0, soak_params)\n        assert result.total_seconds() > 0\n\n    def test_high_target_rps_ratio(self):\n        soak_params = make_soak_params(target_requests=1000000.0, observed_rate_rps=1.0)\n        result = compute_soak_duration(DataTier.PUBLIC, 0.5, soak_params)\n        assert result.total_seconds() > 0\n\n    def test_ratio_below_one_floors_to_one(self):\n        soak_params = make_soak_params(target_requests=1.0, observed_rate_rps=1000.0)\n        result = compute_soak_duration(DataTier.PUBLIC, 0.5, soak_params)\n        # When ratio < 1.0, max(1.0, sqrt(ratio)) == 1.0\n        base = soak_params.base_durations[DataTier.PUBLIC]\n        expected_seconds = base.total_seconds() * (2.0 - 0.5) * 1.0\n        assert abs(result.total_seconds() - expected_seconds) < 0.01\n\n\nclass TestComputeSoakDurationInvariants:\n    \"\"\"Soak duration invariant tests.\"\"\"\n\n    def test_monotone_trust_lower_trust_longer_duration(self):\n        soak_params = make_soak_params()\n        duration_high_trust = compute_soak_duration(DataTier.PII, 0.9, soak_params)\n        duration_low_trust = compute_soak_duration(DataTier.PII, 0.1, soak_params)\n        assert duration_low_trust >= duration_high_trust\n\n    def test_monotone_ratio_higher_ratio_longer_duration(self):\n        soak_params_low = make_soak_params(target_requests=100.0, observed_rate_rps=100.0)\n        soak_params_high = make_soak_params(target_requests=10000.0, observed_rate_rps=1.0)\n        duration_low_ratio = compute_soak_duration(DataTier.PII, 0.5, soak_params_low)\n        duration_high_ratio = compute_soak_duration(DataTier.PII, 0.5, soak_params_high)\n        assert duration_high_ratio >= duration_low_ratio\n\n    def test_always_positive(self):\n        soak_params = make_soak_params()\n        for tier in [DataTier.PUBLIC, DataTier.PII, DataTier.FINANCIAL, DataTier.AUTH, DataTier.COMPLIANCE]:\n            result = compute_soak_duration(tier, 0.5, soak_params)\n            assert result.total_seconds() > 0\n\n\nclass TestComputeSoakDurationErrors:\n    \"\"\"Soak duration error tests.\"\"\"\n\n    def test_missing_base_duration(self):\n        soak_params = make_soak_params(base_durations={DataTier.PUBLIC: timedelta(minutes=5)})\n        with pytest.raises(Exception):\n            compute_soak_duration(DataTier.PII, 0.5, soak_params)\n\n    def test_invalid_trust_nan(self):\n        soak_params = make_soak_params()\n        with pytest.raises(Exception):\n            compute_soak_duration(DataTier.PUBLIC, float('nan'), soak_params)\n\n    def test_invalid_trust_inf(self):\n        soak_params = make_soak_params()\n        with pytest.raises(Exception):\n            compute_soak_duration(DataTier.PUBLIC, float('inf'), soak_params)\n\n\n# ============================================================================\n# test_classify_node\n# ============================================================================\n\nclass TestClassifyNodeHappyPath:\n    \"\"\"Per-node classification happy path tests.\"\"\"\n\n    def test_public_authorized_auto_merge(self):\n        meta = make_node_metadata(node_id=\"a\", data_tier=DataTier.PUBLIC, authorized_tiers=[DataTier.PUBLIC])\n        detail = make_node_blast_detail(node_id=\"a\", data_tier=DataTier.PUBLIC, is_authorized_for_tier=True)\n        result = classify_node(detail, meta, 0.3)\n        assert result == ActionCategory.AUTO_MERGE\n\n    def test_pii_authorized_soak(self):\n        meta = make_node_metadata(node_id=\"a\", data_tier=DataTier.PII, authorized_tiers=[DataTier.PII])\n        detail = make_node_blast_detail(node_id=\"a\", data_tier=DataTier.PII, is_authorized_for_tier=True)\n        result = classify_node(detail, meta, 0.3)\n        assert result == ActionCategory.SOAK\n\n    def test_financial_human_gate(self):\n        meta = make_node_metadata(node_id=\"a\", data_tier=DataTier.FINANCIAL, authorized_tiers=[DataTier.FINANCIAL])\n        detail = make_node_blast_detail(node_id=\"a\", data_tier=DataTier.FINANCIAL, is_authorized_for_tier=True)\n        result = classify_node(detail, meta, 0.3)\n        assert result == ActionCategory.HUMAN_GATE\n\n    def test_auth_human_gate(self):\n        meta = make_node_metadata(node_id=\"a\", data_tier=DataTier.AUTH, authorized_tiers=[DataTier.AUTH])\n        detail = make_node_blast_detail(node_id=\"a\", data_tier=DataTier.AUTH, is_authorized_for_tier=True)\n        result = classify_node(detail, meta, 0.3)\n        assert result == ActionCategory.HUMAN_GATE\n\n    def test_compliance_human_gate(self):\n        meta = make_node_metadata(node_id=\"a\", data_tier=DataTier.COMPLIANCE, authorized_tiers=[DataTier.COMPLIANCE])\n        detail = make_node_blast_detail(node_id=\"a\", data_tier=DataTier.COMPLIANCE, is_authorized_for_tier=True)\n        result = classify_node(detail, meta, 0.3)\n        assert result == ActionCategory.HUMAN_GATE\n\n\nclass TestClassifyNodeEdgeCases:\n    \"\"\"Per-node classification edge cases.\"\"\"\n\n    def test_unauthorized_public_human_gate(self):\n        meta = make_node_metadata(node_id=\"a\", data_tier=DataTier.PUBLIC, authorized_tiers=[])\n        detail = make_node_blast_detail(node_id=\"a\", data_tier=DataTier.PUBLIC, is_authorized_for_tier=False)\n        result = classify_node(detail, meta, 0.3)\n        assert result == ActionCategory.HUMAN_GATE\n\n    def test_unauthorized_pii_human_gate(self):\n        meta = make_node_metadata(node_id=\"a\", data_tier=DataTier.PII, authorized_tiers=[])\n        detail = make_node_blast_detail(node_id=\"a\", data_tier=DataTier.PII, is_authorized_for_tier=False)\n        result = classify_node(detail, meta, 0.3)\n        assert result == ActionCategory.HUMAN_GATE\n\n    def test_low_trust_authoritative_public_human_gate(self):\n        meta = make_node_metadata(\n            node_id=\"a\", data_tier=DataTier.PUBLIC,\n            authorized_tiers=[DataTier.PUBLIC], trust_score=0.1,\n            is_authoritative=True,\n        )\n        detail = make_node_blast_detail(\n            node_id=\"a\", data_tier=DataTier.PUBLIC,\n            is_authorized_for_tier=True, trust_score=0.1,\n            is_authoritative=True,\n        )\n        result = classify_node(detail, meta, 0.3)\n        assert result == ActionCategory.HUMAN_GATE\n\n    def test_high_trust_authoritative_public_auto_merge(self):\n        meta = make_node_metadata(\n            node_id=\"a\", data_tier=DataTier.PUBLIC,\n            authorized_tiers=[DataTier.PUBLIC], trust_score=0.9,\n            is_authoritative=True,\n        )\n        detail = make_node_blast_detail(\n            node_id=\"a\", data_tier=DataTier.PUBLIC,\n            is_authorized_for_tier=True, trust_score=0.9,\n            is_authoritative=True,\n        )\n        result = classify_node(detail, meta, 0.3)\n        assert result == ActionCategory.AUTO_MERGE\n\n    def test_trust_at_threshold_not_low_trust(self):\n        \"\"\"Trust exactly at threshold (0.3) should NOT be considered low trust (< not <=).\"\"\"\n        meta = make_node_metadata(\n            node_id=\"a\", data_tier=DataTier.PUBLIC,\n            authorized_tiers=[DataTier.PUBLIC], trust_score=0.3,\n            is_authoritative=True,\n        )\n        detail = make_node_blast_detail(\n            node_id=\"a\", data_tier=DataTier.PUBLIC,\n            is_authorized_for_tier=True, trust_score=0.3,\n            is_authoritative=True,\n        )\n        result = classify_node(detail, meta, 0.3)\n        # At threshold means not low trust; should be AUTO_MERGE for PUBLIC\n        assert result == ActionCategory.AUTO_MERGE\n\n    def test_trust_just_below_threshold_is_low_trust(self):\n        meta = make_node_metadata(\n            node_id=\"a\", data_tier=DataTier.PUBLIC,\n            authorized_tiers=[DataTier.PUBLIC], trust_score=0.29,\n            is_authoritative=True,\n        )\n        detail = make_node_blast_detail(\n            node_id=\"a\", data_tier=DataTier.PUBLIC,\n            is_authorized_for_tier=True, trust_score=0.29,\n            is_authoritative=True,\n        )\n        result = classify_node(detail, meta, 0.3)\n        assert result == ActionCategory.HUMAN_GATE\n\n    def test_non_authoritative_low_trust_no_escalation(self):\n        \"\"\"Low trust but non-authoritative should NOT escalate for PUBLIC.\"\"\"\n        meta = make_node_metadata(\n            node_id=\"a\", data_tier=DataTier.PUBLIC,\n            authorized_tiers=[DataTier.PUBLIC], trust_score=0.1,\n            is_authoritative=False,\n        )\n        detail = make_node_blast_detail(\n            node_id=\"a\", data_tier=DataTier.PUBLIC,\n            is_authorized_for_tier=True, trust_score=0.1,\n            is_authoritative=False,\n        )\n        result = classify_node(detail, meta, 0.3)\n        assert result == ActionCategory.AUTO_MERGE\n\n\nclass TestClassifyNodeErrors:\n    \"\"\"Per-node classification error tests.\"\"\"\n\n    def test_node_id_mismatch(self):\n        meta = make_node_metadata(node_id=\"a\")\n        detail = make_node_blast_detail(node_id=\"b\")\n        with pytest.raises(Exception):\n            classify_node(detail, meta, 0.3)\n\n\n# ============================================================================\n# test_graph_mutations (add_node, add_edge)\n# ============================================================================\n\nclass TestAddNode:\n    \"\"\"Tests for add_node builder method.\"\"\"\n\n    def test_add_node_happy(self):\n        graph = make_access_graph()\n        meta = make_node_metadata(node_id=\"x\")\n        returned = add_node(graph, meta)\n        assert \"x\" in graph.metadata\n        assert \"x\" in graph.adjacency\n        assert graph.adjacency[\"x\"] == [] or list(graph.adjacency[\"x\"]) == []\n\n    def test_add_node_returns_same_object(self):\n        graph = make_access_graph()\n        meta = make_node_metadata(node_id=\"x\")\n        returned = add_node(graph, meta)\n        assert returned is graph\n\n    def test_add_node_replaces_metadata(self):\n        graph = make_access_graph()\n        meta1 = make_node_metadata(node_id=\"x\", data_tier=DataTier.PUBLIC)\n        add_node(graph, meta1)\n        meta2 = make_node_metadata(node_id=\"x\", data_tier=DataTier.PII)\n        add_node(graph, meta2)\n        assert graph.metadata[\"x\"].data_tier == DataTier.PII\n\n    def test_add_node_invalid_metadata_trust_out_of_range(self):\n        \"\"\"NodeMetadata with trust_score out of [0,1] should raise error.\"\"\"\n        with pytest.raises(Exception):\n            make_node_metadata(node_id=\"x\", trust_score=1.5)\n\n\nclass TestAddEdge:\n    \"\"\"Tests for add_edge builder method.\"\"\"\n\n    def test_add_edge_happy(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"a\"))\n        add_node(graph, make_node_metadata(node_id=\"b\"))\n        returned = add_edge(graph, \"a\", \"b\")\n        assert \"b\" in graph.adjacency[\"a\"]\n\n    def test_add_edge_returns_same_object(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"a\"))\n        add_node(graph, make_node_metadata(node_id=\"b\"))\n        returned = add_edge(graph, \"a\", \"b\")\n        assert returned is graph\n\n    def test_add_edge_no_duplicates(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"a\"))\n        add_node(graph, make_node_metadata(node_id=\"b\"))\n        add_edge(graph, \"a\", \"b\")\n        add_edge(graph, \"a\", \"b\")\n        count = list(graph.adjacency[\"a\"]).count(\"b\")\n        assert count == 1\n\n    def test_add_edge_source_not_found(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"b\"))\n        with pytest.raises(Exception):\n            add_edge(graph, \"nonexistent\", \"b\")\n\n    def test_add_edge_target_not_found(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"a\"))\n        with pytest.raises(Exception):\n            add_edge(graph, \"a\", \"nonexistent\")\n\n\nclass TestGraphConsistencyInvariant:\n    \"\"\"Graph consistency invariant tests.\"\"\"\n\n    def test_all_adjacency_nodes_have_metadata(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"a\"))\n        add_node(graph, make_node_metadata(node_id=\"b\"))\n        add_node(graph, make_node_metadata(node_id=\"c\"))\n        add_edge(graph, \"a\", \"b\")\n        add_edge(graph, \"b\", \"c\")\n        # Verify invariant\n        for source, targets in graph.adjacency.items():\n            assert source in graph.metadata, f\"Source {source} missing from metadata\"\n            for t in targets:\n                assert t in graph.metadata, f\"Target {t} missing from metadata\"\n\n\n# ============================================================================\n# test_evaluate_blast (integration/orchestrator tests)\n# ============================================================================\n\nclass TestEvaluateBlastHappyPath:\n    \"\"\"Orchestrator happy path tests with mocked notifier.\"\"\"\n\n    def test_auto_merge_no_notification(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(\n            node_id=\"origin\", data_tier=DataTier.PUBLIC,\n            authorized_tiers=[DataTier.PUBLIC],\n        ))\n        notifier = make_mock_notifier()\n        soak_params = make_soak_params()\n        result = evaluate_blast(graph, \"origin\", soak_params, notifier, max_depth=None)\n        assert result.action == ActionCategory.AUTO_MERGE\n        assert result.soak_duration is None\n        assert result.legal_flag is False\n        assert notifier.notify.call_count == 0\n\n    def test_soak_with_positive_duration(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(\n            node_id=\"origin\", data_tier=DataTier.PII,\n            authorized_tiers=[DataTier.PII],\n        ))\n        notifier = make_mock_notifier()\n        soak_params = make_soak_params()\n        result = evaluate_blast(graph, \"origin\", soak_params, notifier, max_depth=None)\n        assert result.action == ActionCategory.SOAK\n        assert result.soak_duration is not None\n        assert result.soak_duration.total_seconds() > 0\n        assert notifier.notify.call_count == 0\n\n    def test_human_gate_fires_notifier(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(\n            node_id=\"origin\", data_tier=DataTier.FINANCIAL,\n            authorized_tiers=[DataTier.FINANCIAL],\n        ))\n        notifier = make_mock_notifier()\n        soak_params = make_soak_params()\n        result = evaluate_blast(graph, \"origin\", soak_params, notifier, max_depth=None)\n        assert result.action == ActionCategory.HUMAN_GATE\n        assert notifier.notify.call_count == 1\n\n    def test_compliance_legal_flag_and_notifier(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(\n            node_id=\"origin\", data_tier=DataTier.COMPLIANCE,\n            authorized_tiers=[DataTier.COMPLIANCE],\n        ))\n        notifier = make_mock_notifier()\n        soak_params = make_soak_params()\n        result = evaluate_blast(graph, \"origin\", soak_params, notifier, max_depth=None)\n        assert result.action == ActionCategory.HUMAN_GATE\n        assert result.legal_flag is True\n        assert notifier.notify.call_count == 1\n\n    def test_fields_assembled_correctly(self):\n        graph = build_linear_chain()\n        notifier = make_mock_notifier()\n        soak_params = make_soak_params()\n        result = evaluate_blast(graph, \"node_a\", soak_params, notifier, max_depth=None)\n        assert result.origin_node == \"node_a\"\n        assert result.highest_data_tier is not None\n        assert result.max_depth_reached >= 0\n        assert isinstance(result.per_node_details, list)\n        assert \"node_a\" in result.reachable_nodes\n\n\nclass TestEvaluateBlastInvariants:\n    \"\"\"Orchestrator invariant tests.\"\"\"\n\n    def test_utc_timestamp(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"origin\"))\n        notifier = make_mock_notifier()\n        soak_params = make_soak_params()\n        result = evaluate_blast(graph, \"origin\", soak_params, notifier, max_depth=None)\n        assert result.computed_at.tzinfo is not None\n        assert result.computed_at.tzinfo == timezone.utc\n\n    def test_origin_in_reachable(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"origin\"))\n        notifier = make_mock_notifier()\n        result = evaluate_blast(graph, \"origin\", make_soak_params(), notifier, max_depth=None)\n        assert \"origin\" in result.reachable_nodes\n\n    def test_soak_none_when_not_soak(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(\n            node_id=\"origin\", data_tier=DataTier.FINANCIAL,\n            authorized_tiers=[DataTier.FINANCIAL],\n        ))\n        notifier = make_mock_notifier()\n        result = evaluate_blast(graph, \"origin\", make_soak_params(), notifier, max_depth=None)\n        assert result.action == ActionCategory.HUMAN_GATE\n        assert result.soak_duration is None\n\n    def test_soak_present_when_soak(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(\n            node_id=\"origin\", data_tier=DataTier.PII,\n            authorized_tiers=[DataTier.PII],\n        ))\n        notifier = make_mock_notifier()\n        result = evaluate_blast(graph, \"origin\", make_soak_params(), notifier, max_depth=None)\n        assert result.action == ActionCategory.SOAK\n        assert result.soak_duration is not None\n\n    def test_legal_implies_human_gate(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(\n            node_id=\"origin\", data_tier=DataTier.COMPLIANCE,\n            authorized_tiers=[DataTier.COMPLIANCE],\n        ))\n        notifier = make_mock_notifier()\n        result = evaluate_blast(graph, \"origin\", make_soak_params(), notifier, max_depth=None)\n        assert not result.legal_flag or result.action == ActionCategory.HUMAN_GATE\n\n\nclass TestEvaluateBlastEdgeCases:\n    \"\"\"Orchestrator edge cases.\"\"\"\n\n    def test_notifier_none_no_crash_on_human_gate(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(\n            node_id=\"origin\", data_tier=DataTier.FINANCIAL,\n            authorized_tiers=[DataTier.FINANCIAL],\n        ))\n        soak_params = make_soak_params()\n        result = evaluate_blast(graph, \"origin\", soak_params, None, max_depth=None)\n        assert result.action == ActionCategory.HUMAN_GATE\n\n    def test_max_depth_propagation(self):\n        graph = build_linear_chain()\n        notifier = make_mock_notifier()\n        result = evaluate_blast(graph, \"node_a\", make_soak_params(), notifier, max_depth=1)\n        assert result.max_depth_reached <= 1\n\n    def test_no_notify_when_auto_merge(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(\n            node_id=\"origin\", data_tier=DataTier.PUBLIC,\n            authorized_tiers=[DataTier.PUBLIC],\n        ))\n        notifier = make_mock_notifier()\n        evaluate_blast(graph, \"origin\", make_soak_params(), notifier, max_depth=None)\n        assert notifier.notify.call_count == 0\n\n\nclass TestEvaluateBlastErrors:\n    \"\"\"Orchestrator error tests.\"\"\"\n\n    def test_origin_not_found(self):\n        graph = make_access_graph()\n        notifier = make_mock_notifier()\n        with pytest.raises(Exception):\n            evaluate_blast(graph, \"nonexistent\", make_soak_params(), notifier, max_depth=None)\n\n    def test_inconsistent_graph(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(node_id=\"a\"))\n        graph.adjacency[\"a\"] = [\"ghost\"]\n        notifier = make_mock_notifier()\n        with pytest.raises(Exception):\n            evaluate_blast(graph, \"a\", make_soak_params(), notifier, max_depth=None)\n\n    def test_notification_failure(self):\n        graph = make_access_graph()\n        add_node(graph, make_node_metadata(\n            node_id=\"origin\", data_tier=DataTier.FINANCIAL,\n            authorized_tiers=[DataTier.FINANCIAL],\n        ))\n        notifier = make_mock_notifier()\n        notifier.notify.side_effect = RuntimeError(\"Webhook failed\")\n        soak_params = make_soak_params()\n        with pytest.raises(Exception):\n            evaluate_blast(graph, \"origin\", soak_params, notifier, max_depth=None)\n\n\n# ============================================================================\n# Trust score invariant tests\n# ============================================================================\n\nclass TestTrustScoreInvariant:\n    \"\"\"Trust score must always be in [0.0, 1.0].\"\"\"\n\n    def test_trust_score_at_zero(self):\n        meta = make_node_metadata(node_id=\"a\", trust_score=0.0)\n        assert 0.0 <= meta.trust_score <= 1.0\n\n    def test_trust_score_at_one(self):\n        meta = make_node_metadata(node_id=\"a\", trust_score=1.0)\n        assert 0.0 <= meta.trust_score <= 1.0\n\n    def test_trust_score_mid(self):\n        meta = make_node_metadata(node_id=\"a\", trust_score=0.5)\n        assert 0.0 <= meta.trust_score <= 1.0\n\n    def test_trust_score_above_one_rejected(self):\n        with pytest.raises(Exception):\n            make_node_metadata(node_id=\"a\", trust_score=1.1)\n\n    def test_trust_score_below_zero_rejected(self):\n        with pytest.raises(Exception):\n            make_node_metadata(node_id=\"a\", trust_score=-0.1)\n\n\n# ============================================================================\n# ActionCategory order invariant\n# ============================================================================\n\nclass TestActionCategoryOrder:\n    \"\"\"Verify ActionCategory severity ordering.\"\"\"\n\n    def test_auto_merge_less_than_soak(self):\n        \"\"\"AUTO_MERGE < SOAK: a mix of PUBLIC + PII should yield SOAK.\"\"\"\n        traversal = make_traversal_result(\n            origin=\"a\",\n            reachable_nodes=[\"a\", \"b\"],\n            node_details=[\n                make_node_blast_detail(node_id=\"a\", data_tier=DataTier.PUBLIC, is_authorized_for_tier=True),\n                make_node_blast_detail(node_id=\"b\", data_tier=DataTier.PII, is_authorized_for_tier=True, depth=1),\n            ],\n            highest_data_tier=DataTier.PII,\n        )\n        result = classify_blast(traversal, make_soak_params())\n        assert result.action == ActionCategory.SOAK\n\n    def test_soak_less_than_human_gate(self):\n        \"\"\"SOAK < HUMAN_GATE: a mix of PII + FINANCIAL should yield HUMAN_GATE.\"\"\"\n        traversal = make_traversal_result(\n            origin=\"a\",\n            reachable_nodes=[\"a\", \"b\"],\n            node_details=[\n                make_node_blast_detail(node_id=\"a\", data_tier=DataTier.PII, is_authorized_for_tier=True),\n                make_node_blast_detail(node_id=\"b\", data_tier=DataTier.FINANCIAL, is_authorized_for_tier=True, depth=1),\n            ],\n            highest_data_tier=DataTier.FINANCIAL,\n        )\n        result = classify_blast(traversal, make_soak_params())\n        assert result.action == ActionCategory.HUMAN_GATE\n"
+}

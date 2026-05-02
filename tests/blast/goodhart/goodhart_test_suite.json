@@ -1,0 +1,711 @@
+{
+  "component_id": "blast",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "goodhart_cbr_depth_two_excludes_depth_three",
+      "description": "BFS with max_depth=2 on a chain of length 4 should include nodes at depths 0,1,2 but exclude the node at depth 3, verifying depth bounding works at non-trivial intermediate values",
+      "function": "compute_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Linear chain A->B->C->D->E with max_depth=2, origin=A",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.reachable_nodes) == 3",
+        "result.max_depth_reached == 2",
+        "NodeId('D') not in result.reachable_nodes",
+        "NodeId('E') not in result.reachable_nodes"
+      ]
+    },
+    {
+      "id": "goodhart_cbr_node_details_depth_correct",
+      "description": "Each node_detail entry must carry the correct BFS depth from the origin, not a hardcoded value",
+      "function": "compute_blast_radius",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Chain A->B->C, origin=A, no max_depth",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "detail for A has depth 0",
+        "detail for B has depth 1",
+        "detail for C has depth 2"
+      ]
+    },
+    {
+      "id": "goodhart_cbr_node_details_carry_metadata",
+      "description": "Node details must reflect actual node metadata (data_tier, trust_score, is_authoritative) from the graph, not defaults",
+      "function": "compute_blast_radius",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two-node graph: A (PII, trust=0.3, authoritative) -> B (FINANCIAL, trust=0.9, non-authoritative)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "detail for A has data_tier PII and trust_score 0.3 and is_authoritative True",
+        "detail for B has data_tier FINANCIAL and trust_score 0.9 and is_authoritative False"
+      ]
+    },
+    {
+      "id": "goodhart_cbr_highest_tier_auth",
+      "description": "highest_data_tier must correctly identify AUTH as higher than PII and FINANCIAL when those are mixed in reachable nodes",
+      "function": "compute_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph with nodes: A(PUBLIC)->B(PII)->C(AUTH), origin=A",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.highest_data_tier == DataTier.AUTH"
+      ]
+    },
+    {
+      "id": "goodhart_cbr_cycle_detected_false_no_cycle",
+      "description": "cycle_detected must be False when the graph is acyclic, not always True",
+      "function": "compute_blast_radius",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Simple acyclic chain A->B->C",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.cycle_detected is False"
+      ]
+    },
+    {
+      "id": "goodhart_cbr_large_cycle_ring",
+      "description": "BFS on a ring of 5 nodes must terminate, detect the cycle, and visit all 5 nodes exactly once",
+      "function": "compute_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Ring: A->B->C->D->E->A, origin=A",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.reachable_nodes) == 5",
+        "result.cycle_detected is True",
+        "len(result.node_details) == 5"
+      ]
+    },
+    {
+      "id": "goodhart_cbr_max_depth_none_unlimited",
+      "description": "When max_depth is None (not provided), BFS should traverse the entire reachable graph without artificial depth limits",
+      "function": "compute_blast_radius",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Long chain A->B->C->D->E->F with max_depth=None, origin=A",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.reachable_nodes) == 6",
+        "result.max_depth_reached == 5"
+      ]
+    },
+    {
+      "id": "goodhart_cbr_directed_edge_not_reverse",
+      "description": "BFS must respect edge directionality: A->B does not imply B->A is traversable",
+      "function": "compute_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph A->B (directed only), origin=B",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.reachable_nodes) == 1",
+        "result.reachable_nodes == [NodeId('B')]"
+      ]
+    },
+    {
+      "id": "goodhart_cb_pii_plus_financial_human_gate",
+      "description": "When mixing PII and FINANCIAL nodes, the max-over-nodes rule must yield HUMAN_GATE (not SOAK), with legal_flag False",
+      "function": "classify_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "TraversalResult with one PII node and one FINANCIAL node",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE",
+        "result.legal_flag is False"
+      ]
+    },
+    {
+      "id": "goodhart_cb_compliance_plus_public_legal_flag",
+      "description": "A mix of PUBLIC and COMPLIANCE nodes must yield HUMAN_GATE with legal_flag=True since COMPLIANCE is present and action is HUMAN_GATE",
+      "function": "classify_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "TraversalResult with one PUBLIC authorized node and one COMPLIANCE node",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE",
+        "result.legal_flag is True"
+      ]
+    },
+    {
+      "id": "goodhart_cb_financial_no_legal_flag",
+      "description": "HUMAN_GATE from FINANCIAL (without any COMPLIANCE node) must have legal_flag=False, verifying legal_flag requires COMPLIANCE specifically",
+      "function": "classify_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "TraversalResult with only FINANCIAL nodes",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE",
+        "result.legal_flag is False"
+      ]
+    },
+    {
+      "id": "goodhart_cb_auth_no_legal_flag",
+      "description": "HUMAN_GATE from AUTH tier alone must not set legal_flag, ensuring legal_flag is specifically tied to COMPLIANCE presence",
+      "function": "classify_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "TraversalResult with only AUTH nodes",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE",
+        "result.legal_flag is False"
+      ]
+    },
+    {
+      "id": "goodhart_cb_unauthorized_pii_human_gate_not_soak",
+      "description": "A PII node that is NOT authorized for its tier must be classified HUMAN_GATE, not SOAK, because unauthorized overrides tier-based classification",
+      "function": "classify_blast",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "TraversalResult with single PII node, authorized_tiers does NOT include PII",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "goodhart_cb_contributing_nodes_only_max_action",
+      "description": "contributing_nodes must contain only nodes whose per-node action equals the final (max) action, excluding lower-severity nodes",
+      "function": "classify_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "TraversalResult with 3 PUBLIC nodes and 1 FINANCIAL node; final action HUMAN_GATE",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.contributing_nodes) == 1",
+        "result.contributing_nodes[0] is the FINANCIAL node"
+      ]
+    },
+    {
+      "id": "goodhart_cb_multiple_contributing_nodes",
+      "description": "When multiple nodes contribute at the max severity level, all of them must appear in contributing_nodes",
+      "function": "classify_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "TraversalResult with 2 FINANCIAL nodes and 1 PUBLIC node",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE",
+        "len(result.contributing_nodes) == 2"
+      ]
+    },
+    {
+      "id": "goodhart_cb_low_trust_authoritative_pii_escalation",
+      "description": "A PII node that is authoritative with trust below threshold should escalate to HUMAN_GATE even though PII normally yields SOAK",
+      "function": "classify_blast",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "TraversalResult with single PII node, authorized for PII, is_authoritative=True, trust_score=0.1, low_trust_threshold=0.5",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "goodhart_csd_trust_midpoint_formula",
+      "description": "Soak duration with trust_score=0.75 must exactly match the formula base*(2.0-0.75)*max(1.0,sqrt(ratio)), verifying the formula is applied correctly for non-boundary trust values",
+      "function": "compute_soak_duration",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "tier=PII, trust_score=0.75, base_duration=1h, target_requests=100, observed_rate_rps=100",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == timedelta(hours=1) * 1.25 * 1.0"
+      ]
+    },
+    {
+      "id": "goodhart_csd_ratio_exactly_one",
+      "description": "When target_requests equals observed_rate_rps, the ratio factor is max(1.0, sqrt(1.0))=1.0, so no extra scaling beyond trust multiplier",
+      "function": "compute_soak_duration",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "tier=PUBLIC, trust_score=0.5, target_requests=50, observed_rate_rps=50, base=30min",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == timedelta(minutes=30) * 1.5 * 1.0"
+      ]
+    },
+    {
+      "id": "goodhart_csd_very_small_rps_epsilon_floor",
+      "description": "When observed_rate_rps is extremely small (near zero), the epsilon floor (1e-9) prevents division by zero and yields a very large but finite duration",
+      "function": "compute_soak_duration",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "tier=PUBLIC, trust_score=0.5, target_requests=100, observed_rate_rps=1e-10 (should be floored to 1e-9), base=1min",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is a positive finite timedelta",
+        "result > timedelta(minutes=1)"
+      ]
+    },
+    {
+      "id": "goodhart_csd_different_base_durations",
+      "description": "Soak duration must use the base_duration corresponding to the given tier, not a hardcoded or default value",
+      "function": "compute_soak_duration",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two calls: PII with base=2h, FINANCIAL with base=4h, same trust_score=0.5 and same ratio",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result_financial == 2 * result_pii"
+      ]
+    },
+    {
+      "id": "goodhart_csd_negative_trust_inf",
+      "description": "Negative infinity trust_score must be rejected as invalid, not silently clamped",
+      "function": "compute_soak_duration",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "trust_score=float('-inf')",
+      "expected_output_description": "",
+      "expected_error": "invalid_trust_score",
+      "assertions": []
+    },
+    {
+      "id": "goodhart_cn_pii_authorized_authoritative_high_trust",
+      "description": "An authoritative PII node with trust above threshold and authorized should yield SOAK, not HUMAN_GATE",
+      "function": "classify_node",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "PII node, authorized for PII, is_authoritative=True, trust_score=0.9, low_trust_threshold=0.5",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.SOAK"
+      ]
+    },
+    {
+      "id": "goodhart_cn_compliance_authorized_high_trust",
+      "description": "COMPLIANCE node must always be HUMAN_GATE regardless of authorization and trust score, because COMPLIANCE tier always escalates",
+      "function": "classify_node",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "COMPLIANCE node, authorized for COMPLIANCE, is_authoritative=False, trust_score=1.0, low_trust_threshold=0.5",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "goodhart_cn_financial_authorized_high_trust",
+      "description": "FINANCIAL node must always be HUMAN_GATE even when fully authorized and high trust, because the tier itself forces escalation",
+      "function": "classify_node",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "FINANCIAL node, authorized for FINANCIAL, is_authoritative=False, trust_score=1.0, low_trust_threshold=0.5",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "goodhart_cn_public_low_trust_non_authoritative",
+      "description": "A PUBLIC node with low trust that is NOT authoritative should be AUTO_MERGE, because the low-trust escalation only applies to authoritative nodes",
+      "function": "classify_node",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "PUBLIC node, authorized, is_authoritative=False, trust_score=0.1, low_trust_threshold=0.5",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.AUTO_MERGE"
+      ]
+    },
+    {
+      "id": "goodhart_eb_soak_duration_positive_for_soak_action",
+      "description": "When evaluate_blast results in SOAK action, soak_duration must be a positive timedelta (not zero, not None)",
+      "function": "evaluate_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph with origin PII node, authorized, high trust, all base_durations provided",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.SOAK",
+        "result.soak_duration is not None",
+        "result.soak_duration > timedelta(0)"
+      ]
+    },
+    {
+      "id": "goodhart_eb_soak_matches_compute_soak_formula",
+      "description": "The soak_duration in BlastResult must match the value from compute_soak_duration applied with the highest_data_tier and origin trust_score",
+      "function": "evaluate_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph with single PII node, trust=0.7, known soak_params, verify soak_duration matches formula",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.soak_duration == expected_soak from formula"
+      ]
+    },
+    {
+      "id": "goodhart_eb_notifier_not_called_for_soak",
+      "description": "When action is SOAK, the notifier must NOT be called, because notification is only for HUMAN_GATE",
+      "function": "evaluate_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph with PII node yielding SOAK, mock notifier provided",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "notifier.notify was not called"
+      ]
+    },
+    {
+      "id": "goodhart_eb_notifier_receives_blast_result",
+      "description": "When HUMAN_GATE fires the notifier, notify() must be called with the actual BlastResult object, not a None or placeholder",
+      "function": "evaluate_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph with FINANCIAL node, mock notifier",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "notifier.notify called once",
+        "argument to notify is a BlastResult with correct origin_node"
+      ]
+    },
+    {
+      "id": "goodhart_eb_cycle_detected_propagated",
+      "description": "The cycle_detected flag from BFS traversal must be propagated to the final BlastResult",
+      "function": "evaluate_blast",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph with cycle A<->B, PUBLIC nodes, origin=A",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.cycle_detected is True"
+      ]
+    },
+    {
+      "id": "goodhart_eb_max_depth_reached_propagated",
+      "description": "The max_depth_reached from traversal must be correctly propagated to BlastResult",
+      "function": "evaluate_blast",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Chain A->B->C->D, max_depth=2, origin=A",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.max_depth_reached == 2",
+        "len(result.reachable_nodes) == 3"
+      ]
+    },
+    {
+      "id": "goodhart_eb_per_node_details_populated",
+      "description": "BlastResult.per_node_details must contain one entry per reachable node with correct node_ids",
+      "function": "evaluate_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph with 3 nodes in a chain",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.per_node_details) == len(result.reachable_nodes)",
+        "all node_ids in per_node_details match reachable_nodes"
+      ]
+    },
+    {
+      "id": "goodhart_add_node_preserves_existing_adjacency",
+      "description": "Replacing a node's metadata via add_node must not clear its existing adjacency edges",
+      "function": "add_node",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Add node A, add node B, add edge A->B, then add node A again with different trust_score",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "B is still in graph.adjacency[A]",
+        "graph.metadata[A] has the new trust_score"
+      ]
+    },
+    {
+      "id": "goodhart_add_edge_self_loop",
+      "description": "Adding a self-loop edge (source==target) should be allowed since the contract doesn't forbid it",
+      "function": "add_edge",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Add node A, then add_edge(A, A)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "A is in graph.adjacency[A]"
+      ]
+    },
+    {
+      "id": "goodhart_cbr_inconsistent_graph_in_values",
+      "description": "An inconsistency in adjacency values (not just keys) must be detected: if a neighbor node has no metadata, the error must be raised",
+      "function": "compute_blast_radius",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph with A in metadata and adjacency, adjacency[A]=[B], but B not in metadata",
+      "expected_output_description": "",
+      "expected_error": "inconsistent_graph",
+      "assertions": []
+    },
+    {
+      "id": "goodhart_cb_single_compliance_only",
+      "description": "A traversal with only a single COMPLIANCE node must yield HUMAN_GATE with legal_flag=True and that node as the sole contributing node",
+      "function": "classify_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "TraversalResult with single COMPLIANCE node",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.HUMAN_GATE",
+        "result.legal_flag is True",
+        "len(result.contributing_nodes) == 1"
+      ]
+    },
+    {
+      "id": "goodhart_csd_auth_tier_formula",
+      "description": "Soak computation for AUTH tier must use the AUTH base_duration, not FINANCIAL or any other tier's base",
+      "function": "compute_soak_duration",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "tier=AUTH, trust_score=0.5, base_durations with distinct values per tier, target_requests=100, observed_rate_rps=10",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result uses AUTH base_duration in formula, not any other tier's"
+      ]
+    },
+    {
+      "id": "goodhart_eb_contributing_nodes_in_blast_result",
+      "description": "BlastResult.contributing_nodes must be populated from the classification step and be non-empty",
+      "function": "evaluate_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Any valid graph and origin",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.contributing_nodes) > 0"
+      ]
+    },
+    {
+      "id": "goodhart_cbr_origin_depth_zero",
+      "description": "The origin node must always be at BFS depth 0 in node_details, regardless of graph structure",
+      "function": "compute_blast_radius",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various graph structures, check origin depth",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "node_detail for origin has depth == 0"
+      ]
+    },
+    {
+      "id": "goodhart_cb_three_pii_all_authorized",
+      "description": "Multiple PII authorized nodes with no FINANCIAL/AUTH/COMPLIANCE should yield SOAK, not escalate further",
+      "function": "classify_blast",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "TraversalResult with 3 PII authorized non-authoritative nodes",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.SOAK",
+        "result.legal_flag is False",
+        "len(result.contributing_nodes) == 3"
+      ]
+    },
+    {
+      "id": "goodhart_csd_trust_clamped_above_one",
+      "description": "If a trust_score slightly above 1.0 is somehow passed, it should be clamped to 1.0 per the contract's clamping rule, yielding multiplier 1.0",
+      "function": "compute_soak_duration",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "trust_score=1.0 (at boundary), verify multiplier is exactly 1.0",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == base_duration * 1.0 * ratio_factor"
+      ]
+    },
+    {
+      "id": "goodhart_eb_legal_flag_false_for_auto_merge",
+      "description": "When action is AUTO_MERGE, legal_flag must be False, even in edge-case graph configurations",
+      "function": "evaluate_blast",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph with all PUBLIC authorized high-trust non-authoritative nodes",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.AUTO_MERGE",
+        "result.legal_flag is False",
+        "result.soak_duration is None"
+      ]
+    },
+    {
+      "id": "goodhart_cbr_branching_with_depth_limit",
+      "description": "In a branching graph, max_depth must limit all branches equally, not just the first path explored",
+      "function": "compute_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph: A->B, A->C, B->D, C->E, D->F, E->G; max_depth=2, origin=A",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "D and E are reachable (depth 2)",
+        "F and G are NOT reachable (depth 3)",
+        "len(result.reachable_nodes) == 5"
+      ]
+    },
+    {
+      "id": "goodhart_cn_pii_unauthorized_authoritative_low_trust",
+      "description": "When multiple escalation rules apply simultaneously (unauthorized + low trust authoritative), the result should still be HUMAN_GATE",
+      "function": "classify_node",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "PII node, NOT authorized for PII, is_authoritative=True, trust_score=0.1, low_trust_threshold=0.5",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == ActionCategory.HUMAN_GATE"
+      ]
+    },
+    {
+      "id": "goodhart_eb_soak_duration_uses_highest_tier",
+      "description": "When action is SOAK, soak_duration must be computed using the highest_data_tier among reachable nodes, not the origin's tier",
+      "function": "evaluate_blast",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Graph: origin A (PUBLIC, authorized) -> B (PII, authorized); soak_params with different base_durations for PUBLIC vs PII",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.action == ActionCategory.SOAK",
+        "result.soak_duration uses PII base_duration (the highest tier)"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nAdversarial hidden acceptance tests for Blast Radius & Soak Computation.\nThese tests catch implementations that pass visible tests via shortcuts/hardcoding.\n\"\"\"\nimport math\nimport pytest\nfrom datetime import timedelta, datetime, timezone\nfrom unittest.mock import MagicMock, call\nfrom src.blast import (\n    DataTier, ActionCategory, NodeId, NodeMetadata, AccessGraph,\n    AccessGraphEdge, NodeBlastDetail, TraversalResult, ClassificationResult,\n    SoakParams, BlastResult, \n    compute_blast_radius, classify_blast, compute_soak_duration,\n    evaluate_blast, add_node, add_edge, classify_node,\n)\n\n\n# ── Helpers ──────────────────────────────────────────────────────────────\n\ndef make_node(node_id: str, data_tier=DataTier.PUBLIC, trust_score=0.8,\n              authorized_tiers=None, is_authoritative=False) -> NodeMetadata:\n    if authorized_tiers is None:\n        authorized_tiers = [data_tier]\n    return NodeMetadata(\n        node_id=NodeId(node_id),\n        data_tier=data_tier,\n        trust_score=trust_score,\n        authorized_tiers=authorized_tiers,\n        is_authoritative=is_authoritative,\n    )\n\n\ndef make_graph(nodes, edges=None):\n    g = AccessGraph(adjacency={}, metadata={})\n    for n in nodes:\n        add_node(g, n)\n    for src, tgt in (edges or []):\n        add_edge(g, NodeId(src), NodeId(tgt))\n    return g\n\n\ndef default_soak_params(low_trust_threshold=0.5, target_requests=100.0,\n                         observed_rate_rps=10.0, base_override=None):\n    base = base_override or {\n        DataTier.PUBLIC: timedelta(minutes=5),\n        DataTier.PII: timedelta(minutes=30),\n        DataTier.FINANCIAL: timedelta(hours=1),\n        DataTier.AUTH: timedelta(hours=2),\n        DataTier.COMPLIANCE: timedelta(hours=4),\n    }\n    return SoakParams(\n        base_durations=base,\n        target_requests=target_requests,\n        observed_rate_rps=observed_rate_rps,\n        low_trust_threshold=low_trust_threshold,\n    )\n\n\ndef make_detail(node_id, data_tier, trust_score, is_authoritative, is_authorized, action, depth):\n    return NodeBlastDetail(\n        node_id=NodeId(node_id),\n        data_tier=data_tier,\n        trust_score=trust_score,\n        is_authoritative=is_authoritative,\n        is_authorized_for_tier=is_authorized,\n        node_action=action,\n        depth=depth,\n    )\n\n\ndef make_traversal(origin, nodes_info):\n    \"\"\"nodes_info: list of (id, DataTier, trust, is_authoritative, authorized_tiers, depth)\"\"\"\n    reachable = [NodeId(n[0]) for n in nodes_info]\n    details = []\n    highest = DataTier.PUBLIC\n    max_d = 0\n    for nid, tier, trust, auth, auth_tiers, depth in nodes_info:\n        is_auth_for_tier = tier in auth_tiers\n        details.append(NodeBlastDetail(\n            node_id=NodeId(nid),\n            data_tier=tier,\n            trust_score=trust,\n            is_authoritative=auth,\n            is_authorized_for_tier=is_auth_for_tier,\n            node_action=ActionCategory.AUTO_MERGE,  # placeholder\n            depth=depth,\n        ))\n        if _tier_order(tier) > _tier_order(highest):\n            highest = tier\n        if depth > max_d:\n            max_d = depth\n    return TraversalResult(\n        origin=NodeId(origin),\n        reachable_nodes=reachable,\n        node_details=details,\n        highest_data_tier=highest,\n        max_depth_reached=max_d,\n        cycle_detected=False,\n    )\n\n\ndef _tier_order(t):\n    return [DataTier.PUBLIC, DataTier.PII, DataTier.FINANCIAL, DataTier.AUTH, DataTier.COMPLIANCE].index(t)\n\n\n# ── compute_blast_radius tests ──────────────────────────────────────────\n\nclass TestGoodhartComputeBlastRadius:\n\n    def test_goodhart_cbr_depth_two_excludes_depth_three(self):\n        \"\"\"BFS with max_depth=2 on a longer chain must correctly stop at depth 2, excluding deeper nodes.\"\"\"\n        nodes = [make_node(c) for c in \"ABCDE\"]\n        g = make_graph(nodes, [(\"A\",\"B\"),(\"B\",\"C\"),(\"C\",\"D\"),(\"D\",\"E\")])\n        result = compute_blast_radius(g, NodeId(\"A\"), max_depth=2)\n        assert len(result.reachable_nodes) == 3\n        assert result.max_depth_reached == 2\n        assert NodeId(\"D\") not in result.reachable_nodes\n        assert NodeId(\"E\") not in result.reachable_nodes\n\n    def test_goodhart_cbr_node_details_depth_correct(self):\n        \"\"\"Each node_detail must carry the correct BFS depth from the origin, not a constant.\"\"\"\n        nodes = [make_node(\"A\"), make_node(\"B\"), make_node(\"C\")]\n        g = make_graph(nodes, [(\"A\",\"B\"),(\"B\",\"C\")])\n        result = compute_blast_radius(g, NodeId(\"A\"), max_depth=None)\n        depth_map = {d.node_id: d.depth for d in result.node_details}\n        assert depth_map[NodeId(\"A\")] == 0\n        assert depth_map[NodeId(\"B\")] == 1\n        assert depth_map[NodeId(\"C\")] == 2\n\n    def test_goodhart_cbr_node_details_carry_metadata(self):\n        \"\"\"Node details must reflect actual per-node metadata, not hardcoded defaults.\"\"\"\n        a = make_node(\"A\", DataTier.PII, 0.3, [DataTier.PII], True)\n        b = make_node(\"B\", DataTier.FINANCIAL, 0.9, [DataTier.FINANCIAL], False)\n        g = make_graph([a, b], [(\"A\",\"B\")])\n        result = compute_blast_radius(g, NodeId(\"A\"), max_depth=None)\n        detail_map = {d.node_id: d for d in result.node_details}\n        da = detail_map[NodeId(\"A\")]\n        db = detail_map[NodeId(\"B\")]\n        assert da.data_tier == DataTier.PII\n        assert da.trust_score == pytest.approx(0.3)\n        assert da.is_authoritative is True\n        assert db.data_tier == DataTier.FINANCIAL\n        assert db.trust_score == pytest.approx(0.9)\n        assert db.is_authoritative is False\n\n    def test_goodhart_cbr_highest_tier_auth(self):\n        \"\"\"highest_data_tier must correctly resolve AUTH as the maximum when mixed with PUBLIC and PII.\"\"\"\n        nodes = [\n            make_node(\"A\", DataTier.PUBLIC),\n            make_node(\"B\", DataTier.PII),\n            make_node(\"C\", DataTier.AUTH),\n        ]\n        g = make_graph(nodes, [(\"A\",\"B\"),(\"B\",\"C\")])\n        result = compute_blast_radius(g, NodeId(\"A\"), max_depth=None)\n        assert result.highest_data_tier == DataTier.AUTH\n\n    def test_goodhart_cbr_cycle_detected_false_no_cycle(self):\n        \"\"\"cycle_detected must be False on acyclic graphs, ensuring it's not always True.\"\"\"\n        nodes = [make_node(\"A\"), make_node(\"B\"), make_node(\"C\")]\n        g = make_graph(nodes, [(\"A\",\"B\"),(\"B\",\"C\")])\n        result = compute_blast_radius(g, NodeId(\"A\"), max_depth=None)\n        assert result.cycle_detected is False\n\n    def test_goodhart_cbr_large_cycle_ring(self):\n        \"\"\"BFS on a 5-node ring must terminate, detect cycle, and visit all 5 nodes.\"\"\"\n        nodes = [make_node(c) for c in \"ABCDE\"]\n        g = make_graph(nodes, [(\"A\",\"B\"),(\"B\",\"C\"),(\"C\",\"D\"),(\"D\",\"E\"),(\"E\",\"A\")])\n        result = compute_blast_radius(g, NodeId(\"A\"), max_depth=None)\n        assert len(result.reachable_nodes) == 5\n        assert result.cycle_detected is True\n        assert len(result.node_details) == 5\n\n    def test_goodhart_cbr_max_depth_none_unlimited(self):\n        \"\"\"When max_depth is None, BFS traverses the entire reachable graph without depth limit.\"\"\"\n        nodes = [make_node(c) for c in \"ABCDEF\"]\n        edges = [(\"A\",\"B\"),(\"B\",\"C\"),(\"C\",\"D\"),(\"D\",\"E\"),(\"E\",\"F\")]\n        g = make_graph(nodes, edges)\n        result = compute_blast_radius(g, NodeId(\"A\"), max_depth=None)\n        assert len(result.reachable_nodes) == 6\n        assert result.max_depth_reached == 5\n\n    def test_goodhart_cbr_directed_edge_not_reverse(self):\n        \"\"\"BFS respects edge direction: A->B does NOT make A reachable from B.\"\"\"\n        nodes = [make_node(\"A\"), make_node(\"B\")]\n        g = make_graph(nodes, [(\"A\",\"B\")])\n        result = compute_blast_radius(g, NodeId(\"B\"), max_depth=None)\n        assert len(result.reachable_nodes) == 1\n        assert NodeId(\"B\") in result.reachable_nodes\n        assert NodeId(\"A\") not in result.reachable_nodes\n\n    def test_goodhart_cbr_origin_depth_zero(self):\n        \"\"\"The origin node must always be at BFS depth 0.\"\"\"\n        nodes = [make_node(\"X\"), make_node(\"Y\"), make_node(\"Z\")]\n        g = make_graph(nodes, [(\"X\",\"Y\"),(\"Y\",\"Z\")])\n        result = compute_blast_radius(g, NodeId(\"X\"), max_depth=None)\n        detail_map = {d.node_id: d for d in result.node_details}\n        assert detail_map[NodeId(\"X\")].depth == 0\n\n    def test_goodhart_cbr_branching_with_depth_limit(self):\n        \"\"\"max_depth limits all branches equally, not just the first path.\"\"\"\n        nodes = [make_node(c) for c in \"ABCDEFG\"]\n        edges = [(\"A\",\"B\"),(\"A\",\"C\"),(\"B\",\"D\"),(\"C\",\"E\"),(\"D\",\"F\"),(\"E\",\"G\")]\n        g = make_graph(nodes, edges)\n        result = compute_blast_radius(g, NodeId(\"A\"), max_depth=2)\n        ids = set(result.reachable_nodes)\n        assert NodeId(\"A\") in ids\n        assert NodeId(\"B\") in ids\n        assert NodeId(\"C\") in ids\n        assert NodeId(\"D\") in ids\n        assert NodeId(\"E\") in ids\n        assert NodeId(\"F\") not in ids\n        assert NodeId(\"G\") not in ids\n        assert len(result.reachable_nodes) == 5\n\n    def test_goodhart_cbr_inconsistent_graph_in_values(self):\n        \"\"\"Inconsistency in adjacency values (neighbor without metadata) must raise error.\"\"\"\n        g = AccessGraph(\n            adjacency={NodeId(\"A\"): [NodeId(\"B\")]},\n            metadata={NodeId(\"A\"): make_node(\"A\")},\n        )\n        with pytest.raises(Exception):\n            compute_blast_radius(g, NodeId(\"A\"), max_depth=None)\n\n\n# ── classify_blast tests ────────────────────────────────────────────────\n\nclass TestGoodhartClassifyBlast:\n\n    def test_goodhart_cb_pii_plus_financial_human_gate(self):\n        \"\"\"Mixing PII and FINANCIAL nodes: max-over-nodes yields HUMAN_GATE, legal_flag=False.\"\"\"\n        trav = make_traversal(\"A\", [\n            (\"A\", DataTier.PII, 0.8, False, [DataTier.PII], 0),\n            (\"B\", DataTier.FINANCIAL, 0.8, False, [DataTier.FINANCIAL], 1),\n        ])\n        sp = default_soak_params()\n        result = classify_blast(trav, sp)\n        assert result.action == ActionCategory.HUMAN_GATE\n        assert result.legal_flag is False\n\n    def test_goodhart_cb_compliance_plus_public_legal_flag(self):\n        \"\"\"PUBLIC + COMPLIANCE mix must yield HUMAN_GATE with legal_flag=True.\"\"\"\n        trav = make_traversal(\"A\", [\n            (\"A\", DataTier.PUBLIC, 0.9, False, [DataTier.PUBLIC], 0),\n            (\"B\", DataTier.COMPLIANCE, 0.9, False, [DataTier.COMPLIANCE], 1),\n        ])\n        sp = default_soak_params()\n        result = classify_blast(trav, sp)\n        assert result.action == ActionCategory.HUMAN_GATE\n        assert result.legal_flag is True\n\n    def test_goodhart_cb_financial_no_legal_flag(self):\n        \"\"\"HUMAN_GATE from FINANCIAL alone must not set legal_flag (only COMPLIANCE sets it).\"\"\"\n        trav = make_traversal(\"A\", [\n            (\"A\", DataTier.FINANCIAL, 0.8, False, [DataTier.FINANCIAL], 0),\n        ])\n        sp = default_soak_params()\n        result = classify_blast(trav, sp)\n        assert result.action == ActionCategory.HUMAN_GATE\n        assert result.legal_flag is False\n\n    def test_goodhart_cb_auth_no_legal_flag(self):\n        \"\"\"HUMAN_GATE from AUTH alone must not set legal_flag.\"\"\"\n        trav = make_traversal(\"A\", [\n            (\"A\", DataTier.AUTH, 0.8, False, [DataTier.AUTH], 0),\n        ])\n        sp = default_soak_params()\n        result = classify_blast(trav, sp)\n        assert result.action == ActionCategory.HUMAN_GATE\n        assert result.legal_flag is False\n\n    def test_goodhart_cb_unauthorized_pii_human_gate_not_soak(self):\n        \"\"\"PII node NOT authorized for its tier must escalate to HUMAN_GATE, not SOAK.\"\"\"\n        trav = make_traversal(\"A\", [\n            (\"A\", DataTier.PII, 0.9, False, [DataTier.PUBLIC], 0),  # authorized only for PUBLIC\n        ])\n        sp = default_soak_params()\n        result = classify_blast(trav, sp)\n        assert result.action == ActionCategory.HUMAN_GATE\n\n    def test_goodhart_cb_contributing_nodes_only_max_action(self):\n        \"\"\"contributing_nodes must contain only nodes whose per-node action equals the final max action.\"\"\"\n        trav = make_traversal(\"A\", [\n            (\"A\", DataTier.PUBLIC, 0.9, False, [DataTier.PUBLIC], 0),\n            (\"B\", DataTier.PUBLIC, 0.9, False, [DataTier.PUBLIC], 1),\n            (\"C\", DataTier.PUBLIC, 0.9, False, [DataTier.PUBLIC], 1),\n            (\"D\", DataTier.FINANCIAL, 0.9, False, [DataTier.FINANCIAL], 2),\n        ])\n        sp = default_soak_params()\n        result = classify_blast(trav, sp)\n        assert result.action == ActionCategory.HUMAN_GATE\n        assert len(result.contributing_nodes) >= 1\n        contributing_ids = {n if isinstance(n, str) else getattr(n, 'node_id', n) for n in result.contributing_nodes}\n        # Only D should be contributing (the FINANCIAL node)\n        # Allow NodeId or string comparison\n        assert NodeId(\"D\") in result.contributing_nodes or \"D\" in contributing_ids\n\n    def test_goodhart_cb_multiple_contributing_nodes(self):\n        \"\"\"When multiple nodes are at the max severity, all should be in contributing_nodes.\"\"\"\n        trav = make_traversal(\"A\", [\n            (\"A\", DataTier.PUBLIC, 0.9, False, [DataTier.PUBLIC], 0),\n            (\"B\", DataTier.FINANCIAL, 0.9, False, [DataTier.FINANCIAL], 1),\n            (\"C\", DataTier.FINANCIAL, 0.9, False, [DataTier.FINANCIAL], 1),\n        ])\n        sp = default_soak_params()\n        result = classify_blast(trav, sp)\n        assert result.action == ActionCategory.HUMAN_GATE\n        assert len(result.contributing_nodes) >= 2\n\n    def test_goodhart_cb_low_trust_authoritative_pii_escalation(self):\n        \"\"\"Authoritative PII node with low trust escalates to HUMAN_GATE even though PII normally yields SOAK.\"\"\"\n        trav = make_traversal(\"A\", [\n            (\"A\", DataTier.PII, 0.1, True, [DataTier.PII], 0),\n        ])\n        sp = default_soak_params(low_trust_threshold=0.5)\n        result = classify_blast(trav, sp)\n        assert result.action == ActionCategory.HUMAN_GATE\n\n    def test_goodhart_cb_single_compliance_only(self):\n        \"\"\"Single COMPLIANCE node yields HUMAN_GATE, legal_flag=True, one contributing node.\"\"\"\n        trav = make_traversal(\"A\", [\n            (\"A\", DataTier.COMPLIANCE, 0.9, False, [DataTier.COMPLIANCE], 0),\n        ])\n        sp = default_soak_params()\n        result = classify_blast(trav, sp)\n        assert result.action == ActionCategory.HUMAN_GATE\n        assert result.legal_flag is True\n        assert len(result.contributing_nodes) == 1\n\n    def test_goodhart_cb_three_pii_all_authorized(self):\n        \"\"\"Multiple PII authorized nodes without higher tiers should yield SOAK, not escalate.\"\"\"\n        trav = make_traversal(\"A\", [\n            (\"A\", DataTier.PII, 0.8, False, [DataTier.PII], 0),\n            (\"B\", DataTier.PII, 0.7, False, [DataTier.PII], 1),\n            (\"C\", DataTier.PII, 0.6, False, [DataTier.PII], 2),\n        ])\n        sp = default_soak_params()\n        result = classify_blast(trav, sp)\n        assert result.action == ActionCategory.SOAK\n        assert result.legal_flag is False\n        assert len(result.contributing_nodes) == 3\n\n\n# ── compute_soak_duration tests ─────────────────────────────────────────\n\nclass TestGoodhartComputeSoakDuration:\n\n    def test_goodhart_csd_trust_midpoint_formula(self):\n        \"\"\"Soak with trust=0.75, ratio=1.0 must match formula: base*(2.0-0.75)*1.0.\"\"\"\n        sp = SoakParams(\n            base_durations={DataTier.PII: timedelta(hours=1)},\n            target_requests=100.0,\n            observed_rate_rps=100.0,\n            low_trust_threshold=0.5,\n        )\n        result = compute_soak_duration(DataTier.PII, 0.75, sp)\n        expected = timedelta(hours=1) * 1.25 * 1.0\n        assert result == expected\n\n    def test_goodhart_csd_ratio_exactly_one(self):\n        \"\"\"When target==rps, ratio factor is 1.0, so only trust multiplier applies.\"\"\"\n        sp = SoakParams(\n            base_durations={DataTier.PUBLIC: timedelta(minutes=30)},\n            target_requests=50.0,\n            observed_rate_rps=50.0,\n            low_trust_threshold=0.5,\n        )\n        result = compute_soak_duration(DataTier.PUBLIC, 0.5, sp)\n        expected = timedelta(minutes=30) * 1.5 * 1.0\n        assert result == expected\n\n    def test_goodhart_csd_very_small_rps_epsilon_floor(self):\n        \"\"\"Extremely small rps should be floored to epsilon, yielding large but finite duration.\"\"\"\n        sp = SoakParams(\n            base_durations={DataTier.PUBLIC: timedelta(minutes=1)},\n            target_requests=100.0,\n            observed_rate_rps=1e-10,\n            low_trust_threshold=0.5,\n        )\n        result = compute_soak_duration(DataTier.PUBLIC, 0.5, sp)\n        assert result > timedelta(0)\n        assert result > timedelta(minutes=1)\n        # Should be finite\n        assert result.total_seconds() < float('inf')\n\n    def test_goodhart_csd_different_base_durations(self):\n        \"\"\"Different tier base durations must produce proportionally different soak durations.\"\"\"\n        sp = SoakParams(\n            base_durations={\n                DataTier.PII: timedelta(hours=2),\n                DataTier.FINANCIAL: timedelta(hours=4),\n            },\n            target_requests=100.0,\n            observed_rate_rps=100.0,\n            low_trust_threshold=0.5,\n        )\n        r_pii = compute_soak_duration(DataTier.PII, 0.5, sp)\n        r_fin = compute_soak_duration(DataTier.FINANCIAL, 0.5, sp)\n        assert r_fin == r_pii * 2\n\n    def test_goodhart_csd_negative_trust_inf(self):\n        \"\"\"Negative infinity trust_score must be rejected.\"\"\"\n        sp = SoakParams(\n            base_durations={DataTier.PUBLIC: timedelta(minutes=5)},\n            target_requests=100.0,\n            observed_rate_rps=10.0,\n            low_trust_threshold=0.5,\n        )\n        with pytest.raises(Exception):\n            compute_soak_duration(DataTier.PUBLIC, float('-inf'), sp)\n\n    def test_goodhart_csd_auth_tier_formula(self):\n        \"\"\"Soak for AUTH tier must use AUTH's base_duration specifically.\"\"\"\n        sp = SoakParams(\n            base_durations={\n                DataTier.PUBLIC: timedelta(minutes=5),\n                DataTier.PII: timedelta(minutes=30),\n                DataTier.FINANCIAL: timedelta(hours=1),\n                DataTier.AUTH: timedelta(hours=2),\n                DataTier.COMPLIANCE: timedelta(hours=4),\n            },\n            target_requests=100.0,\n            observed_rate_rps=100.0,\n            low_trust_threshold=0.5,\n        )\n        result = compute_soak_duration(DataTier.AUTH, 0.5, sp)\n        expected = timedelta(hours=2) * 1.5 * 1.0\n        assert result == expected\n\n    def test_goodhart_csd_ratio_four_sqrt_two(self):\n        \"\"\"When ratio=4, sqrt(4)=2, so factor=max(1,2)=2. Verifying sqrt is applied.\"\"\"\n        sp = SoakParams(\n            base_durations={DataTier.PUBLIC: timedelta(minutes=10)},\n            target_requests=400.0,\n            observed_rate_rps=100.0,\n            low_trust_threshold=0.5,\n        )\n        result = compute_soak_duration(DataTier.PUBLIC, 1.0, sp)\n        # base=10min, trust_mult=1.0, ratio_factor=2.0\n        expected = timedelta(minutes=10) * 1.0 * 2.0\n        assert result == expected\n\n    def test_goodhart_csd_ratio_nine_sqrt_three(self):\n        \"\"\"When ratio=9, sqrt(9)=3. Verifying the sqrt calculation is correct.\"\"\"\n        sp = SoakParams(\n            base_durations={DataTier.PII: timedelta(minutes=10)},\n            target_requests=90.0,\n            observed_rate_rps=10.0,\n            low_trust_threshold=0.5,\n        )\n        result = compute_soak_duration(DataTier.PII, 0.0, sp)\n        # base=10min, trust_mult=2.0, ratio_factor=3.0\n        expected = timedelta(minutes=10) * 2.0 * 3.0\n        assert result == expected\n\n\n# ── classify_node tests ─────────────────────────────────────────────────\n\nclass TestGoodhartClassifyNode:\n\n    def test_goodhart_cn_pii_authorized_authoritative_high_trust(self):\n        \"\"\"Authoritative PII node with high trust should still be SOAK, not escalate.\"\"\"\n        nid = NodeId(\"N1\")\n        meta = make_node(\"N1\", DataTier.PII, 0.9, [DataTier.PII], True)\n        detail = make_detail(\"N1\", DataTier.PII, 0.9, True, True, ActionCategory.AUTO_MERGE, 0)\n        result = classify_node(detail, meta, 0.5)\n        assert result == ActionCategory.SOAK\n\n    def test_goodhart_cn_compliance_authorized_high_trust(self):\n        \"\"\"COMPLIANCE node must always be HUMAN_GATE regardless of authorization and trust.\"\"\"\n        meta = make_node(\"N1\", DataTier.COMPLIANCE, 1.0, [DataTier.COMPLIANCE], False)\n        detail = make_detail(\"N1\", DataTier.COMPLIANCE, 1.0, False, True, ActionCategory.AUTO_MERGE, 0)\n        result = classify_node(detail, meta, 0.5)\n        assert result == ActionCategory.HUMAN_GATE\n\n    def test_goodhart_cn_financial_authorized_high_trust(self):\n        \"\"\"FINANCIAL node must always be HUMAN_GATE even with full authorization and high trust.\"\"\"\n        meta = make_node(\"N1\", DataTier.FINANCIAL, 1.0, [DataTier.FINANCIAL], False)\n        detail = make_detail(\"N1\", DataTier.FINANCIAL, 1.0, False, True, ActionCategory.AUTO_MERGE, 0)\n        result = classify_node(detail, meta, 0.5)\n        assert result == ActionCategory.HUMAN_GATE\n\n    def test_goodhart_cn_public_low_trust_non_authoritative(self):\n        \"\"\"PUBLIC node with low trust but NOT authoritative should be AUTO_MERGE.\"\"\"\n        meta = make_node(\"N1\", DataTier.PUBLIC, 0.1, [DataTier.PUBLIC], False)\n        detail = make_detail(\"N1\", DataTier.PUBLIC, 0.1, False, True, ActionCategory.AUTO_MERGE, 0)\n        result = classify_node(detail, meta, 0.5)\n        assert result == ActionCategory.AUTO_MERGE\n\n    def test_goodhart_cn_pii_unauthorized_authoritative_low_trust(self):\n        \"\"\"Multiple escalation rules apply: result is still HUMAN_GATE.\"\"\"\n        meta = make_node(\"N1\", DataTier.PII, 0.1, [DataTier.PUBLIC], True)\n        detail = make_detail(\"N1\", DataTier.PII, 0.1, True, False, ActionCategory.AUTO_MERGE, 0)\n        result = classify_node(detail, meta, 0.5)\n        assert result == ActionCategory.HUMAN_GATE\n\n    def test_goodhart_cn_auth_unauthorized_low_trust_authoritative(self):\n        \"\"\"AUTH node must be HUMAN_GATE regardless of other conditions.\"\"\"\n        meta = make_node(\"N1\", DataTier.AUTH, 0.1, [], True)\n        detail = make_detail(\"N1\", DataTier.AUTH, 0.1, True, False, ActionCategory.AUTO_MERGE, 0)\n        result = classify_node(detail, meta, 0.9)\n        assert result == ActionCategory.HUMAN_GATE\n\n    def test_goodhart_cn_pii_authorized_non_authoritative_is_soak(self):\n        \"\"\"PII authorized non-authoritative yields SOAK with different trust values than visible tests.\"\"\"\n        meta = make_node(\"N1\", DataTier.PII, 0.42, [DataTier.PII], False)\n        detail = make_detail(\"N1\", DataTier.PII, 0.42, False, True, ActionCategory.AUTO_MERGE, 0)\n        result = classify_node(detail, meta, 0.3)\n        assert result == ActionCategory.SOAK\n\n\n# ── evaluate_blast tests ────────────────────────────────────────────────\n\nclass TestGoodhartEvaluateBlast:\n\n    def test_goodhart_eb_soak_duration_positive_for_soak_action(self):\n        \"\"\"SOAK action must have a positive (not zero, not None) soak_duration.\"\"\"\n        nodes = [make_node(\"A\", DataTier.PII, 0.8, [DataTier.PII], False)]\n        g = make_graph(nodes)\n        sp = default_soak_params()\n        notifier = MagicMock()\n        result = evaluate_blast(g, NodeId(\"A\"), sp, notifier, max_depth=None)\n        assert result.action == ActionCategory.SOAK\n        assert result.soak_duration is not None\n        assert result.soak_duration > timedelta(0)\n\n    def test_goodhart_eb_soak_matches_compute_soak_formula(self):\n        \"\"\"BlastResult.soak_duration must match compute_soak_duration formula.\"\"\"\n        nodes = [make_node(\"A\", DataTier.PII, 0.7, [DataTier.PII], False)]\n        g = make_graph(nodes)\n        sp = default_soak_params(target_requests=100.0, observed_rate_rps=10.0)\n        notifier = MagicMock()\n        result = evaluate_blast(g, NodeId(\"A\"), sp, notifier, max_depth=None)\n        # Manually compute expected soak\n        base = sp.base_durations[DataTier.PII]\n        trust_mult = 2.0 - 0.7\n        ratio = sp.target_requests / sp.observed_rate_rps\n        ratio_factor = max(1.0, math.sqrt(ratio))\n        expected = base * trust_mult * ratio_factor\n        assert result.soak_duration == expected\n\n    def test_goodhart_eb_notifier_not_called_for_soak(self):\n        \"\"\"Notifier must NOT be called when action is SOAK.\"\"\"\n        nodes = [make_node(\"A\", DataTier.PII, 0.8, [DataTier.PII], False)]\n        g = make_graph(nodes)\n        sp = default_soak_params()\n        notifier = MagicMock()\n        result = evaluate_blast(g, NodeId(\"A\"), sp, notifier, max_depth=None)\n        assert result.action == ActionCategory.SOAK\n        notifier.notify.assert_not_called()\n\n    def test_goodhart_eb_notifier_receives_blast_result(self):\n        \"\"\"When HUMAN_GATE fires notifier, it must receive the actual BlastResult.\"\"\"\n        nodes = [make_node(\"A\", DataTier.FINANCIAL, 0.8, [DataTier.FINANCIAL], False)]\n        g = make_graph(nodes)\n        sp = default_soak_params()\n        notifier = MagicMock()\n        result = evaluate_blast(g, NodeId(\"A\"), sp, notifier, max_depth=None)\n        assert result.action == ActionCategory.HUMAN_GATE\n        notifier.notify.assert_called_once()\n        call_arg = notifier.notify.call_args[0][0]\n        assert call_arg.origin_node == NodeId(\"A\")\n\n    def test_goodhart_eb_cycle_detected_propagated(self):\n        \"\"\"cycle_detected from BFS must be propagated to BlastResult.\"\"\"\n        nodes = [make_node(\"A\"), make_node(\"B\")]\n        g = make_graph(nodes, [(\"A\",\"B\"),(\"B\",\"A\")])\n        sp = default_soak_params()\n        notifier = MagicMock()\n        result = evaluate_blast(g, NodeId(\"A\"), sp, notifier, max_depth=None)\n        assert result.cycle_detected is True\n\n    def test_goodhart_eb_max_depth_reached_propagated(self):\n        \"\"\"max_depth_reached from traversal must be in BlastResult.\"\"\"\n        nodes = [make_node(c) for c in \"ABCD\"]\n        g = make_graph(nodes, [(\"A\",\"B\"),(\"B\",\"C\"),(\"C\",\"D\")])\n        sp = default_soak_params()\n        notifier = MagicMock()\n        result = evaluate_blast(g, NodeId(\"A\"), sp, notifier, max_depth=2)\n        assert result.max_depth_reached == 2\n        assert len(result.reachable_nodes) == 3\n\n    def test_goodhart_eb_per_node_details_populated(self):\n        \"\"\"per_node_details must match reachable_nodes in count and node_ids.\"\"\"\n        nodes = [make_node(\"X\"), make_node(\"Y\"), make_node(\"Z\")]\n        g = make_graph(nodes, [(\"X\",\"Y\"),(\"Y\",\"Z\")])\n        sp = default_soak_params()\n        notifier = MagicMock()\n        result = evaluate_blast(g, NodeId(\"X\"), sp, notifier, max_depth=None)\n        assert len(result.per_node_details) == len(result.reachable_nodes)\n        detail_ids = {d.node_id for d in result.per_node_details}\n        for nid in result.reachable_nodes:\n            assert nid in detail_ids\n\n    def test_goodhart_eb_contributing_nodes_in_blast_result(self):\n        \"\"\"BlastResult.contributing_nodes must be non-empty.\"\"\"\n        nodes = [make_node(\"A\")]\n        g = make_graph(nodes)\n        sp = default_soak_params()\n        notifier = MagicMock()\n        result = evaluate_blast(g, NodeId(\"A\"), sp, notifier, max_depth=None)\n        assert len(result.contributing_nodes) > 0\n\n    def test_goodhart_eb_legal_flag_false_for_auto_merge(self):\n        \"\"\"AUTO_MERGE must have legal_flag=False and soak_duration=None.\"\"\"\n        nodes = [make_node(\"A\", DataTier.PUBLIC, 0.9, [DataTier.PUBLIC], False)]\n        g = make_graph(nodes)\n        sp = default_soak_params()\n        notifier = MagicMock()\n        result = evaluate_blast(g, NodeId(\"A\"), sp, notifier, max_depth=None)\n        assert result.action == ActionCategory.AUTO_MERGE\n        assert result.legal_flag is False\n        assert result.soak_duration is None\n\n    def test_goodhart_eb_soak_duration_uses_highest_tier(self):\n        \"\"\"When action is SOAK, soak_duration must use highest_data_tier's base, not origin's.\"\"\"\n        a = make_node(\"A\", DataTier.PUBLIC, 0.8, [DataTier.PUBLIC], False)\n        b = make_node(\"B\", DataTier.PII, 0.8, [DataTier.PII], False)\n        g = make_graph([a, b], [(\"A\",\"B\")])\n        sp = default_soak_params(target_requests=100.0, observed_rate_rps=100.0)\n        notifier = MagicMock()\n        result = evaluate_blast(g, NodeId(\"A\"), sp, notifier, max_depth=None)\n        assert result.action == ActionCategory.SOAK\n        # Should use PII base (highest tier), not PUBLIC base\n        pii_base = sp.base_durations[DataTier.PII]\n        public_base = sp.base_durations[DataTier.PUBLIC]\n        # Trust score of origin? Contract says compute_soak_duration with tier=highest and trust_score\n        # The soak duration should be at least using the PII base, not PUBLIC\n        assert result.soak_duration is not None\n        # If it used PUBLIC base, it would be much smaller\n        assert result.soak_duration.total_seconds() > public_base.total_seconds()\n\n    def test_goodhart_eb_computed_at_is_recent_utc(self):\n        \"\"\"computed_at must be a recent UTC datetime, not a hardcoded value.\"\"\"\n        nodes = [make_node(\"A\")]\n        g = make_graph(nodes)\n        sp = default_soak_params()\n        notifier = MagicMock()\n        before = datetime.now(timezone.utc)\n        result = evaluate_blast(g, NodeId(\"A\"), sp, notifier, max_depth=None)\n        after = datetime.now(timezone.utc)\n        assert result.computed_at.tzinfo is not None\n        assert before <= result.computed_at <= after\n\n\n# ── add_node / add_edge tests ──────────────────────────────────────────\n\nclass TestGoodhartGraphMutation:\n\n    def test_goodhart_add_node_preserves_existing_adjacency(self):\n        \"\"\"Replacing metadata via add_node must not clear existing edges.\"\"\"\n        a1 = make_node(\"A\", DataTier.PUBLIC, 0.5)\n        b = make_node(\"B\")\n        g = make_graph([a1, b], [(\"A\",\"B\")])\n        # Replace A's metadata\n        a2 = make_node(\"A\", DataTier.PII, 0.9)\n        add_node(g, a2)\n        assert NodeId(\"B\") in g.adjacency[NodeId(\"A\")]\n        assert g.metadata[NodeId(\"A\")].data_tier == DataTier.PII\n        assert g.metadata[NodeId(\"A\")].trust_score == pytest.approx(0.9)\n\n    def test_goodhart_add_edge_self_loop(self):\n        \"\"\"Self-loop edges should be allowed.\"\"\"\n        a = make_node(\"A\")\n        g = make_graph([a])\n        add_edge(g, NodeId(\"A\"), NodeId(\"A\"))\n        assert NodeId(\"A\") in g.adjacency[NodeId(\"A\")]\n\n    def test_goodhart_add_node_empty_id_rejected(self):\n        \"\"\"NodeMetadata with empty node_id should be rejected.\"\"\"\n        with pytest.raises(Exception):\n            make_node(\"\")\n\n    def test_goodhart_add_multiple_edges_different_targets(self):\n        \"\"\"Adding edges to different targets should all be present.\"\"\"\n        nodes = [make_node(c) for c in \"ABCD\"]\n        g = make_graph(nodes, [(\"A\",\"B\"),(\"A\",\"C\"),(\"A\",\"D\")])\n        adj = g.adjacency[NodeId(\"A\")]\n        assert NodeId(\"B\") in adj\n        assert NodeId(\"C\") in adj\n        assert NodeId(\"D\") in adj\n        assert len([x for x in adj if x == NodeId(\"B\")]) == 1  # no duplication\n"
+}

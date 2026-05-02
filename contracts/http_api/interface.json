@@ -1,0 +1,2195 @@
+{
+  "component_id": "http_api",
+  "name": "HTTP API Server",
+  "description": "JSON HTTP API on configured port (default 7700). Provides endpoints for access graph registration, blast radius computation, trust score queries, taint reset, authority mapping, canary injection/results, full feedback reports, and OTLP findings ingestion. Uses Flask as the HTTP framework (justified exception to stdlib preference: manual routing on http.server would exceed 300 lines and introduce bugs in request parsing, content negotiation, and error handling). All responses are JSON with Content-Type: application/json. Error responses use a machine-readable ErrorResponse envelope with StrEnum error codes. The HTTP layer is strictly a translation layer — zero business logic — delegating all computation to engine Protocol interfaces injected via a ServerContext. Three-module structure: server.py (app factory, routes, startup/shutdown), models.py (Pydantic v2 request/response models), errors.py (ErrorCode enum, global error handlers, ValidationError translation).",
+  "version": 1,
+  "types": [
+    {
+      "name": "NodeId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Type-safe string identifier for a node in the access graph. NewType over str."
+    },
+    {
+      "name": "RunId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Type-safe string identifier for a canary or report run. NewType over str."
+    },
+    {
+      "name": "ReviewId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Type-safe string identifier for a review that authorizes taint reset. NewType over str."
+    },
+    {
+      "name": "TrustScore",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Float in [0.0, 1.0] representing raw computed trust. Annotated[float, Field(ge=0.0, le=1.0)]."
+    },
+    {
+      "name": "ErrorCode",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "INVALID_JSON",
+        "VALIDATION_ERROR",
+        "NODE_NOT_FOUND",
+        "RUN_NOT_FOUND",
+        "REVIEW_NOT_FOUND",
+        "ACCESS_GRAPH_INVALID",
+        "BLAST_RADIUS_FAILED",
+        "TRUST_COMPUTATION_FAILED",
+        "TAINT_RESET_FAILED",
+        "AUTHORITY_UNAVAILABLE",
+        "CANARY_INJECTION_FAILED",
+        "CANARY_RESULTS_UNAVAILABLE",
+        "REPORT_NOT_FOUND",
+        "FINDINGS_INGESTION_FAILED",
+        "INTERNAL_ERROR",
+        "METHOD_NOT_ALLOWED",
+        "CONTENT_TYPE_UNSUPPORTED"
+      ],
+      "inner_types": [],
+      "description": "Machine-readable error codes returned in all error responses. StrEnum."
+    },
+    {
+      "name": "TrustTier",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "FULL",
+        "HIGH",
+        "MODERATE",
+        "LOW",
+        "NONE",
+        "TAINTED"
+      ],
+      "inner_types": [],
+      "description": "Display tier derived from raw trust score. Used only for display, never for policy calculations. StrEnum."
+    },
+    {
+      "name": "DataClassificationTier",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "PUBLIC",
+        "INTERNAL",
+        "CONFIDENTIAL",
+        "RESTRICTED"
+      ],
+      "inner_types": [],
+      "description": "Classification tier for data sensitivity. StrEnum."
+    },
+    {
+      "name": "FindingSeverity",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "INFO"
+      ],
+      "inner_types": [],
+      "description": "Severity level for findings reported via OTLP adapter. StrEnum."
+    },
+    {
+      "name": "ErrorResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "error_code",
+          "type_ref": "ErrorCode",
+          "required": true,
+          "default": "",
+          "description": "Machine-readable error code from ErrorCode enum.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message including the specific node, field, or domain that caused the error.",
+          "validators": []
+        },
+        {
+          "name": "details",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Optional additional structured error context (e.g., field names, validation errors).",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Standard error envelope for all HTTP error responses."
+    },
+    {
+      "name": "ServerConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "host",
+          "type_ref": "str",
+          "required": true,
+          "default": "127.0.0.1",
+          "description": "Bind address for the HTTP server.",
+          "validators": []
+        },
+        {
+          "name": "port",
+          "type_ref": "int",
+          "required": true,
+          "default": "7700",
+          "description": "Port number for the HTTP server.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 65535",
+              "error_message": "Port must be between 1 and 65535."
+            }
+          ]
+        },
+        {
+          "name": "debug",
+          "type_ref": "bool",
+          "required": true,
+          "default": "false",
+          "description": "Enable Flask debug mode. Must be false in production.",
+          "validators": []
+        },
+        {
+          "name": "max_request_size_bytes",
+          "type_ref": "int",
+          "required": true,
+          "default": "10485760",
+          "description": "Maximum request body size in bytes (default 10MB).",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1024 <= value <= 104857600",
+              "error_message": "Max request size must be between 1KB and 100MB."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for the HTTP API server. Loaded from YAML config file."
+    },
+    {
+      "name": "ServerContext",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "config",
+          "type_ref": "ServerConfig",
+          "required": true,
+          "default": "",
+          "description": "Server configuration.",
+          "validators": []
+        },
+        {
+          "name": "trust_engine",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "Protocol-typed trust engine instance for score queries and taint reset.",
+          "validators": []
+        },
+        {
+          "name": "blast_radius_engine",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "Protocol-typed blast radius computation engine.",
+          "validators": []
+        },
+        {
+          "name": "authority_engine",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "Protocol-typed authority map engine.",
+          "validators": []
+        },
+        {
+          "name": "canary_engine",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "Protocol-typed canary injection and results engine.",
+          "validators": []
+        },
+        {
+          "name": "report_engine",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "Protocol-typed report generation engine.",
+          "validators": []
+        },
+        {
+          "name": "findings_engine",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "Protocol-typed OTLP findings ingestion engine.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Dependency injection container holding references to all engine Protocol instances. Passed to the Flask app factory to wire routes to engines. Composition over inheritance."
+    },
+    {
+      "name": "AccessGraphPayload",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "nodes",
+          "type_ref": "AccessGraphNodeList",
+          "required": true,
+          "default": "",
+          "description": "List of nodes in the access graph.",
+          "validators": []
+        },
+        {
+          "name": "edges",
+          "type_ref": "AccessGraphEdgeList",
+          "required": true,
+          "default": "",
+          "description": "List of edges (access relationships) in the access graph.",
+          "validators": []
+        },
+        {
+          "name": "metadata",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Optional metadata about the access graph source.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request body for POST /register — an access graph in JSON form."
+    },
+    {
+      "name": "AccessGraphNode",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this node.",
+          "validators": []
+        },
+        {
+          "name": "node_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Type of node (e.g., service, database, user, role).",
+          "validators": []
+        },
+        {
+          "name": "labels",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Key-value labels for the node.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single node in the access graph."
+    },
+    {
+      "name": "AccessGraphNodeList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "AccessGraphNode",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of access graph nodes."
+    },
+    {
+      "name": "AccessGraphEdge",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "source",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Source node of the access relationship.",
+          "validators": []
+        },
+        {
+          "name": "target",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Target node of the access relationship.",
+          "validators": []
+        },
+        {
+          "name": "access_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Type of access (e.g., read, write, admin).",
+          "validators": []
+        },
+        {
+          "name": "classification",
+          "type_ref": "DataClassificationTier",
+          "required": false,
+          "default": "INTERNAL",
+          "description": "Data classification tier for this edge.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A directed edge representing an access relationship between two nodes."
+    },
+    {
+      "name": "AccessGraphEdgeList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "AccessGraphEdge",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of access graph edges."
+    },
+    {
+      "name": "RegisterResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of nodes ingested.",
+          "validators": []
+        },
+        {
+          "name": "edge_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of edges ingested.",
+          "validators": []
+        },
+        {
+          "name": "registered_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of registration.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response body for POST /register."
+    },
+    {
+      "name": "BlastRadiusRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Starting node for blast radius computation.",
+          "validators": []
+        },
+        {
+          "name": "max_depth",
+          "type_ref": "int",
+          "required": false,
+          "default": "10",
+          "description": "Maximum BFS/DFS traversal depth.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 100",
+              "error_message": "max_depth must be between 1 and 100."
+            }
+          ]
+        },
+        {
+          "name": "classification_filter",
+          "type_ref": "DataClassificationTier",
+          "required": false,
+          "default": "",
+          "description": "If set, only include edges at or above this classification tier.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request body for POST /blast-radius."
+    },
+    {
+      "name": "BlastRadiusNode",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Node identifier.",
+          "validators": []
+        },
+        {
+          "name": "node_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Type of node.",
+          "validators": []
+        },
+        {
+          "name": "depth",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "BFS distance from the origin node.",
+          "validators": []
+        },
+        {
+          "name": "max_classification",
+          "type_ref": "DataClassificationTier",
+          "required": true,
+          "default": "",
+          "description": "Highest data classification tier on the path to this node.",
+          "validators": []
+        },
+        {
+          "name": "trust_score",
+          "type_ref": "TrustScore",
+          "required": true,
+          "default": "",
+          "description": "Current raw trust score for this node.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A node in the blast radius result with its distance from the origin."
+    },
+    {
+      "name": "BlastRadiusNodeList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "BlastRadiusNode",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of nodes in the blast radius."
+    },
+    {
+      "name": "BlastRadiusResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "origin_node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The starting node of the blast radius computation.",
+          "validators": []
+        },
+        {
+          "name": "affected_nodes",
+          "type_ref": "BlastRadiusNodeList",
+          "required": true,
+          "default": "",
+          "description": "List of nodes within the blast radius.",
+          "validators": []
+        },
+        {
+          "name": "total_affected",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of affected nodes.",
+          "validators": []
+        },
+        {
+          "name": "max_depth_reached",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Maximum depth actually reached during traversal.",
+          "validators": []
+        },
+        {
+          "name": "computed_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of computation.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response body for POST /blast-radius."
+    },
+    {
+      "name": "LedgerEvent",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "event_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this ledger event.",
+          "validators": []
+        },
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Node this event pertains to.",
+          "validators": []
+        },
+        {
+          "name": "event_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Type of ledger event (e.g., score_update, taint_set, taint_reset).",
+          "validators": []
+        },
+        {
+          "name": "trust_score",
+          "type_ref": "TrustScore",
+          "required": true,
+          "default": "",
+          "description": "Trust score at the time of this event.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of the event.",
+          "validators": []
+        },
+        {
+          "name": "details",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Additional event-specific data.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single trust ledger event. Append-only, never mutated."
+    },
+    {
+      "name": "LedgerEventList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "LedgerEvent",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of ledger events."
+    },
+    {
+      "name": "TrustResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The queried node identifier.",
+          "validators": []
+        },
+        {
+          "name": "trust_score",
+          "type_ref": "TrustScore",
+          "required": true,
+          "default": "",
+          "description": "Current raw trust score for this node.",
+          "validators": []
+        },
+        {
+          "name": "trust_tier",
+          "type_ref": "TrustTier",
+          "required": true,
+          "default": "",
+          "description": "Display-only tier derived from trust score. Not used for policy calculations.",
+          "validators": []
+        },
+        {
+          "name": "is_tainted",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether the node currently has a taint lock.",
+          "validators": []
+        },
+        {
+          "name": "recent_events",
+          "type_ref": "LedgerEventList",
+          "required": true,
+          "default": "",
+          "description": "Last 20 ledger events for this node, most recent first.",
+          "validators": []
+        },
+        {
+          "name": "queried_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of the query.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response body for GET /trust/<node_id>."
+    },
+    {
+      "name": "TaintResetRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Node to clear taint lock on.",
+          "validators": []
+        },
+        {
+          "name": "review_id",
+          "type_ref": "ReviewId",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the review authorizing this reset.",
+          "validators": []
+        },
+        {
+          "name": "reason",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable justification for clearing taint.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1 <= len(value) <= 2000",
+              "error_message": "Reason must be between 1 and 2000 characters."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request body for POST /trust/reset-taint."
+    },
+    {
+      "name": "TaintResetResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node whose taint was reset.",
+          "validators": []
+        },
+        {
+          "name": "review_id",
+          "type_ref": "ReviewId",
+          "required": true,
+          "default": "",
+          "description": "The review_id that authorized the reset.",
+          "validators": []
+        },
+        {
+          "name": "previous_trust_score",
+          "type_ref": "TrustScore",
+          "required": true,
+          "default": "",
+          "description": "Trust score before taint reset.",
+          "validators": []
+        },
+        {
+          "name": "new_trust_score",
+          "type_ref": "TrustScore",
+          "required": true,
+          "default": "",
+          "description": "Trust score after taint reset.",
+          "validators": []
+        },
+        {
+          "name": "ledger_event_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The event_id of the appended taint_reset ledger event.",
+          "validators": []
+        },
+        {
+          "name": "reset_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of the reset.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response body for POST /trust/reset-taint."
+    },
+    {
+      "name": "AuthorityEntry",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Node identifier.",
+          "validators": []
+        },
+        {
+          "name": "authority_source",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Source manifest or declaration that grants authority.",
+          "validators": []
+        },
+        {
+          "name": "granted_permissions",
+          "type_ref": "GrantedPermissionsList",
+          "required": true,
+          "default": "",
+          "description": "Permissions granted by this authority declaration.",
+          "validators": []
+        },
+        {
+          "name": "declared_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp when authority was declared.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single entry in the authority map. Authority is declared (from manifests), not computed."
+    },
+    {
+      "name": "GrantedPermissionsList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of granted permission strings."
+    },
+    {
+      "name": "AuthorityEntryList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "AuthorityEntry",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of authority entries."
+    },
+    {
+      "name": "AuthorityResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "AuthorityEntryList",
+          "required": true,
+          "default": "",
+          "description": "Full authority map.",
+          "validators": []
+        },
+        {
+          "name": "total_entries",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of authority entries.",
+          "validators": []
+        },
+        {
+          "name": "queried_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of the query.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response body for GET /authority."
+    },
+    {
+      "name": "CanaryInjectRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "run_id",
+          "type_ref": "RunId",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this canary injection run.",
+          "validators": []
+        },
+        {
+          "name": "target_tiers",
+          "type_ref": "CanaryTargetTierList",
+          "required": true,
+          "default": "",
+          "description": "Data classification tiers to seed canaries into.",
+          "validators": []
+        },
+        {
+          "name": "canary_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of canary records to inject per tier.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 1000",
+              "error_message": "canary_count must be between 1 and 1000."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request body for POST /canary/inject."
+    },
+    {
+      "name": "CanaryTargetTierList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "DataClassificationTier",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of data classification tiers for canary targeting."
+    },
+    {
+      "name": "CanaryInjectResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "run_id",
+          "type_ref": "RunId",
+          "required": true,
+          "default": "",
+          "description": "The run identifier for this injection.",
+          "validators": []
+        },
+        {
+          "name": "injected_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of canaries injected.",
+          "validators": []
+        },
+        {
+          "name": "tiers_seeded",
+          "type_ref": "CanaryTargetTierList",
+          "required": true,
+          "default": "",
+          "description": "Tiers that were actually seeded.",
+          "validators": []
+        },
+        {
+          "name": "injected_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of injection.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response body for POST /canary/inject."
+    },
+    {
+      "name": "CanaryEscapeEvent",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "canary_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier of the escaped canary.",
+          "validators": []
+        },
+        {
+          "name": "expected_tier",
+          "type_ref": "DataClassificationTier",
+          "required": true,
+          "default": "",
+          "description": "Tier the canary was injected into.",
+          "validators": []
+        },
+        {
+          "name": "observed_tier",
+          "type_ref": "DataClassificationTier",
+          "required": true,
+          "default": "",
+          "description": "Tier where the canary was observed.",
+          "validators": []
+        },
+        {
+          "name": "observed_node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Node where the escape was detected.",
+          "validators": []
+        },
+        {
+          "name": "detected_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of detection.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A detected canary escape — a canary fingerprint observed outside its expected tier."
+    },
+    {
+      "name": "CanaryEscapeEventList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "CanaryEscapeEvent",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of canary escape events."
+    },
+    {
+      "name": "CanaryResultsResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "run_id",
+          "type_ref": "RunId",
+          "required": true,
+          "default": "",
+          "description": "The queried run identifier.",
+          "validators": []
+        },
+        {
+          "name": "status",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Run status (e.g., 'pending', 'complete', 'partial').",
+          "validators": []
+        },
+        {
+          "name": "total_injected",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total canaries injected in this run.",
+          "validators": []
+        },
+        {
+          "name": "total_escaped",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of canaries that escaped their tier.",
+          "validators": []
+        },
+        {
+          "name": "escapes",
+          "type_ref": "CanaryEscapeEventList",
+          "required": true,
+          "default": "",
+          "description": "Detailed list of escape events.",
+          "validators": []
+        },
+        {
+          "name": "queried_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of the query.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response body for GET /canary/results/<run_id>."
+    },
+    {
+      "name": "Finding",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "finding_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this finding.",
+          "validators": []
+        },
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "Node this finding pertains to.",
+          "validators": []
+        },
+        {
+          "name": "severity",
+          "type_ref": "FindingSeverity",
+          "required": true,
+          "default": "",
+          "description": "Severity of the finding.",
+          "validators": []
+        },
+        {
+          "name": "category",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Category of finding (e.g., 'access_anomaly', 'policy_violation').",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable finding description.",
+          "validators": []
+        },
+        {
+          "name": "span_context",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "OTLP span context data (trace_id, span_id, etc.).",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of the finding.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single finding from the OTLP adapter (Baton). Adapter layer is ground truth."
+    },
+    {
+      "name": "FindingsList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "Finding",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of findings."
+    },
+    {
+      "name": "FindingsRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "findings",
+          "type_ref": "FindingsList",
+          "required": true,
+          "default": "",
+          "description": "List of findings to ingest.",
+          "validators": []
+        },
+        {
+          "name": "source",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Source adapter identifier (e.g., 'baton-adapter-v1').",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Request body for POST /findings."
+    },
+    {
+      "name": "FindingsResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "accepted_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of findings accepted.",
+          "validators": []
+        },
+        {
+          "name": "rejected_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of findings rejected (e.g., duplicate, malformed).",
+          "validators": []
+        },
+        {
+          "name": "ingested_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of ingestion.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response body for POST /findings."
+    },
+    {
+      "name": "ReportResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "run_id",
+          "type_ref": "RunId",
+          "required": true,
+          "default": "",
+          "description": "The queried run identifier.",
+          "validators": []
+        },
+        {
+          "name": "status",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Report status (e.g., 'complete', 'in_progress').",
+          "validators": []
+        },
+        {
+          "name": "trust_summary",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Summary of trust scores across the run.",
+          "validators": []
+        },
+        {
+          "name": "findings_summary",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Summary of findings by severity and category.",
+          "validators": []
+        },
+        {
+          "name": "canary_summary",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Summary of canary escape results if applicable.",
+          "validators": []
+        },
+        {
+          "name": "blast_radius_summary",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Summary of blast radius computations if applicable.",
+          "validators": []
+        },
+        {
+          "name": "generated_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of report generation.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response body for GET /report/<run_id>. Full feedback report for a run."
+    },
+    {
+      "name": "HealthResponse",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "status",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Health status ('ok' or 'degraded').",
+          "validators": []
+        },
+        {
+          "name": "version",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Server version string.",
+          "validators": []
+        },
+        {
+          "name": "uptime_seconds",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Seconds since server started.",
+          "validators": []
+        },
+        {
+          "name": "engines_ready",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether all engine dependencies are initialized.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Response body for GET /health — server health and readiness."
+    }
+  ],
+  "functions": [
+    {
+      "name": "create_app",
+      "description": "Flask app factory. Creates and configures the Flask application, registers all route blueprints, wires engine dependencies from the ServerContext, and registers global error handlers. Returns a configured Flask app ready to serve.",
+      "inputs": [
+        {
+          "name": "context",
+          "type_ref": "ServerContext",
+          "required": true,
+          "default": "",
+          "description": "Dependency injection container with all engine instances and server configuration.",
+          "validators": []
+        }
+      ],
+      "output_type": "any",
+      "error_cases": [
+        {
+          "name": "missing_engine",
+          "condition": "One or more engine references in context is None",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "All engine Protocol instances must be provided in ServerContext"
+          }
+        },
+        {
+          "name": "invalid_config",
+          "condition": "ServerConfig fails Pydantic validation",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "ServerConfig validation failed"
+          }
+        }
+      ],
+      "preconditions": [
+        "context.config is a valid ServerConfig with port in [1, 65535]",
+        "All engine references in context are non-None and implement their respective Protocol interfaces",
+        "No Flask app has been created from this context yet (single app per context)"
+      ],
+      "postconditions": [
+        "Returned Flask app has all 10 routes registered (9 endpoints + /health)",
+        "Global error handlers are registered for ValidationError, domain exceptions, and unexpected exceptions",
+        "Content-Type defaults to application/json for all responses",
+        "App is not yet running (caller must invoke run_server or app.run)"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "logging",
+          "target": "arbiter.http_api",
+          "description": "Logs app creation, route registration, and engine wiring"
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "run_server",
+      "description": "Start the HTTP server on the configured host and port. Blocks the calling thread. Uses Flask's built-in threaded server (appropriate for sidecar use case, not production internet-facing).",
+      "inputs": [
+        {
+          "name": "context",
+          "type_ref": "ServerContext",
+          "required": true,
+          "default": "",
+          "description": "Server context with configuration and engine instances.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "port_in_use",
+          "condition": "The configured port is already bound by another process",
+          "error_type": "OSError",
+          "error_data": {
+            "detail": "Port already in use"
+          }
+        },
+        {
+          "name": "startup_timeout",
+          "condition": "Server fails to bind within 3 seconds",
+          "error_type": "TimeoutError",
+          "error_data": {
+            "detail": "Cold start exceeded 3-second target"
+          }
+        }
+      ],
+      "preconditions": [
+        "context.config.port is available and not already bound",
+        "All engines are initialized and ready"
+      ],
+      "postconditions": [
+        "Server was listening on context.config.host:context.config.port until shutdown",
+        "All open connections are closed on return"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "network_call",
+          "target": "TCP bind on configured host:port",
+          "description": "Binds and listens on the configured TCP port"
+        },
+        {
+          "kind": "logging",
+          "target": "arbiter.http_api",
+          "description": "Logs server start, ready state, and shutdown"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 3000,
+        "max_memory_mb": null,
+        "complexity": "O(1)"
+      }
+    },
+    {
+      "name": "handle_register",
+      "description": "POST /register — Ingest an access_graph.json payload. Validates the AccessGraphPayload, delegates to the blast_radius_engine for graph storage, returns node/edge counts and registration timestamp.",
+      "inputs": [
+        {
+          "name": "request_body",
+          "type_ref": "AccessGraphPayload",
+          "required": true,
+          "default": "",
+          "description": "The access graph to register.",
+          "validators": []
+        }
+      ],
+      "output_type": "RegisterResponse",
+      "error_cases": [
+        {
+          "name": "invalid_json",
+          "condition": "Request body is not valid JSON",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "INVALID_JSON",
+            "http_status": "400"
+          }
+        },
+        {
+          "name": "validation_error",
+          "condition": "Request body fails Pydantic model validation",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "VALIDATION_ERROR",
+            "http_status": "400"
+          }
+        },
+        {
+          "name": "graph_invalid",
+          "condition": "Edges reference node_ids not present in nodes list, or duplicate node_ids found",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "ACCESS_GRAPH_INVALID",
+            "http_status": "422"
+          }
+        },
+        {
+          "name": "engine_failure",
+          "condition": "Blast radius engine raises an unexpected exception during graph storage",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "INTERNAL_ERROR",
+            "http_status": "500"
+          }
+        }
+      ],
+      "preconditions": [
+        "request_body has been deserialized and validated as AccessGraphPayload",
+        "All node_ids referenced in edges exist in the nodes list",
+        "No duplicate node_ids in the nodes list"
+      ],
+      "postconditions": [
+        "Access graph is stored and available for blast radius queries",
+        "RegisterResponse.node_count == len(request_body.nodes)",
+        "RegisterResponse.edge_count == len(request_body.edges)",
+        "RegisterResponse.registered_at is a valid ISO 8601 UTC timestamp"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "mutates_state",
+          "target": "blast_radius_engine",
+          "description": "Stores the access graph for subsequent blast radius queries"
+        },
+        {
+          "kind": "logging",
+          "target": "arbiter.http_api",
+          "description": "Logs registration with node/edge counts"
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "handle_blast_radius",
+      "description": "POST /blast-radius — Compute the blast radius from a given node. Validates the BlastRadiusRequest, delegates to blast_radius_engine for BFS/DFS traversal, returns affected nodes with depth and classification data.",
+      "inputs": [
+        {
+          "name": "request_body",
+          "type_ref": "BlastRadiusRequest",
+          "required": true,
+          "default": "",
+          "description": "Blast radius computation parameters.",
+          "validators": []
+        }
+      ],
+      "output_type": "BlastRadiusResponse",
+      "error_cases": [
+        {
+          "name": "invalid_json",
+          "condition": "Request body is not valid JSON",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "INVALID_JSON",
+            "http_status": "400"
+          }
+        },
+        {
+          "name": "validation_error",
+          "condition": "Request body fails Pydantic model validation",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "VALIDATION_ERROR",
+            "http_status": "400"
+          }
+        },
+        {
+          "name": "node_not_found",
+          "condition": "request_body.node_id is not in the registered access graph",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "NODE_NOT_FOUND",
+            "http_status": "404"
+          }
+        },
+        {
+          "name": "computation_failed",
+          "condition": "Blast radius engine raises an error during traversal",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "BLAST_RADIUS_FAILED",
+            "http_status": "500"
+          }
+        }
+      ],
+      "preconditions": [
+        "An access graph has been registered via POST /register",
+        "request_body.node_id exists in the registered access graph"
+      ],
+      "postconditions": [
+        "BlastRadiusResponse.origin_node_id == request_body.node_id",
+        "All affected nodes are reachable from origin within max_depth hops",
+        "BlastRadiusResponse.total_affected == len(BlastRadiusResponse.affected_nodes)",
+        "BlastRadiusResponse.max_depth_reached <= request_body.max_depth",
+        "BlastRadiusResponse.computed_at is a valid ISO 8601 UTC timestamp"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Read-only query against the access graph; no mutation"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 500,
+        "max_memory_mb": 256,
+        "complexity": "O(V + E)"
+      }
+    },
+    {
+      "name": "handle_get_trust",
+      "description": "GET /trust/<node_id> — Retrieve the current trust score, display tier, taint status, and last 20 ledger events for a node. Delegates to trust_engine.",
+      "inputs": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node identifier to query trust for.",
+          "validators": []
+        }
+      ],
+      "output_type": "TrustResponse",
+      "error_cases": [
+        {
+          "name": "node_not_found",
+          "condition": "node_id is not known to the trust engine",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "NODE_NOT_FOUND",
+            "http_status": "404"
+          }
+        },
+        {
+          "name": "trust_computation_failed",
+          "condition": "Trust engine raises an error during score computation",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "TRUST_COMPUTATION_FAILED",
+            "http_status": "500"
+          }
+        }
+      ],
+      "preconditions": [
+        "node_id is a non-empty string"
+      ],
+      "postconditions": [
+        "TrustResponse.node_id == node_id",
+        "TrustResponse.trust_score is in [0.0, 1.0]",
+        "TrustResponse.recent_events has at most 20 entries, ordered most recent first",
+        "TrustResponse.trust_tier is derived from trust_score for display only",
+        "TrustResponse.queried_at is a valid ISO 8601 UTC timestamp"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Read-only query against the trust engine and ledger; no mutation"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 100,
+        "max_memory_mb": null,
+        "complexity": "O(1) for score, O(k) for last k events where k=20"
+      }
+    },
+    {
+      "name": "handle_reset_taint",
+      "description": "POST /trust/reset-taint — Clear taint lock on a node with a review_id. Appends a taint_reset event to the ledger (never mutates existing entries). Delegates to trust_engine.",
+      "inputs": [
+        {
+          "name": "request_body",
+          "type_ref": "TaintResetRequest",
+          "required": true,
+          "default": "",
+          "description": "Taint reset parameters including node_id, review_id, and reason.",
+          "validators": []
+        }
+      ],
+      "output_type": "TaintResetResponse",
+      "error_cases": [
+        {
+          "name": "invalid_json",
+          "condition": "Request body is not valid JSON",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "INVALID_JSON",
+            "http_status": "400"
+          }
+        },
+        {
+          "name": "validation_error",
+          "condition": "Request body fails Pydantic model validation",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "VALIDATION_ERROR",
+            "http_status": "400"
+          }
+        },
+        {
+          "name": "node_not_found",
+          "condition": "request_body.node_id is not known to the trust engine",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "NODE_NOT_FOUND",
+            "http_status": "404"
+          }
+        },
+        {
+          "name": "review_not_found",
+          "condition": "request_body.review_id does not correspond to a valid review",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "REVIEW_NOT_FOUND",
+            "http_status": "404"
+          }
+        },
+        {
+          "name": "taint_reset_failed",
+          "condition": "Trust engine fails during taint reset (e.g., node not tainted)",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "TAINT_RESET_FAILED",
+            "http_status": "409"
+          }
+        },
+        {
+          "name": "ledger_write_failure",
+          "condition": "Ledger append fails due to I/O or checksum error",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "INTERNAL_ERROR",
+            "http_status": "500"
+          }
+        }
+      ],
+      "preconditions": [
+        "request_body.node_id exists in the trust engine",
+        "request_body.node_id currently has a taint lock",
+        "request_body.review_id is a valid, non-empty review identifier",
+        "request_body.reason is between 1 and 2000 characters"
+      ],
+      "postconditions": [
+        "A new taint_reset event has been appended to the trust ledger (append-only, no mutations)",
+        "The node's taint lock is cleared",
+        "TaintResetResponse.ledger_event_id is the ID of the newly appended event",
+        "TaintResetResponse.new_trust_score reflects the score after taint reset",
+        "TaintResetResponse.reset_at is a valid ISO 8601 UTC timestamp"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "mutates_state",
+          "target": "trust_engine",
+          "description": "Clears the taint lock on the specified node"
+        },
+        {
+          "kind": "writes_file",
+          "target": "trust_ledger",
+          "description": "Appends a taint_reset event to the JSONL trust ledger"
+        },
+        {
+          "kind": "logging",
+          "target": "arbiter.http_api",
+          "description": "Logs taint reset with node_id, review_id, and reason"
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "handle_get_authority",
+      "description": "GET /authority — Retrieve the full authority map. Authority is declared from manifests, distinct from trust (which is computed from the ledger). Delegates to authority_engine.",
+      "inputs": [],
+      "output_type": "AuthorityResponse",
+      "error_cases": [
+        {
+          "name": "authority_unavailable",
+          "condition": "Authority engine is not initialized or manifests not loaded",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "AUTHORITY_UNAVAILABLE",
+            "http_status": "503"
+          }
+        }
+      ],
+      "preconditions": [],
+      "postconditions": [
+        "AuthorityResponse.total_entries == len(AuthorityResponse.entries)",
+        "AuthorityResponse.queried_at is a valid ISO 8601 UTC timestamp",
+        "Authority entries reflect declared authority from manifests, not computed trust"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Read-only query against the authority engine; no mutation"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 200,
+        "max_memory_mb": null,
+        "complexity": "O(n) where n is the number of authority entries"
+      }
+    },
+    {
+      "name": "handle_canary_inject",
+      "description": "POST /canary/inject — Seed a canary corpus into the system. Canary fingerprints are structurally valid for their tier, globally unique per run, and impossible in real data (UUIDs in domain-shaped strings). Delegates to canary_engine.",
+      "inputs": [
+        {
+          "name": "request_body",
+          "type_ref": "CanaryInjectRequest",
+          "required": true,
+          "default": "",
+          "description": "Canary injection parameters.",
+          "validators": []
+        }
+      ],
+      "output_type": "CanaryInjectResponse",
+      "error_cases": [
+        {
+          "name": "invalid_json",
+          "condition": "Request body is not valid JSON",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "INVALID_JSON",
+            "http_status": "400"
+          }
+        },
+        {
+          "name": "validation_error",
+          "condition": "Request body fails Pydantic model validation",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "VALIDATION_ERROR",
+            "http_status": "400"
+          }
+        },
+        {
+          "name": "injection_failed",
+          "condition": "Canary engine fails during injection",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "CANARY_INJECTION_FAILED",
+            "http_status": "500"
+          }
+        }
+      ],
+      "preconditions": [
+        "request_body.run_id is unique and has not been used before",
+        "request_body.target_tiers is non-empty",
+        "request_body.canary_count is between 1 and 1000"
+      ],
+      "postconditions": [
+        "CanaryInjectResponse.run_id == request_body.run_id",
+        "CanaryInjectResponse.injected_count == request_body.canary_count * len(request_body.target_tiers)",
+        "All injected canaries are recognizable as synthetic (never plausible real data)",
+        "All injected canaries contain UUIDs in domain-shaped strings",
+        "CanaryInjectResponse.injected_at is a valid ISO 8601 UTC timestamp"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "mutates_state",
+          "target": "canary_engine",
+          "description": "Seeds canary corpus into the canary tracking system"
+        },
+        {
+          "kind": "logging",
+          "target": "arbiter.http_api",
+          "description": "Logs canary injection with run_id, tier count, canary count"
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "handle_canary_results",
+      "description": "GET /canary/results/<run_id> — Retrieve the taint escape report for a canary run. Shows which canaries escaped their expected tier. Delegates to canary_engine.",
+      "inputs": [
+        {
+          "name": "run_id",
+          "type_ref": "RunId",
+          "required": true,
+          "default": "",
+          "description": "The canary run identifier to query results for.",
+          "validators": []
+        }
+      ],
+      "output_type": "CanaryResultsResponse",
+      "error_cases": [
+        {
+          "name": "run_not_found",
+          "condition": "run_id does not correspond to a known canary injection run",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "RUN_NOT_FOUND",
+            "http_status": "404"
+          }
+        },
+        {
+          "name": "results_unavailable",
+          "condition": "Canary engine fails to compute or retrieve results",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "CANARY_RESULTS_UNAVAILABLE",
+            "http_status": "500"
+          }
+        }
+      ],
+      "preconditions": [
+        "run_id is a non-empty string"
+      ],
+      "postconditions": [
+        "CanaryResultsResponse.run_id == run_id",
+        "CanaryResultsResponse.total_escaped == len(CanaryResultsResponse.escapes)",
+        "CanaryResultsResponse.queried_at is a valid ISO 8601 UTC timestamp"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Read-only query against canary engine; no mutation"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 200,
+        "max_memory_mb": null,
+        "complexity": "O(n) where n is the number of escape events"
+      }
+    },
+    {
+      "name": "handle_get_report",
+      "description": "GET /report/<run_id> — Retrieve the full feedback report for a given run. Includes trust summary, findings summary, canary summary, and blast radius summary. Delegates to report_engine.",
+      "inputs": [
+        {
+          "name": "run_id",
+          "type_ref": "RunId",
+          "required": true,
+          "default": "",
+          "description": "The run identifier to generate/retrieve the report for.",
+          "validators": []
+        }
+      ],
+      "output_type": "ReportResponse",
+      "error_cases": [
+        {
+          "name": "run_not_found",
+          "condition": "run_id does not correspond to any known run",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "RUN_NOT_FOUND",
+            "http_status": "404"
+          }
+        },
+        {
+          "name": "report_not_found",
+          "condition": "Report generation fails or report data is unavailable",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "REPORT_NOT_FOUND",
+            "http_status": "404"
+          }
+        }
+      ],
+      "preconditions": [
+        "run_id is a non-empty string"
+      ],
+      "postconditions": [
+        "ReportResponse.run_id == run_id",
+        "ReportResponse.generated_at is a valid ISO 8601 UTC timestamp",
+        "Report reflects the state of all engines at query time"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Read-only query against report engine; no mutation"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 500,
+        "max_memory_mb": null,
+        "complexity": "O(n) where n is the total data points in the report"
+      }
+    },
+    {
+      "name": "handle_ingest_findings",
+      "description": "POST /findings — Receive OTLP span JSON from the Baton adapter. The adapter layer is ground truth; node self-reports are claims. Validates findings, delegates to findings_engine for processing and ledger updates.",
+      "inputs": [
+        {
+          "name": "request_body",
+          "type_ref": "FindingsRequest",
+          "required": true,
+          "default": "",
+          "description": "Findings payload from the OTLP adapter.",
+          "validators": []
+        }
+      ],
+      "output_type": "FindingsResponse",
+      "error_cases": [
+        {
+          "name": "invalid_json",
+          "condition": "Request body is not valid JSON",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "INVALID_JSON",
+            "http_status": "400"
+          }
+        },
+        {
+          "name": "validation_error",
+          "condition": "Request body fails Pydantic model validation",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "VALIDATION_ERROR",
+            "http_status": "400"
+          }
+        },
+        {
+          "name": "ingestion_failed",
+          "condition": "Findings engine raises an error during ingestion",
+          "error_type": "ErrorResponse",
+          "error_data": {
+            "error_code": "FINDINGS_INGESTION_FAILED",
+            "http_status": "500"
+          }
+        }
+      ],
+      "preconditions": [
+        "request_body.findings is non-empty",
+        "request_body.source is a non-empty string identifying the adapter"
+      ],
+      "postconditions": [
+        "FindingsResponse.accepted_count + FindingsResponse.rejected_count == len(request_body.findings)",
+        "Accepted findings have been persisted and may trigger trust score updates",
+        "FindingsResponse.ingested_at is a valid ISO 8601 UTC timestamp"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "mutates_state",
+          "target": "findings_engine",
+          "description": "Persists accepted findings and may trigger trust score recalculations"
+        },
+        {
+          "kind": "writes_file",
+          "target": "trust_ledger",
+          "description": "May append trust-relevant events to the JSONL trust ledger"
+        },
+        {
+          "kind": "logging",
+          "target": "arbiter.http_api",
+          "description": "Logs findings ingestion with source, accepted/rejected counts"
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "handle_health",
+      "description": "GET /health — Server health and readiness check. Returns status, version, uptime, and engine readiness. Used for cold start verification (target: ready in under 3 seconds).",
+      "inputs": [],
+      "output_type": "HealthResponse",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "HealthResponse.status is 'ok' or 'degraded'",
+        "HealthResponse.uptime_seconds >= 0",
+        "HealthResponse.engines_ready reflects actual engine initialization state"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Read-only health check; no mutation"
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 10,
+        "max_memory_mb": null,
+        "complexity": "O(1)"
+      }
+    },
+    {
+      "name": "handle_error",
+      "description": "Global error handler registered on the Flask app. Catches ValidationError (from Pydantic), known domain exceptions (NodeNotFound, RunNotFound, etc.), and unexpected exceptions. Transforms all exceptions into ErrorResponse JSON with appropriate HTTP status code, machine-readable error_code, and human-readable message including the specific entity that caused the error.",
+      "inputs": [
+        {
+          "name": "exception",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The caught exception instance.",
+          "validators": []
+        }
+      ],
+      "output_type": "ErrorResponse",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returned ErrorResponse has a valid ErrorCode",
+        "ErrorResponse.message includes the specific node_id, field, run_id, or domain that caused the error",
+        "Malformed JSON bodies produce error_code INVALID_JSON with HTTP 400, not HTTP 500",
+        "Unexpected exceptions produce error_code INTERNAL_ERROR with HTTP 500",
+        "ValidationError produces error_code VALIDATION_ERROR with HTTP 400 and field-level details"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "logging",
+          "target": "arbiter.http_api",
+          "description": "Logs the error with full exception context, stack trace for 500s"
+        }
+      ],
+      "performance_budget": null
+    }
+  ],
+  "dependencies": [
+    "trust_ledger",
+    "blast_radius_engine",
+    "trust_engine",
+    "authority_engine",
+    "canary_engine",
+    "report_engine",
+    "findings_engine",
+    "field_classifier"
+  ],
+  "dependency_contracts": {
+    "trust_ledger": [
+      "append_event",
+      "query_events_by_node"
+    ],
+    "blast_radius_engine": [
+      "compute_blast_radius"
+    ],
+    "trust_engine": [
+      "get_trust_score",
+      "reset_taint"
+    ],
+    "authority_engine": [
+      "get_authority_map"
+    ],
+    "canary_engine": [
+      "inject_canary_corpus",
+      "get_canary_results"
+    ],
+    "report_engine": [
+      "get_report"
+    ],
+    "findings_engine": [
+      "ingest_findings"
+    ]
+  },
+  "invariants": [
+    "All HTTP responses have Content-Type: application/json",
+    "All error responses conform to the ErrorResponse schema with a machine-readable error_code from ErrorCode enum",
+    "Zero business logic in the HTTP layer — all computation delegated to engine Protocol interfaces",
+    "No endpoint exposes ledger mutation (edit/delete); only append operations via reset-taint",
+    "All datetime fields are UTC with ISO 8601 serialization",
+    "Error messages always include the specific node_id, field, run_id, or domain that caused the error",
+    "Trust and authority response types are never shared or conflated",
+    "All policy calculations use raw trust score (float), never display tiers for computation",
+    "The trust ledger is append-only — reset-taint appends a reset event, never mutates existing entries",
+    "Server binds to configured port (default 7700) and serves synchronously with threading"
+  ],
+  "requires": [
+    "flask",
+    "pydantic>=2.0",
+    "PyYAML"
+  ],
+  "processing_register": "rigorous-analytical"
+}

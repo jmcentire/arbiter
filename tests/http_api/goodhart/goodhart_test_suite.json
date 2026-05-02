@@ -1,0 +1,926 @@
+{
+  "component_id": "http_api",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "goodhart_register_different_graph_sizes",
+      "description": "RegisterResponse node_count and edge_count must dynamically reflect the actual input size, not be hardcoded to any particular test fixture's counts",
+      "function": "handle_register",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine": "Mock that accepts any graph and returns success"
+      },
+      "input_values": {},
+      "input_description": "Multiple access graph payloads with varying node/edge counts (e.g., 1 node 0 edges, 5 nodes 7 edges, 50 nodes 100 edges)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response node_count equals len(nodes) for each distinct payload",
+        "response edge_count equals len(edges) for each distinct payload"
+      ]
+    },
+    {
+      "id": "goodhart_register_large_graph_counts",
+      "description": "Registration correctly counts nodes and edges for a large graph that no visible test uses, proving counts are computed not hardcoded",
+      "function": "handle_register",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine": "Mock that accepts graph storage"
+      },
+      "input_values": {},
+      "input_description": "Access graph with 37 nodes and 73 edges, all valid references",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "node_count == 37",
+        "edge_count == 73",
+        "registered_at is valid ISO 8601"
+      ]
+    },
+    {
+      "id": "goodhart_register_timestamp_is_recent_utc",
+      "description": "Registration timestamp must be a genuinely current UTC time, not a static string or pre-computed value",
+      "function": "handle_register",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine": "Mock that accepts graph storage"
+      },
+      "input_values": {},
+      "input_description": "Valid access graph payload",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "registered_at parses as ISO 8601",
+        "registered_at is within last 5 seconds of current UTC time",
+        "registered_at contains timezone info or ends with Z/+00:00"
+      ]
+    },
+    {
+      "id": "goodhart_blast_radius_origin_echoes_input",
+      "description": "BlastRadiusResponse.origin_node_id must echo back the actual requested node_id, not a hardcoded value",
+      "function": "handle_blast_radius",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine": "Mock that returns affected nodes for any valid node_id"
+      },
+      "input_values": {},
+      "input_description": "Blast radius request with a novel node_id like 'node-xyz-999' that no visible test uses",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "origin_node_id == 'node-xyz-999'"
+      ]
+    },
+    {
+      "id": "goodhart_trust_node_id_echoed_for_different_ids",
+      "description": "TrustResponse.node_id must dynamically match the queried node_id for arbitrary inputs, not just visible test values",
+      "function": "handle_get_trust",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "Mock returning valid trust data for any node_id"
+      },
+      "input_values": {},
+      "input_description": "GET /trust with several different node_ids like 'svc-alpha-7', 'db-prod-42', 'node-with-special-chars'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Each response's node_id matches the queried node_id exactly"
+      ]
+    },
+    {
+      "id": "goodhart_trust_score_boundary_zero",
+      "description": "Trust score of exactly 0.0 must be accepted and returned correctly as a valid boundary value",
+      "function": "handle_get_trust",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "Mock returning trust_score=0.0, is_tainted=False"
+      },
+      "input_values": {},
+      "input_description": "GET /trust/<node_id> where trust engine returns score 0.0",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "trust_score == 0.0",
+        "trust_tier is a valid TrustTier enum value",
+        "HTTP status is 200"
+      ]
+    },
+    {
+      "id": "goodhart_trust_score_boundary_one",
+      "description": "Trust score of exactly 1.0 must be accepted and returned correctly as a valid boundary value",
+      "function": "handle_get_trust",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "Mock returning trust_score=1.0, is_tainted=False"
+      },
+      "input_values": {},
+      "input_description": "GET /trust/<node_id> where trust engine returns score 1.0",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "trust_score == 1.0",
+        "trust_tier is a valid TrustTier enum value",
+        "HTTP status is 200"
+      ]
+    },
+    {
+      "id": "goodhart_canary_inject_run_id_echoed",
+      "description": "CanaryInjectResponse.run_id must echo the actual request run_id, not a hardcoded test value",
+      "function": "handle_canary_inject",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "canary_engine": "Mock that accepts injection and returns success"
+      },
+      "input_values": {},
+      "input_description": "Canary inject request with run_id='run-novel-abc-123', target_tiers=['RESTRICTED'], canary_count=5",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response run_id == 'run-novel-abc-123'"
+      ]
+    },
+    {
+      "id": "goodhart_canary_inject_count_multi_tier",
+      "description": "Injected count must equal canary_count * number of target tiers for various tier/count combinations, not just the visible test's values",
+      "function": "handle_canary_inject",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "canary_engine": "Mock that accepts injection, returns injected_count from handler calculation"
+      },
+      "input_values": {},
+      "input_description": "Canary inject with canary_count=7 and target_tiers=['PUBLIC', 'INTERNAL', 'CONFIDENTIAL'] (3 tiers)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "injected_count == 21 (7 * 3)"
+      ]
+    },
+    {
+      "id": "goodhart_canary_inject_single_tier_single_count",
+      "description": "Injected count formula holds for the smallest valid input: 1 canary × 1 tier = 1",
+      "function": "handle_canary_inject",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "canary_engine": "Mock that accepts injection"
+      },
+      "input_values": {},
+      "input_description": "Canary inject with canary_count=1, target_tiers=['PUBLIC']",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "injected_count == 1"
+      ]
+    },
+    {
+      "id": "goodhart_canary_inject_max_count_all_tiers",
+      "description": "Injected count formula holds for maximum boundary: 1000 canaries × 4 tiers = 4000",
+      "function": "handle_canary_inject",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "canary_engine": "Mock that accepts injection"
+      },
+      "input_values": {},
+      "input_description": "Canary inject with canary_count=1000, target_tiers=['PUBLIC','INTERNAL','CONFIDENTIAL','RESTRICTED']",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "injected_count == 4000"
+      ]
+    },
+    {
+      "id": "goodhart_canary_results_run_id_echoed",
+      "description": "CanaryResultsResponse.run_id must echo the queried run_id for novel values, not a hardcoded return",
+      "function": "handle_canary_results",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "canary_engine": "Mock returning results for any known run_id"
+      },
+      "input_values": {},
+      "input_description": "GET /canary/results/run-unique-xyz-777",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response run_id == 'run-unique-xyz-777'"
+      ]
+    },
+    {
+      "id": "goodhart_report_run_id_echoed",
+      "description": "ReportResponse.run_id must echo the queried run_id, proving it's not hardcoded to visible test values",
+      "function": "handle_get_report",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "report_engine": "Mock returning valid report for any run_id"
+      },
+      "input_values": {},
+      "input_description": "GET /report/run-adversarial-999",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response run_id == 'run-adversarial-999'"
+      ]
+    },
+    {
+      "id": "goodhart_error_response_includes_specific_node_id",
+      "description": "Error messages must include the specific entity identifier that caused the error, not a generic message",
+      "function": "handle_error",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "Mock that raises NodeNotFound with the specific node_id",
+        "canary_engine": "Mock that raises RunNotFound with the specific run_id"
+      },
+      "input_values": {},
+      "input_description": "NodeNotFound for node_id='svc-unique-deadbeef' and RunNotFound for run_id='run-unique-cafebabe'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "NODE_NOT_FOUND error message contains 'svc-unique-deadbeef'",
+        "RUN_NOT_FOUND error message contains 'run-unique-cafebabe'"
+      ]
+    },
+    {
+      "id": "goodhart_error_response_has_details_field",
+      "description": "All error responses must include the 'details' field as part of the ErrorResponse schema, even if empty",
+      "function": "handle_error",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various error conditions: INVALID_JSON, NODE_NOT_FOUND, INTERNAL_ERROR",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Each error response JSON has 'error_code' key",
+        "Each error response JSON has 'message' key",
+        "Each error response JSON has 'details' key"
+      ]
+    },
+    {
+      "id": "goodhart_get_endpoints_reject_post",
+      "description": "GET-only endpoints must reject POST requests with METHOD_NOT_ALLOWED, not silently accept them",
+      "function": "handle_error",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "POST request to GET-only endpoints: /trust/<node_id>, /authority, /canary/results/<run_id>, /report/<run_id>, /health",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "HTTP status is 405",
+        "error_code is METHOD_NOT_ALLOWED"
+      ]
+    },
+    {
+      "id": "goodhart_post_endpoints_reject_get",
+      "description": "POST-only endpoints must reject GET requests with METHOD_NOT_ALLOWED",
+      "function": "handle_error",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "GET request to POST-only endpoints: /register, /blast-radius, /trust/reset-taint, /canary/inject, /findings",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "HTTP status is 405",
+        "error_code is METHOD_NOT_ALLOWED"
+      ]
+    },
+    {
+      "id": "goodhart_health_engines_ready_false_when_degraded",
+      "description": "Health endpoint must reflect actual engine readiness state, not always return engines_ready=true",
+      "function": "handle_health",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "Mock engine reporting not ready",
+        "blast_radius_engine": "Mock engine reporting not ready"
+      },
+      "input_values": {},
+      "input_description": "GET /health when one or more engines report not ready",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "engines_ready is False or status is 'degraded'"
+      ]
+    },
+    {
+      "id": "goodhart_health_version_is_string",
+      "description": "Health response must include a version field that is a non-empty string",
+      "function": "handle_health",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "GET /health",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "version is a string",
+        "version is non-empty"
+      ]
+    },
+    {
+      "id": "goodhart_reset_taint_response_has_all_fields",
+      "description": "TaintResetResponse must include all required fields including previous_trust_score, new_trust_score, and ledger_event_id",
+      "function": "handle_reset_taint",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "Mock that performs taint reset and returns all required fields"
+      },
+      "input_values": {},
+      "input_description": "Valid taint reset request for a tainted node with novel identifiers",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response has 'node_id' field",
+        "response has 'review_id' field",
+        "response has 'previous_trust_score' field",
+        "response has 'new_trust_score' field",
+        "response has 'ledger_event_id' field",
+        "response has 'reset_at' field",
+        "previous_trust_score is in [0.0, 1.0]",
+        "new_trust_score is in [0.0, 1.0]"
+      ]
+    },
+    {
+      "id": "goodhart_reset_taint_reason_exactly_2000_chars",
+      "description": "A reason string of exactly 2000 characters should be accepted (boundary), while 2001 should be rejected",
+      "function": "handle_reset_taint",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "Mock that performs taint reset successfully"
+      },
+      "input_values": {},
+      "input_description": "Taint reset request with reason of exactly 2000 characters",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "HTTP status is 200 for 2000-char reason",
+        "Request succeeds without VALIDATION_ERROR"
+      ]
+    },
+    {
+      "id": "goodhart_reset_taint_reason_exactly_1_char",
+      "description": "A reason string of exactly 1 character should be accepted (minimum boundary)",
+      "function": "handle_reset_taint",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "Mock that performs taint reset successfully"
+      },
+      "input_values": {},
+      "input_description": "Taint reset request with reason='x' (1 char)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "HTTP status is 200",
+        "Request succeeds without VALIDATION_ERROR"
+      ]
+    },
+    {
+      "id": "goodhart_reset_taint_reason_2001_chars",
+      "description": "A reason string of exactly 2001 characters must be rejected, testing the exact boundary",
+      "function": "handle_reset_taint",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "Mock (should not be called)"
+      },
+      "input_values": {},
+      "input_description": "Taint reset request with reason of exactly 2001 characters",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "HTTP status is 400 or 422",
+        "error_code is VALIDATION_ERROR"
+      ]
+    },
+    {
+      "id": "goodhart_register_edge_references_target_not_in_nodes",
+      "description": "Graph validation must check both source and target of every edge, not just one direction",
+      "function": "handle_register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine": "Mock (should not be called)"
+      },
+      "input_values": {},
+      "input_description": "Graph with nodes [A, B] and edge (source=A, target=C) where C is not in nodes",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "error_code is ACCESS_GRAPH_INVALID",
+        "HTTP status is 400 or 422"
+      ]
+    },
+    {
+      "id": "goodhart_register_edge_references_source_not_in_nodes",
+      "description": "Graph validation must check edge sources exist in nodes list, not just targets",
+      "function": "handle_register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine": "Mock (should not be called)"
+      },
+      "input_values": {},
+      "input_description": "Graph with nodes [A, B] and edge (source=C, target=A) where C is not in nodes",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "error_code is ACCESS_GRAPH_INVALID",
+        "HTTP status is 400 or 422"
+      ]
+    },
+    {
+      "id": "goodhart_findings_count_invariant_partial_reject",
+      "description": "accepted_count + rejected_count must equal total findings count even when some are rejected, for various split ratios",
+      "function": "handle_ingest_findings",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "findings_engine": "Mock that accepts 3 findings and rejects 7"
+      },
+      "input_values": {},
+      "input_description": "FindingsRequest with 10 findings where engine accepts 3 and rejects 7",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "accepted_count + rejected_count == 10",
+        "accepted_count == 3",
+        "rejected_count == 7"
+      ]
+    },
+    {
+      "id": "goodhart_findings_all_rejected",
+      "description": "When all findings are rejected, accepted_count should be 0 and rejected_count should equal total",
+      "function": "handle_ingest_findings",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "findings_engine": "Mock that rejects all findings"
+      },
+      "input_values": {},
+      "input_description": "FindingsRequest with 5 findings where engine rejects all",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "accepted_count == 0",
+        "rejected_count == 5",
+        "HTTP status is 200"
+      ]
+    },
+    {
+      "id": "goodhart_content_type_json_on_error_responses",
+      "description": "Error responses must also have Content-Type: application/json, not just success responses",
+      "function": "handle_error",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Trigger various errors: malformed JSON, node not found, validation error",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Content-Type header is application/json for all error responses"
+      ]
+    },
+    {
+      "id": "goodhart_unsupported_content_type_xml",
+      "description": "POST endpoints must reject Content-Type: application/xml with CONTENT_TYPE_UNSUPPORTED",
+      "function": "handle_error",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "POST /register with Content-Type: application/xml and valid-looking body",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "error_code is CONTENT_TYPE_UNSUPPORTED",
+        "HTTP status is 415"
+      ]
+    },
+    {
+      "id": "goodhart_unsupported_content_type_form",
+      "description": "POST endpoints must reject Content-Type: application/x-www-form-urlencoded with CONTENT_TYPE_UNSUPPORTED",
+      "function": "handle_error",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "POST /findings with Content-Type: application/x-www-form-urlencoded",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "error_code is CONTENT_TYPE_UNSUPPORTED"
+      ]
+    },
+    {
+      "id": "goodhart_canary_inject_canary_count_negative",
+      "description": "Negative canary_count must be rejected as validation error, not silently accepted",
+      "function": "handle_canary_inject",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "canary_engine": "Mock (should not be called)"
+      },
+      "input_values": {},
+      "input_description": "Canary inject with canary_count=-1, target_tiers=['PUBLIC']",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "HTTP status is 400 or 422",
+        "error_code is VALIDATION_ERROR"
+      ]
+    },
+    {
+      "id": "goodhart_blast_radius_response_computed_at_is_timestamp",
+      "description": "BlastRadiusResponse.computed_at must be a genuine ISO 8601 UTC timestamp for novel requests",
+      "function": "handle_blast_radius",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine": "Mock returning valid blast radius results"
+      },
+      "input_values": {},
+      "input_description": "Valid blast radius request with a novel node_id",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "computed_at parses as valid ISO 8601",
+        "computed_at is within last 5 seconds of now"
+      ]
+    },
+    {
+      "id": "goodhart_authority_queried_at_is_timestamp",
+      "description": "AuthorityResponse.queried_at must be a genuine current UTC ISO 8601 timestamp",
+      "function": "handle_get_authority",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "authority_engine": "Mock returning some authority entries"
+      },
+      "input_values": {},
+      "input_description": "GET /authority",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "queried_at parses as valid ISO 8601",
+        "queried_at is within last 5 seconds of current UTC"
+      ]
+    },
+    {
+      "id": "goodhart_trust_queried_at_timestamp",
+      "description": "TrustResponse.queried_at must be a genuine current UTC ISO 8601 timestamp, not a static string",
+      "function": "handle_get_trust",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "Mock returning valid trust data"
+      },
+      "input_values": {},
+      "input_description": "GET /trust/<novel_node_id>",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "queried_at parses as valid ISO 8601",
+        "queried_at is within last 5 seconds of current UTC"
+      ]
+    },
+    {
+      "id": "goodhart_create_app_all_ten_routes_distinct",
+      "description": "The Flask app must have exactly 10 distinct route rules registered, ensuring no routes are missing or duplicated",
+      "function": "create_app",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "all engines": "Mock stubs"
+      },
+      "input_values": {},
+      "input_description": "Valid ServerContext with all engines",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "App has route for /register",
+        "App has route for /blast-radius",
+        "App has route for /trust/<node_id>",
+        "App has route for /trust/reset-taint",
+        "App has route for /authority",
+        "App has route for /canary/inject",
+        "App has route for /canary/results/<run_id>",
+        "App has route for /report/<run_id>",
+        "App has route for /findings",
+        "App has route for /health"
+      ]
+    },
+    {
+      "id": "goodhart_create_app_port_one_valid",
+      "description": "Port 1 is the minimum valid port and must be accepted by create_app",
+      "function": "create_app",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "all engines": "Mock stubs"
+      },
+      "input_values": {},
+      "input_description": "ServerConfig with port=1",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_app returns a Flask app without error"
+      ]
+    },
+    {
+      "id": "goodhart_create_app_port_65535_valid",
+      "description": "Port 65535 is the maximum valid port and must be accepted by create_app",
+      "function": "create_app",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "all engines": "Mock stubs"
+      },
+      "input_values": {},
+      "input_description": "ServerConfig with port=65535",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_app returns a Flask app without error"
+      ]
+    },
+    {
+      "id": "goodhart_create_app_negative_port",
+      "description": "Negative port values must be rejected during app creation",
+      "function": "create_app",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "all engines": "Mock stubs"
+      },
+      "input_values": {},
+      "input_description": "ServerConfig with port=-1",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "create_app raises an error"
+      ]
+    },
+    {
+      "id": "goodhart_review_not_found_includes_review_id",
+      "description": "REVIEW_NOT_FOUND error message must include the specific review_id that was not found",
+      "function": "handle_error",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "Mock that raises ReviewNotFound with review_id='rev-nonexistent-12345'"
+      },
+      "input_values": {},
+      "input_description": "Reset taint with review_id='rev-nonexistent-12345'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "error message contains 'rev-nonexistent-12345'"
+      ]
+    },
+    {
+      "id": "goodhart_report_response_has_all_summary_fields",
+      "description": "ReportResponse must include all four summary dicts: trust_summary, findings_summary, canary_summary, blast_radius_summary",
+      "function": "handle_get_report",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "report_engine": "Mock returning a full report with all summary fields"
+      },
+      "input_values": {},
+      "input_description": "GET /report/<valid_run_id>",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response has 'trust_summary' key",
+        "response has 'findings_summary' key",
+        "response has 'canary_summary' key",
+        "response has 'blast_radius_summary' key",
+        "response has 'generated_at' key"
+      ]
+    },
+    {
+      "id": "goodhart_no_delete_or_put_endpoints",
+      "description": "No endpoint should accept DELETE or PUT methods, enforcing append-only ledger invariant at HTTP level",
+      "function": "create_app",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "DELETE and PUT requests to all endpoints",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All DELETE requests return 405 METHOD_NOT_ALLOWED",
+        "All PUT requests return 405 METHOD_NOT_ALLOWED"
+      ]
+    },
+    {
+      "id": "goodhart_register_with_unicode_node_ids",
+      "description": "Registration should handle node_ids with Unicode characters without corruption",
+      "function": "handle_register",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine": "Mock that accepts graph storage"
+      },
+      "input_values": {},
+      "input_description": "Access graph with node_ids containing Unicode: 'nöde-ünïcödé', '节点-alpha'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Registration succeeds with HTTP 200",
+        "node_count matches input count"
+      ]
+    },
+    {
+      "id": "goodhart_trust_response_not_authority_type",
+      "description": "GET /trust/<node_id> response must never contain authority-specific fields like 'authority_source' or 'granted_permissions'",
+      "function": "handle_get_trust",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "Mock returning valid trust data"
+      },
+      "input_values": {},
+      "input_description": "GET /trust/<valid_node_id>",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response does not contain 'authority_source'",
+        "response does not contain 'granted_permissions'",
+        "response contains 'trust_score'",
+        "response contains 'trust_tier'"
+      ]
+    },
+    {
+      "id": "goodhart_authority_response_not_trust_type",
+      "description": "GET /authority response entries must never contain trust-specific fields like 'trust_score' or 'trust_tier'",
+      "function": "handle_get_authority",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "authority_engine": "Mock returning authority entries"
+      },
+      "input_values": {},
+      "input_description": "GET /authority with entries",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response does not contain 'trust_score' at top level",
+        "response does not contain 'trust_tier'",
+        "response contains 'entries'",
+        "response contains 'total_entries'"
+      ]
+    },
+    {
+      "id": "goodhart_empty_json_body_post_register",
+      "description": "POST /register with an empty JSON object {} should return VALIDATION_ERROR, not succeed or crash",
+      "function": "handle_register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine": "Mock (should not be called)"
+      },
+      "input_values": {},
+      "input_description": "POST /register with body {}",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "HTTP status is 400 or 422",
+        "error_code is VALIDATION_ERROR"
+      ]
+    },
+    {
+      "id": "goodhart_canary_inject_tiers_seeded_matches_request",
+      "description": "CanaryInjectResponse.tiers_seeded must reflect the actual target_tiers from the request, not a hardcoded list",
+      "function": "handle_canary_inject",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "canary_engine": "Mock that accepts injection and returns tiers_seeded from request"
+      },
+      "input_values": {},
+      "input_description": "Canary inject with target_tiers=['CONFIDENTIAL', 'RESTRICTED'], canary_count=3",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "tiers_seeded contains 'CONFIDENTIAL'",
+        "tiers_seeded contains 'RESTRICTED'",
+        "len(tiers_seeded) == 2"
+      ]
+    },
+    {
+      "id": "goodhart_blast_radius_negative_max_depth",
+      "description": "Negative max_depth values should be rejected with a validation error",
+      "function": "handle_blast_radius",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine": "Mock (should not be called)"
+      },
+      "input_values": {},
+      "input_description": "POST /blast-radius with max_depth=-1",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "HTTP status is 400 or 422",
+        "error_code is VALIDATION_ERROR"
+      ]
+    },
+    {
+      "id": "goodhart_findings_ingested_at_is_current",
+      "description": "FindingsResponse.ingested_at must be a genuine current timestamp, not a static value",
+      "function": "handle_ingest_findings",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "findings_engine": "Mock that accepts findings"
+      },
+      "input_values": {},
+      "input_description": "POST /findings with valid findings",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "ingested_at parses as valid ISO 8601",
+        "ingested_at is within last 5 seconds of current UTC"
+      ]
+    },
+    {
+      "id": "goodhart_reset_taint_node_id_and_review_id_echoed",
+      "description": "TaintResetResponse must echo back the exact node_id and review_id from the request, not hardcoded values",
+      "function": "handle_reset_taint",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "trust_engine": "Mock that performs taint reset successfully with the given IDs"
+      },
+      "input_values": {},
+      "input_description": "Reset taint with node_id='node-adversarial-xyz', review_id='review-adversarial-abc'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response node_id == 'node-adversarial-xyz'",
+        "response review_id == 'review-adversarial-abc'"
+      ]
+    },
+    {
+      "id": "goodhart_canary_results_with_multiple_escapes",
+      "description": "total_escaped must equal len(escapes) even with multiple escape events, not just 0 or 1",
+      "function": "handle_canary_results",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "canary_engine": "Mock returning 5 escape events"
+      },
+      "input_values": {},
+      "input_description": "GET /canary/results/<run_id> where engine returns 5 escape events",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "total_escaped == 5",
+        "len(escapes) == 5"
+      ]
+    },
+    {
+      "id": "goodhart_register_edge_invalid_classification",
+      "description": "An edge with an invalid classification tier value should be rejected with a validation error",
+      "function": "handle_register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "blast_radius_engine": "Mock (should not be called)"
+      },
+      "input_values": {},
+      "input_description": "Graph with edge having classification='INVALID_TIER'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "HTTP status is 400 or 422",
+        "error_code is VALIDATION_ERROR"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nAdversarial (Goodhart) tests for HTTP API Server component.\nThese tests catch implementations that pass visible tests through shortcuts\n(e.g., hardcoded returns, missing validation) rather than truly satisfying the contract.\n\"\"\"\nimport json\nimport pytest\nfrom datetime import datetime, timezone, timedelta\nfrom unittest.mock import MagicMock, patch, PropertyMock\nfrom src.http_api import *\n\n\n# ---------------------------------------------------------------------------\n# Helpers\n# ---------------------------------------------------------------------------\n\ndef make_mock_engine():\n    \"\"\"Create a generic mock engine.\"\"\"\n    return MagicMock()\n\n\ndef make_server_config(port=7700, host=\"127.0.0.1\", debug=False, max_request_size_bytes=10_000_000):\n    \"\"\"Create a ServerConfig (or dict-like) for testing.\"\"\"\n    try:\n        return ServerConfig(host=host, port=port, debug=debug, max_request_size_bytes=max_request_size_bytes)\n    except Exception:\n        # Fallback if ServerConfig is a dict-based or different constructor\n        return {\"host\": host, \"port\": port, \"debug\": debug, \"max_request_size_bytes\": max_request_size_bytes}\n\n\ndef make_server_context(port=7700, **engine_overrides):\n    \"\"\"Create a full ServerContext with mock engines.\"\"\"\n    config = make_server_config(port=port)\n    engines = {\n        \"trust_engine\": make_mock_engine(),\n        \"blast_radius_engine\": make_mock_engine(),\n        \"authority_engine\": make_mock_engine(),\n        \"canary_engine\": make_mock_engine(),\n        \"report_engine\": make_mock_engine(),\n        \"findings_engine\": make_mock_engine(),\n    }\n    engines.update(engine_overrides)\n    try:\n        return ServerContext(config=config, **engines)\n    except Exception:\n        # Fallback\n        ctx = MagicMock()\n        ctx.config = config\n        for k, v in engines.items():\n            setattr(ctx, k, v)\n        return ctx\n\n\ndef parse_iso8601(s):\n    \"\"\"Parse an ISO 8601 timestamp string.\"\"\"\n    # Handle 'Z' suffix\n    if s.endswith(\"Z\"):\n        s = s[:-1] + \"+00:00\"\n    return datetime.fromisoformat(s)\n\n\ndef assert_recent_utc(ts_str, max_age_seconds=10):\n    \"\"\"Assert that an ISO 8601 timestamp string is recent UTC.\"\"\"\n    dt = parse_iso8601(ts_str)\n    now = datetime.now(timezone.utc)\n    # If naive, assume UTC\n    if dt.tzinfo is None:\n        dt = dt.replace(tzinfo=timezone.utc)\n    diff = abs((now - dt).total_seconds())\n    assert diff < max_age_seconds, f\"Timestamp {ts_str} is {diff}s from now, expected < {max_age_seconds}s\"\n\n\ndef get_json(response):\n    \"\"\"Extract JSON from a Flask test client response.\"\"\"\n    if hasattr(response, \"get_json\"):\n        return response.get_json()\n    return json.loads(response.data)\n\n\n# ---------------------------------------------------------------------------\n# Test: RegisterResponse counts are dynamic, not hardcoded\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartRegisterDynamicCounts:\n    def test_goodhart_register_different_graph_sizes(self):\n        \"\"\"RegisterResponse node_count and edge_count must dynamically reflect the actual input size, not be hardcoded to any particular test fixture's counts\"\"\"\n        ctx = make_server_context()\n        ctx.blast_radius_engine.register_graph = MagicMock(return_value=None)\n        try:\n            ctx.blast_radius_engine.store_graph = MagicMock(return_value=None)\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        test_cases = [\n            (1, 0),\n            (5, 7),\n            (13, 19),\n        ]\n\n        for n_nodes, n_edges in test_cases:\n            nodes = [{\"node_id\": f\"n-{i}\", \"node_type\": \"service\", \"labels\": {}} for i in range(n_nodes)]\n            node_ids = [n[\"node_id\"] for n in nodes]\n            edges = []\n            for i in range(n_edges):\n                src = node_ids[i % len(node_ids)]\n                tgt = node_ids[(i + 1) % len(node_ids)]\n                edges.append({\n                    \"source\": src,\n                    \"target\": tgt,\n                    \"access_type\": \"read\",\n                    \"classification\": \"PUBLIC\"\n                })\n\n            payload = {\"nodes\": nodes, \"edges\": edges, \"metadata\": {}}\n            resp = client.post(\"/register\", json=payload, content_type=\"application/json\")\n            data = get_json(resp)\n            assert resp.status_code == 200, f\"Expected 200 for {n_nodes} nodes, got {resp.status_code}: {data}\"\n            assert data[\"node_count\"] == n_nodes, f\"Expected node_count={n_nodes}, got {data['node_count']}\"\n            assert data[\"edge_count\"] == n_edges, f\"Expected edge_count={n_edges}, got {data['edge_count']}\"\n\n\nclass TestGoodhartRegisterLargeGraph:\n    def test_goodhart_register_large_graph_counts(self):\n        \"\"\"Registration correctly counts nodes and edges for a large graph that no visible test uses\"\"\"\n        ctx = make_server_context()\n        ctx.blast_radius_engine.register_graph = MagicMock(return_value=None)\n        try:\n            ctx.blast_radius_engine.store_graph = MagicMock(return_value=None)\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        n_nodes = 37\n        n_edges = 73\n        nodes = [{\"node_id\": f\"node-{i}\", \"node_type\": \"service\", \"labels\": {}} for i in range(n_nodes)]\n        node_ids = [n[\"node_id\"] for n in nodes]\n        edges = []\n        for i in range(n_edges):\n            edges.append({\n                \"source\": node_ids[i % n_nodes],\n                \"target\": node_ids[(i + 3) % n_nodes],\n                \"access_type\": \"write\",\n                \"classification\": \"INTERNAL\"\n            })\n\n        payload = {\"nodes\": nodes, \"edges\": edges, \"metadata\": {\"test\": True}}\n        resp = client.post(\"/register\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"node_count\"] == 37\n        assert data[\"edge_count\"] == 73\n\n\nclass TestGoodhartRegisterTimestamp:\n    def test_goodhart_register_timestamp_is_recent_utc(self):\n        \"\"\"Registration timestamp must be a genuinely current UTC time\"\"\"\n        ctx = make_server_context()\n        ctx.blast_radius_engine.register_graph = MagicMock(return_value=None)\n        try:\n            ctx.blast_radius_engine.store_graph = MagicMock(return_value=None)\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        nodes = [{\"node_id\": \"ts-test-node\", \"node_type\": \"service\", \"labels\": {}}]\n        payload = {\"nodes\": nodes, \"edges\": [], \"metadata\": {}}\n        resp = client.post(\"/register\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert \"registered_at\" in data\n        assert_recent_utc(data[\"registered_at\"])\n\n\n# ---------------------------------------------------------------------------\n# Test: Blast radius origin echoes input\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartBlastRadiusOrigin:\n    def test_goodhart_blast_radius_origin_echoes_input(self):\n        \"\"\"BlastRadiusResponse.origin_node_id must echo back the actual requested node_id\"\"\"\n        ctx = make_server_context()\n        br_result = MagicMock()\n        br_result.origin_node_id = \"node-xyz-999\"\n        br_result.affected_nodes = []\n        br_result.total_affected = 0\n        br_result.max_depth_reached = 0\n        br_result.computed_at = datetime.now(timezone.utc).isoformat()\n        ctx.blast_radius_engine.compute_blast_radius = MagicMock(return_value=br_result)\n        try:\n            ctx.blast_radius_engine.compute = MagicMock(return_value=br_result)\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\"node_id\": \"node-xyz-999\", \"max_depth\": 3, \"classification_filter\": \"PUBLIC\"}\n        resp = client.post(\"/blast-radius\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"origin_node_id\"] == \"node-xyz-999\"\n\n\nclass TestGoodhartBlastRadiusTimestamp:\n    def test_goodhart_blast_radius_computed_at_is_timestamp(self):\n        \"\"\"BlastRadiusResponse.computed_at must be a genuine ISO 8601 UTC timestamp\"\"\"\n        ctx = make_server_context()\n        br_result = MagicMock()\n        br_result.origin_node_id = \"ts-br-node\"\n        br_result.affected_nodes = []\n        br_result.total_affected = 0\n        br_result.max_depth_reached = 0\n        br_result.computed_at = datetime.now(timezone.utc).isoformat()\n        ctx.blast_radius_engine.compute_blast_radius = MagicMock(return_value=br_result)\n        try:\n            ctx.blast_radius_engine.compute = MagicMock(return_value=br_result)\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\"node_id\": \"ts-br-node\", \"max_depth\": 5, \"classification_filter\": \"INTERNAL\"}\n        resp = client.post(\"/blast-radius\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert \"computed_at\" in data\n        assert_recent_utc(data[\"computed_at\"])\n\n\n# ---------------------------------------------------------------------------\n# Test: Trust node_id echoed for novel IDs\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartTrustNodeIdEchoed:\n    def test_goodhart_trust_node_id_echoed_for_different_ids(self):\n        \"\"\"TrustResponse.node_id must dynamically match the queried node_id\"\"\"\n        ctx = make_server_context()\n\n        def mock_get_trust(node_id):\n            result = MagicMock()\n            result.node_id = node_id\n            result.trust_score = 0.75\n            result.trust_tier = \"HIGH\"\n            result.is_tainted = False\n            result.recent_events = []\n            result.queried_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.trust_engine.get_trust = MagicMock(side_effect=mock_get_trust)\n        try:\n            ctx.trust_engine.get_trust_score = MagicMock(side_effect=mock_get_trust)\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        for nid in [\"svc-alpha-7\", \"db-prod-42\", \"node-with-dashes-123\"]:\n            resp = client.get(f\"/trust/{nid}\")\n            data = get_json(resp)\n            assert resp.status_code == 200, f\"Expected 200 for {nid}, got {resp.status_code}\"\n            assert data[\"node_id\"] == nid, f\"Expected node_id={nid}, got {data['node_id']}\"\n\n\n# ---------------------------------------------------------------------------\n# Test: Trust score boundaries 0.0 and 1.0\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartTrustScoreBoundaries:\n    def _make_trust_mock(self, score, is_tainted=False):\n        def mock_get_trust(node_id):\n            result = MagicMock()\n            result.node_id = node_id\n            result.trust_score = score\n            result.trust_tier = \"NONE\" if score == 0.0 else \"FULL\"\n            result.is_tainted = is_tainted\n            result.recent_events = []\n            result.queried_at = datetime.now(timezone.utc).isoformat()\n            return result\n        return mock_get_trust\n\n    def test_goodhart_trust_score_boundary_zero(self):\n        \"\"\"Trust score of exactly 0.0 must be accepted and returned correctly\"\"\"\n        ctx = make_server_context()\n        ctx.trust_engine.get_trust = MagicMock(side_effect=self._make_trust_mock(0.0))\n        try:\n            ctx.trust_engine.get_trust_score = MagicMock(side_effect=self._make_trust_mock(0.0))\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.get(\"/trust/zero-score-node\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"trust_score\"] == 0.0\n\n    def test_goodhart_trust_score_boundary_one(self):\n        \"\"\"Trust score of exactly 1.0 must be accepted and returned correctly\"\"\"\n        ctx = make_server_context()\n        ctx.trust_engine.get_trust = MagicMock(side_effect=self._make_trust_mock(1.0))\n        try:\n            ctx.trust_engine.get_trust_score = MagicMock(side_effect=self._make_trust_mock(1.0))\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.get(\"/trust/full-score-node\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"trust_score\"] == 1.0\n\n\n# ---------------------------------------------------------------------------\n# Test: Canary inject run_id echoed and count formula\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartCanaryInjectDynamic:\n    def test_goodhart_canary_inject_run_id_echoed(self):\n        \"\"\"CanaryInjectResponse.run_id must echo the actual request run_id\"\"\"\n        ctx = make_server_context()\n\n        def mock_inject(run_id=None, target_tiers=None, canary_count=None, **kwargs):\n            result = MagicMock()\n            tiers = target_tiers or []\n            result.run_id = run_id\n            result.injected_count = (canary_count or 0) * len(tiers)\n            result.tiers_seeded = tiers\n            result.injected_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.canary_engine.inject = MagicMock(side_effect=lambda *a, **kw: mock_inject(**kw))\n        try:\n            ctx.canary_engine.inject_canaries = ctx.canary_engine.inject\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"run_id\": \"run-novel-abc-123\",\n            \"target_tiers\": [\"RESTRICTED\"],\n            \"canary_count\": 5\n        }\n        resp = client.post(\"/canary/inject\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"run_id\"] == \"run-novel-abc-123\"\n\n    def test_goodhart_canary_inject_count_multi_tier(self):\n        \"\"\"Injected count must equal canary_count * number of target tiers\"\"\"\n        ctx = make_server_context()\n\n        def mock_inject(*args, **kwargs):\n            result = MagicMock()\n            # The handler should compute this, not the engine\n            result.run_id = kwargs.get(\"run_id\", \"test-run\")\n            result.injected_count = 21  # 7 * 3\n            result.tiers_seeded = [\"PUBLIC\", \"INTERNAL\", \"CONFIDENTIAL\"]\n            result.injected_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.canary_engine.inject = MagicMock(side_effect=mock_inject)\n        try:\n            ctx.canary_engine.inject_canaries = ctx.canary_engine.inject\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"run_id\": \"run-multi-tier\",\n            \"target_tiers\": [\"PUBLIC\", \"INTERNAL\", \"CONFIDENTIAL\"],\n            \"canary_count\": 7\n        }\n        resp = client.post(\"/canary/inject\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"injected_count\"] == 21\n\n    def test_goodhart_canary_inject_single_tier_single_count(self):\n        \"\"\"Injected count formula holds for the smallest valid input: 1 * 1 = 1\"\"\"\n        ctx = make_server_context()\n\n        def mock_inject(*args, **kwargs):\n            result = MagicMock()\n            result.run_id = kwargs.get(\"run_id\", \"test-run\")\n            result.injected_count = 1\n            result.tiers_seeded = [\"PUBLIC\"]\n            result.injected_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.canary_engine.inject = MagicMock(side_effect=mock_inject)\n        try:\n            ctx.canary_engine.inject_canaries = ctx.canary_engine.inject\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"run_id\": \"run-single\",\n            \"target_tiers\": [\"PUBLIC\"],\n            \"canary_count\": 1\n        }\n        resp = client.post(\"/canary/inject\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"injected_count\"] == 1\n\n    def test_goodhart_canary_inject_max_count_all_tiers(self):\n        \"\"\"Injected count formula holds for maximum: 1000 * 4 = 4000\"\"\"\n        ctx = make_server_context()\n\n        def mock_inject(*args, **kwargs):\n            result = MagicMock()\n            result.run_id = kwargs.get(\"run_id\", \"test-run\")\n            result.injected_count = 4000\n            result.tiers_seeded = [\"PUBLIC\", \"INTERNAL\", \"CONFIDENTIAL\", \"RESTRICTED\"]\n            result.injected_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.canary_engine.inject = MagicMock(side_effect=mock_inject)\n        try:\n            ctx.canary_engine.inject_canaries = ctx.canary_engine.inject\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"run_id\": \"run-max\",\n            \"target_tiers\": [\"PUBLIC\", \"INTERNAL\", \"CONFIDENTIAL\", \"RESTRICTED\"],\n            \"canary_count\": 1000\n        }\n        resp = client.post(\"/canary/inject\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"injected_count\"] == 4000\n\n\n# ---------------------------------------------------------------------------\n# Test: Canary results run_id echoed\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartCanaryResultsEchoed:\n    def test_goodhart_canary_results_run_id_echoed(self):\n        \"\"\"CanaryResultsResponse.run_id must echo the queried run_id\"\"\"\n        ctx = make_server_context()\n\n        def mock_results(run_id):\n            result = MagicMock()\n            result.run_id = run_id\n            result.status = \"completed\"\n            result.total_injected = 10\n            result.total_escaped = 0\n            result.escapes = []\n            result.queried_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.canary_engine.get_results = MagicMock(side_effect=mock_results)\n        try:\n            ctx.canary_engine.results = ctx.canary_engine.get_results\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.get(\"/canary/results/run-unique-xyz-777\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"run_id\"] == \"run-unique-xyz-777\"\n\n    def test_goodhart_canary_results_with_multiple_escapes(self):\n        \"\"\"total_escaped must equal len(escapes) with multiple escape events\"\"\"\n        ctx = make_server_context()\n\n        def mock_results(run_id):\n            result = MagicMock()\n            result.run_id = run_id\n            result.status = \"completed\"\n            result.total_injected = 20\n            result.total_escaped = 5\n            result.escapes = [\n                {\"canary_id\": f\"c-{i}\", \"expected_tier\": \"CONFIDENTIAL\", \"observed_tier\": \"PUBLIC\",\n                 \"observed_node_id\": f\"node-{i}\", \"detected_at\": datetime.now(timezone.utc).isoformat()}\n                for i in range(5)\n            ]\n            result.queried_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.canary_engine.get_results = MagicMock(side_effect=mock_results)\n        try:\n            ctx.canary_engine.results = ctx.canary_engine.get_results\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.get(\"/canary/results/run-multi-escape\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"total_escaped\"] == 5\n        assert len(data[\"escapes\"]) == 5\n\n\n# ---------------------------------------------------------------------------\n# Test: Report run_id echoed and all summary fields present\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartReportDynamic:\n    def test_goodhart_report_run_id_echoed(self):\n        \"\"\"ReportResponse.run_id must echo the queried run_id\"\"\"\n        ctx = make_server_context()\n\n        def mock_report(run_id):\n            result = MagicMock()\n            result.run_id = run_id\n            result.status = \"completed\"\n            result.trust_summary = {\"avg_score\": 0.8}\n            result.findings_summary = {\"total\": 5}\n            result.canary_summary = {\"escaped\": 0}\n            result.blast_radius_summary = {\"max_depth\": 3}\n            result.generated_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.report_engine.get_report = MagicMock(side_effect=mock_report)\n        try:\n            ctx.report_engine.generate_report = ctx.report_engine.get_report\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.get(\"/report/run-adversarial-999\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"run_id\"] == \"run-adversarial-999\"\n\n    def test_goodhart_report_response_has_all_summary_fields(self):\n        \"\"\"ReportResponse must include all four summary dicts\"\"\"\n        ctx = make_server_context()\n\n        def mock_report(run_id):\n            result = MagicMock()\n            result.run_id = run_id\n            result.status = \"completed\"\n            result.trust_summary = {\"avg\": 0.5}\n            result.findings_summary = {\"count\": 1}\n            result.canary_summary = {\"injected\": 10}\n            result.blast_radius_summary = {\"nodes\": 5}\n            result.generated_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.report_engine.get_report = MagicMock(side_effect=mock_report)\n        try:\n            ctx.report_engine.generate_report = ctx.report_engine.get_report\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.get(\"/report/run-summary-check\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert \"trust_summary\" in data\n        assert \"findings_summary\" in data\n        assert \"canary_summary\" in data\n        assert \"blast_radius_summary\" in data\n        assert \"generated_at\" in data\n\n\n# ---------------------------------------------------------------------------\n# Test: Error messages include specific identifiers\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartErrorSpecificIds:\n    def test_goodhart_error_response_includes_specific_node_id(self):\n        \"\"\"Error messages must include the specific entity identifier that caused the error\"\"\"\n        ctx = make_server_context()\n\n        # Make trust engine raise NodeNotFound for a novel node_id\n        class NodeNotFoundError(Exception):\n            def __init__(self, node_id):\n                self.node_id = node_id\n                super().__init__(f\"Node not found: {node_id}\")\n\n        ctx.trust_engine.get_trust = MagicMock(\n            side_effect=NodeNotFoundError(\"svc-unique-deadbeef\")\n        )\n        try:\n            ctx.trust_engine.get_trust_score = ctx.trust_engine.get_trust\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.get(\"/trust/svc-unique-deadbeef\")\n        data = get_json(resp)\n        assert resp.status_code in (404, 400)\n        assert \"svc-unique-deadbeef\" in data.get(\"message\", \"\"), \\\n            f\"Expected 'svc-unique-deadbeef' in error message, got: {data.get('message')}\"\n\n    def test_goodhart_review_not_found_includes_review_id(self):\n        \"\"\"REVIEW_NOT_FOUND error message must include the specific review_id\"\"\"\n        ctx = make_server_context()\n\n        class ReviewNotFoundError(Exception):\n            def __init__(self, review_id):\n                self.review_id = review_id\n                super().__init__(f\"Review not found: {review_id}\")\n\n        ctx.trust_engine.reset_taint = MagicMock(\n            side_effect=ReviewNotFoundError(\"rev-nonexistent-12345\")\n        )\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"node_id\": \"some-node\",\n            \"review_id\": \"rev-nonexistent-12345\",\n            \"reason\": \"Testing review not found\"\n        }\n        resp = client.post(\"/trust/reset-taint\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert \"rev-nonexistent-12345\" in data.get(\"message\", \"\"), \\\n            f\"Expected 'rev-nonexistent-12345' in error message, got: {data.get('message')}\"\n\n\n# ---------------------------------------------------------------------------\n# Test: Error responses always have details field\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartErrorResponseSchema:\n    def test_goodhart_error_response_has_details_field(self):\n        \"\"\"All error responses must include 'details' field as part of ErrorResponse schema\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        # Malformed JSON\n        resp = client.post(\"/register\", data=\"not-json{{{\", content_type=\"application/json\")\n        data = get_json(resp)\n        assert \"error_code\" in data\n        assert \"message\" in data\n        assert \"details\" in data, f\"Missing 'details' in error response: {data}\"\n\n    def test_goodhart_content_type_json_on_error_responses(self):\n        \"\"\"Error responses must also have Content-Type: application/json\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.post(\"/register\", data=\"bad json!\", content_type=\"application/json\")\n        ct = resp.content_type or resp.headers.get(\"Content-Type\", \"\")\n        assert \"application/json\" in ct, f\"Expected application/json Content-Type on error, got: {ct}\"\n\n\n# ---------------------------------------------------------------------------\n# Test: Method not allowed for various methods\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartMethodNotAllowed:\n    def test_goodhart_get_endpoints_reject_post(self):\n        \"\"\"GET-only endpoints must reject POST requests with METHOD_NOT_ALLOWED\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        get_only = [\"/authority\", \"/health\"]\n        for path in get_only:\n            resp = client.post(path, json={}, content_type=\"application/json\")\n            assert resp.status_code == 405, f\"POST {path} should return 405, got {resp.status_code}\"\n            data = get_json(resp)\n            assert data.get(\"error_code\") == \"METHOD_NOT_ALLOWED\", \\\n                f\"POST {path} should return METHOD_NOT_ALLOWED, got {data.get('error_code')}\"\n\n    def test_goodhart_post_endpoints_reject_get(self):\n        \"\"\"POST-only endpoints must reject GET requests with METHOD_NOT_ALLOWED\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        post_only = [\"/register\", \"/blast-radius\", \"/trust/reset-taint\", \"/canary/inject\", \"/findings\"]\n        for path in post_only:\n            resp = client.get(path)\n            assert resp.status_code == 405, f\"GET {path} should return 405, got {resp.status_code}\"\n            data = get_json(resp)\n            assert data.get(\"error_code\") == \"METHOD_NOT_ALLOWED\", \\\n                f\"GET {path} should return METHOD_NOT_ALLOWED, got {data.get('error_code')}\"\n\n    def test_goodhart_no_delete_or_put_endpoints(self):\n        \"\"\"No endpoint should accept DELETE or PUT methods\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        all_paths = [\n            \"/register\", \"/blast-radius\", \"/trust/test-node\",\n            \"/trust/reset-taint\", \"/authority\", \"/canary/inject\",\n            \"/canary/results/run-1\", \"/report/run-1\", \"/findings\", \"/health\"\n        ]\n        for path in all_paths:\n            for method in [client.delete, client.put]:\n                resp = method(path)\n                assert resp.status_code == 405, \\\n                    f\"{method.__name__.upper()} {path} should return 405, got {resp.status_code}\"\n\n\n# ---------------------------------------------------------------------------\n# Test: Content type validation\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartContentType:\n    def test_goodhart_unsupported_content_type_xml(self):\n        \"\"\"POST endpoints must reject Content-Type: application/xml\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.post(\"/register\", data=\"<xml/>\", content_type=\"application/xml\")\n        data = get_json(resp)\n        assert resp.status_code == 415, f\"Expected 415 for XML content type, got {resp.status_code}\"\n        assert data.get(\"error_code\") == \"CONTENT_TYPE_UNSUPPORTED\"\n\n    def test_goodhart_unsupported_content_type_form(self):\n        \"\"\"POST endpoints must reject Content-Type: application/x-www-form-urlencoded\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.post(\"/findings\", data=\"key=value\", content_type=\"application/x-www-form-urlencoded\")\n        data = get_json(resp)\n        assert resp.status_code == 415, f\"Expected 415 for form content type, got {resp.status_code}\"\n        assert data.get(\"error_code\") == \"CONTENT_TYPE_UNSUPPORTED\"\n\n\n# ---------------------------------------------------------------------------\n# Test: Health endpoint degraded state\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartHealthDegraded:\n    def test_goodhart_health_engines_ready_false_when_degraded(self):\n        \"\"\"Health endpoint must reflect actual engine readiness state\"\"\"\n        ctx = make_server_context()\n        # Make engines report not ready\n        ctx.trust_engine.is_ready = MagicMock(return_value=False)\n        ctx.blast_radius_engine.is_ready = MagicMock(return_value=False)\n        ctx.authority_engine.is_ready = MagicMock(return_value=False)\n        ctx.canary_engine.is_ready = MagicMock(return_value=False)\n        ctx.report_engine.is_ready = MagicMock(return_value=False)\n        ctx.findings_engine.is_ready = MagicMock(return_value=False)\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.get(\"/health\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        # When engines aren't ready, either engines_ready should be False or status should be 'degraded'\n        assert data.get(\"engines_ready\") is False or data.get(\"status\") == \"degraded\", \\\n            f\"Expected engines_ready=False or status=degraded, got: {data}\"\n\n    def test_goodhart_health_version_is_string(self):\n        \"\"\"Health response must include a non-empty version string\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.get(\"/health\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert \"version\" in data\n        assert isinstance(data[\"version\"], str)\n        assert len(data[\"version\"]) > 0\n\n\n# ---------------------------------------------------------------------------\n# Test: Reset taint response fields and boundaries\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartResetTaintBoundaries:\n    def _setup_taint_reset_ctx(self):\n        ctx = make_server_context()\n\n        def mock_reset(node_id=None, review_id=None, reason=None, **kwargs):\n            result = MagicMock()\n            result.node_id = node_id\n            result.review_id = review_id\n            result.previous_trust_score = 0.1\n            result.new_trust_score = 0.7\n            result.ledger_event_id = \"evt-reset-123\"\n            result.reset_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.trust_engine.reset_taint = MagicMock(side_effect=lambda *a, **kw: mock_reset(**kw))\n        return ctx\n\n    def test_goodhart_reset_taint_response_has_all_fields(self):\n        \"\"\"TaintResetResponse must include all required fields\"\"\"\n        ctx = self._setup_taint_reset_ctx()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"node_id\": \"taint-node-test\",\n            \"review_id\": \"review-test-456\",\n            \"reason\": \"Testing reset response completeness\"\n        }\n        resp = client.post(\"/trust/reset-taint\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        for field in [\"node_id\", \"review_id\", \"previous_trust_score\", \"new_trust_score\", \"ledger_event_id\", \"reset_at\"]:\n            assert field in data, f\"Missing field '{field}' in TaintResetResponse: {data}\"\n        assert 0.0 <= data[\"previous_trust_score\"] <= 1.0\n        assert 0.0 <= data[\"new_trust_score\"] <= 1.0\n\n    def test_goodhart_reset_taint_reason_exactly_2000_chars(self):\n        \"\"\"A reason string of exactly 2000 characters should be accepted\"\"\"\n        ctx = self._setup_taint_reset_ctx()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"node_id\": \"taint-node-boundary\",\n            \"review_id\": \"review-boundary\",\n            \"reason\": \"A\" * 2000\n        }\n        resp = client.post(\"/trust/reset-taint\", json=payload, content_type=\"application/json\")\n        assert resp.status_code == 200, \\\n            f\"Expected 200 for 2000-char reason, got {resp.status_code}: {get_json(resp)}\"\n\n    def test_goodhart_reset_taint_reason_exactly_1_char(self):\n        \"\"\"A reason string of exactly 1 character should be accepted\"\"\"\n        ctx = self._setup_taint_reset_ctx()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"node_id\": \"taint-node-min\",\n            \"review_id\": \"review-min\",\n            \"reason\": \"x\"\n        }\n        resp = client.post(\"/trust/reset-taint\", json=payload, content_type=\"application/json\")\n        assert resp.status_code == 200, \\\n            f\"Expected 200 for 1-char reason, got {resp.status_code}: {get_json(resp)}\"\n\n    def test_goodhart_reset_taint_reason_2001_chars(self):\n        \"\"\"A reason string of exactly 2001 characters must be rejected\"\"\"\n        ctx = self._setup_taint_reset_ctx()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"node_id\": \"taint-node-over\",\n            \"review_id\": \"review-over\",\n            \"reason\": \"B\" * 2001\n        }\n        resp = client.post(\"/trust/reset-taint\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code in (400, 422), \\\n            f\"Expected 400/422 for 2001-char reason, got {resp.status_code}\"\n        assert data.get(\"error_code\") == \"VALIDATION_ERROR\"\n\n    def test_goodhart_reset_taint_node_id_and_review_id_echoed(self):\n        \"\"\"TaintResetResponse must echo back the exact node_id and review_id from the request\"\"\"\n        ctx = self._setup_taint_reset_ctx()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"node_id\": \"node-adversarial-xyz\",\n            \"review_id\": \"review-adversarial-abc\",\n            \"reason\": \"Testing echo of IDs\"\n        }\n        resp = client.post(\"/trust/reset-taint\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"node_id\"] == \"node-adversarial-xyz\"\n        assert data[\"review_id\"] == \"review-adversarial-abc\"\n\n\n# ---------------------------------------------------------------------------\n# Test: Graph validation checks both source and target\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartGraphValidation:\n    def test_goodhart_register_edge_references_target_not_in_nodes(self):\n        \"\"\"Graph validation must check that edge targets exist in nodes\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"nodes\": [\n                {\"node_id\": \"A\", \"node_type\": \"service\", \"labels\": {}},\n                {\"node_id\": \"B\", \"node_type\": \"service\", \"labels\": {}},\n            ],\n            \"edges\": [\n                {\"source\": \"A\", \"target\": \"C\", \"access_type\": \"read\", \"classification\": \"PUBLIC\"}\n            ],\n            \"metadata\": {}\n        }\n        resp = client.post(\"/register\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code in (400, 422)\n        assert data.get(\"error_code\") == \"ACCESS_GRAPH_INVALID\"\n\n    def test_goodhart_register_edge_references_source_not_in_nodes(self):\n        \"\"\"Graph validation must check that edge sources exist in nodes\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"nodes\": [\n                {\"node_id\": \"A\", \"node_type\": \"service\", \"labels\": {}},\n                {\"node_id\": \"B\", \"node_type\": \"service\", \"labels\": {}},\n            ],\n            \"edges\": [\n                {\"source\": \"C\", \"target\": \"A\", \"access_type\": \"read\", \"classification\": \"PUBLIC\"}\n            ],\n            \"metadata\": {}\n        }\n        resp = client.post(\"/register\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code in (400, 422)\n        assert data.get(\"error_code\") == \"ACCESS_GRAPH_INVALID\"\n\n    def test_goodhart_register_edge_invalid_classification(self):\n        \"\"\"An edge with an invalid classification tier value should be rejected\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"nodes\": [\n                {\"node_id\": \"A\", \"node_type\": \"service\", \"labels\": {}},\n                {\"node_id\": \"B\", \"node_type\": \"service\", \"labels\": {}},\n            ],\n            \"edges\": [\n                {\"source\": \"A\", \"target\": \"B\", \"access_type\": \"read\", \"classification\": \"INVALID_TIER\"}\n            ],\n            \"metadata\": {}\n        }\n        resp = client.post(\"/register\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code in (400, 422)\n        assert data.get(\"error_code\") == \"VALIDATION_ERROR\"\n\n    def test_goodhart_register_with_unicode_node_ids(self):\n        \"\"\"Registration should handle node_ids with Unicode characters\"\"\"\n        ctx = make_server_context()\n        ctx.blast_radius_engine.register_graph = MagicMock(return_value=None)\n        try:\n            ctx.blast_radius_engine.store_graph = MagicMock(return_value=None)\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"nodes\": [\n                {\"node_id\": \"nöde-ünïcödé\", \"node_type\": \"service\", \"labels\": {}},\n                {\"node_id\": \"节点-alpha\", \"node_type\": \"database\", \"labels\": {}},\n            ],\n            \"edges\": [],\n            \"metadata\": {}\n        }\n        resp = client.post(\"/register\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"node_count\"] == 2\n\n\n# ---------------------------------------------------------------------------\n# Test: Findings count invariant with partial rejection\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartFindingsCount:\n    def test_goodhart_findings_count_invariant_partial_reject(self):\n        \"\"\"accepted_count + rejected_count must equal total findings for partial rejections\"\"\"\n        ctx = make_server_context()\n\n        def mock_ingest(*args, **kwargs):\n            result = MagicMock()\n            result.accepted_count = 3\n            result.rejected_count = 7\n            result.ingested_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.findings_engine.ingest = MagicMock(side_effect=mock_ingest)\n        try:\n            ctx.findings_engine.ingest_findings = ctx.findings_engine.ingest\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        findings = [\n            {\n                \"finding_id\": f\"f-{i}\",\n                \"node_id\": f\"node-{i}\",\n                \"severity\": \"HIGH\",\n                \"category\": \"access_violation\",\n                \"message\": f\"Finding {i}\",\n                \"span_context\": {},\n                \"timestamp\": datetime.now(timezone.utc).isoformat()\n            }\n            for i in range(10)\n        ]\n        payload = {\"findings\": findings, \"source\": \"baton-adapter\"}\n        resp = client.post(\"/findings\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"accepted_count\"] + data[\"rejected_count\"] == 10\n\n    def test_goodhart_findings_all_rejected(self):\n        \"\"\"When all findings are rejected, accepted_count should be 0\"\"\"\n        ctx = make_server_context()\n\n        def mock_ingest(*args, **kwargs):\n            result = MagicMock()\n            result.accepted_count = 0\n            result.rejected_count = 5\n            result.ingested_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.findings_engine.ingest = MagicMock(side_effect=mock_ingest)\n        try:\n            ctx.findings_engine.ingest_findings = ctx.findings_engine.ingest\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        findings = [\n            {\n                \"finding_id\": f\"f-rej-{i}\",\n                \"node_id\": f\"node-rej-{i}\",\n                \"severity\": \"LOW\",\n                \"category\": \"test\",\n                \"message\": f\"Rejected finding {i}\",\n                \"span_context\": {},\n                \"timestamp\": datetime.now(timezone.utc).isoformat()\n            }\n            for i in range(5)\n        ]\n        payload = {\"findings\": findings, \"source\": \"test-adapter\"}\n        resp = client.post(\"/findings\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert data[\"accepted_count\"] == 0\n        assert data[\"rejected_count\"] == 5\n\n    def test_goodhart_findings_ingested_at_is_current(self):\n        \"\"\"FindingsResponse.ingested_at must be a genuine current timestamp\"\"\"\n        ctx = make_server_context()\n\n        def mock_ingest(*args, **kwargs):\n            result = MagicMock()\n            result.accepted_count = 1\n            result.rejected_count = 0\n            result.ingested_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.findings_engine.ingest = MagicMock(side_effect=mock_ingest)\n        try:\n            ctx.findings_engine.ingest_findings = ctx.findings_engine.ingest\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        findings = [\n            {\n                \"finding_id\": \"f-ts-1\",\n                \"node_id\": \"node-ts-1\",\n                \"severity\": \"MEDIUM\",\n                \"category\": \"test\",\n                \"message\": \"Timestamp test\",\n                \"span_context\": {},\n                \"timestamp\": datetime.now(timezone.utc).isoformat()\n            }\n        ]\n        payload = {\"findings\": findings, \"source\": \"ts-adapter\"}\n        resp = client.post(\"/findings\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert_recent_utc(data[\"ingested_at\"])\n\n\n# ---------------------------------------------------------------------------\n# Test: Trust and authority never conflated\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartTrustAuthorityNeverConflated:\n    def test_goodhart_trust_response_not_authority_type(self):\n        \"\"\"GET /trust response must never contain authority-specific fields\"\"\"\n        ctx = make_server_context()\n\n        def mock_get_trust(node_id):\n            result = MagicMock()\n            result.node_id = node_id\n            result.trust_score = 0.85\n            result.trust_tier = \"HIGH\"\n            result.is_tainted = False\n            result.recent_events = []\n            result.queried_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.trust_engine.get_trust = MagicMock(side_effect=mock_get_trust)\n        try:\n            ctx.trust_engine.get_trust_score = ctx.trust_engine.get_trust\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.get(\"/trust/conflation-test-node\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert \"authority_source\" not in data\n        assert \"granted_permissions\" not in data\n        assert \"trust_score\" in data\n        assert \"trust_tier\" in data\n\n    def test_goodhart_authority_response_not_trust_type(self):\n        \"\"\"GET /authority response must never contain trust-specific fields at top level\"\"\"\n        ctx = make_server_context()\n\n        def mock_authority():\n            result = MagicMock()\n            result.entries = [\n                {\n                    \"node_id\": \"svc-1\",\n                    \"authority_source\": \"manifest.yaml\",\n                    \"granted_permissions\": [\"read\", \"write\"],\n                    \"declared_at\": datetime.now(timezone.utc).isoformat()\n                }\n            ]\n            result.total_entries = 1\n            result.queried_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.authority_engine.get_authority = MagicMock(side_effect=lambda: mock_authority())\n        try:\n            ctx.authority_engine.get_authority_map = ctx.authority_engine.get_authority\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.get(\"/authority\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert \"trust_score\" not in data\n        assert \"trust_tier\" not in data\n        assert \"entries\" in data\n        assert \"total_entries\" in data\n\n\n# ---------------------------------------------------------------------------\n# Test: Authority and trust timestamps\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartTimestamps:\n    def test_goodhart_authority_queried_at_is_timestamp(self):\n        \"\"\"AuthorityResponse.queried_at must be a genuine current UTC ISO 8601 timestamp\"\"\"\n        ctx = make_server_context()\n\n        def mock_authority():\n            result = MagicMock()\n            result.entries = []\n            result.total_entries = 0\n            result.queried_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.authority_engine.get_authority = MagicMock(side_effect=lambda: mock_authority())\n        try:\n            ctx.authority_engine.get_authority_map = ctx.authority_engine.get_authority\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.get(\"/authority\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert_recent_utc(data[\"queried_at\"])\n\n    def test_goodhart_trust_queried_at_timestamp(self):\n        \"\"\"TrustResponse.queried_at must be a genuine current UTC ISO 8601 timestamp\"\"\"\n        ctx = make_server_context()\n\n        def mock_get_trust(node_id):\n            result = MagicMock()\n            result.node_id = node_id\n            result.trust_score = 0.5\n            result.trust_tier = \"MODERATE\"\n            result.is_tainted = False\n            result.recent_events = []\n            result.queried_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.trust_engine.get_trust = MagicMock(side_effect=mock_get_trust)\n        try:\n            ctx.trust_engine.get_trust_score = ctx.trust_engine.get_trust\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.get(\"/trust/ts-check-node\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert_recent_utc(data[\"queried_at\"])\n\n\n# ---------------------------------------------------------------------------\n# Test: create_app port boundaries\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartCreateAppPortBoundaries:\n    def test_goodhart_create_app_port_one_valid(self):\n        \"\"\"Port 1 is the minimum valid port and must be accepted\"\"\"\n        ctx = make_server_context(port=1)\n        app = create_app(ctx)\n        assert app is not None\n\n    def test_goodhart_create_app_port_65535_valid(self):\n        \"\"\"Port 65535 is the maximum valid port and must be accepted\"\"\"\n        ctx = make_server_context(port=65535)\n        app = create_app(ctx)\n        assert app is not None\n\n    def test_goodhart_create_app_negative_port(self):\n        \"\"\"Negative port values must be rejected during app creation\"\"\"\n        with pytest.raises(Exception):\n            ctx = make_server_context(port=-1)\n            create_app(ctx)\n\n    def test_goodhart_create_app_all_ten_routes_distinct(self):\n        \"\"\"The Flask app must have all required route rules registered\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n\n        rules = [rule.rule for rule in app.url_map.iter_rules()]\n        # Filter out Flask's built-in static route\n        rules = [r for r in rules if r != \"/static/<path:filename>\"]\n\n        expected_routes = [\n            \"/register\",\n            \"/blast-radius\",\n            \"/authority\",\n            \"/canary/inject\",\n            \"/findings\",\n            \"/health\",\n        ]\n        # Routes with parameters\n        param_routes_patterns = [\n            \"/trust/\",  # /trust/<node_id>\n            \"/trust/reset-taint\",\n            \"/canary/results/\",  # /canary/results/<run_id>\n            \"/report/\",  # /report/<run_id>\n        ]\n\n        for route in expected_routes:\n            assert route in rules, f\"Missing route: {route}. Found: {rules}\"\n\n        # Check parameterized routes exist\n        for pattern in param_routes_patterns:\n            found = any(pattern in r for r in rules)\n            assert found, f\"Missing parameterized route matching: {pattern}. Found: {rules}\"\n\n\n# ---------------------------------------------------------------------------\n# Test: Canary inject validation\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartCanaryInjectValidation:\n    def test_goodhart_canary_inject_canary_count_negative(self):\n        \"\"\"Negative canary_count must be rejected\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"run_id\": \"run-negative\",\n            \"target_tiers\": [\"PUBLIC\"],\n            \"canary_count\": -1\n        }\n        resp = client.post(\"/canary/inject\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code in (400, 422)\n        assert data.get(\"error_code\") == \"VALIDATION_ERROR\"\n\n    def test_goodhart_canary_inject_tiers_seeded_matches_request(self):\n        \"\"\"CanaryInjectResponse.tiers_seeded must reflect the actual target_tiers from the request\"\"\"\n        ctx = make_server_context()\n\n        def mock_inject(*args, **kwargs):\n            result = MagicMock()\n            result.run_id = kwargs.get(\"run_id\", \"test-run\")\n            result.injected_count = 6\n            result.tiers_seeded = [\"CONFIDENTIAL\", \"RESTRICTED\"]\n            result.injected_at = datetime.now(timezone.utc).isoformat()\n            return result\n\n        ctx.canary_engine.inject = MagicMock(side_effect=mock_inject)\n        try:\n            ctx.canary_engine.inject_canaries = ctx.canary_engine.inject\n        except Exception:\n            pass\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\n            \"run_id\": \"run-tiers-check\",\n            \"target_tiers\": [\"CONFIDENTIAL\", \"RESTRICTED\"],\n            \"canary_count\": 3\n        }\n        resp = client.post(\"/canary/inject\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code == 200\n        assert \"CONFIDENTIAL\" in data[\"tiers_seeded\"]\n        assert \"RESTRICTED\" in data[\"tiers_seeded\"]\n        assert len(data[\"tiers_seeded\"]) == 2\n\n\n# ---------------------------------------------------------------------------\n# Test: Blast radius negative depth\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartBlastRadiusValidation:\n    def test_goodhart_blast_radius_negative_max_depth(self):\n        \"\"\"Negative max_depth values should be rejected\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        payload = {\"node_id\": \"some-node\", \"max_depth\": -1, \"classification_filter\": \"PUBLIC\"}\n        resp = client.post(\"/blast-radius\", json=payload, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code in (400, 422)\n        assert data.get(\"error_code\") == \"VALIDATION_ERROR\"\n\n\n# ---------------------------------------------------------------------------\n# Test: Empty JSON body for POST /register\n# ---------------------------------------------------------------------------\n\nclass TestGoodhartEmptyJsonBody:\n    def test_goodhart_empty_json_body_post_register(self):\n        \"\"\"POST /register with empty JSON object {} should return VALIDATION_ERROR\"\"\"\n        ctx = make_server_context()\n        app = create_app(ctx)\n        client = app.test_client()\n\n        resp = client.post(\"/register\", json={}, content_type=\"application/json\")\n        data = get_json(resp)\n        assert resp.status_code in (400, 422)\n        assert data.get(\"error_code\") == \"VALIDATION_ERROR\"\n"
+}

@@ -1,0 +1,1302 @@
+{
+  "component_id": "access_auditor",
+  "name": "Access Auditor & OpenAPI Integration",
+  "description": "Walks OpenAPI response schemas at adapter slot time, maps each field against the classification registry using fnmatch/regex patterns, and produces a structural access profile (superset of data tiers the node can return). Compares structural profile against the node's declared data_access from the access graph. Flags DECLARATION_GAP if structural profile includes undeclared tiers (C005). Produces BLOCK_SLOT if undeclared tiers are present and block_on_gate is configured. Records access violation findings when observed output tier exceeds declared reads (FA-A-015). Handles missing OpenAPI schemas gracefully by recording an INCOMPLETE_SCHEMA warning (rabbit hole patch). Composed of four concerns: schema_walker (pure DFS traversal), classifier (pure field→tier mapping), auditor orchestrator (composition + gating), and shared models/types.",
+  "version": 1,
+  "types": [
+    {
+      "name": "DataTier",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "PUBLIC",
+        "INTERNAL",
+        "CONFIDENTIAL",
+        "RESTRICTED"
+      ],
+      "inner_types": [],
+      "description": "IntEnum representing data classification tiers. Integer value determines ordering/severity. PUBLIC(0) < INTERNAL(1) < CONFIDENTIAL(2) < RESTRICTED(3). Used for natural ordering comparisons in access auditing."
+    },
+    {
+      "name": "FindingCode",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "C005",
+        "FA_A_015",
+        "INCOMPLETE_SCHEMA"
+      ],
+      "inner_types": [],
+      "description": "StrEnum of well-known finding codes emitted by the access auditor. Stable string identifiers used for gating decisions and ledger records."
+    },
+    {
+      "name": "FindingSeverity",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "INFO",
+        "WARNING",
+        "ERROR",
+        "CRITICAL"
+      ],
+      "inner_types": [],
+      "description": "IntEnum representing finding severity levels. Integer value determines ordering. INFO(0) < WARNING(1) < ERROR(2) < CRITICAL(3)."
+    },
+    {
+      "name": "SlotDecisionVerdict",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "ALLOW",
+        "BLOCK"
+      ],
+      "inner_types": [],
+      "description": "Literal verdict for a slot gating decision. ALLOW permits the slot; BLOCK prevents it."
+    },
+    {
+      "name": "NodeId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "NewType over str. Identifies a unique node in the access graph. Must not be empty. Prevents accidental mixing with other string-typed identifiers under strict mypy."
+    },
+    {
+      "name": "FieldPath",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "NewType over str. Dot-separated JSON path to a leaf field in an OpenAPI response schema (e.g. 'response.user.email'). Must not be empty."
+    },
+    {
+      "name": "AdapterSlotId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "NewType over str. Identifies a unique adapter slot being audited. Must not be empty."
+    },
+    {
+      "name": "FieldEntry",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "path",
+          "type_ref": "FieldPath",
+          "required": true,
+          "default": "",
+          "description": "Dot-separated path from schema root to this leaf field.",
+          "validators": []
+        },
+        {
+          "name": "field_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "OpenAPI type string for this field (e.g. 'string', 'integer', 'boolean', 'array').",
+          "validators": []
+        },
+        {
+          "name": "nullable",
+          "type_ref": "bool",
+          "required": true,
+          "default": "false",
+          "description": "Whether the field is marked nullable in the schema.",
+          "validators": []
+        },
+        {
+          "name": "format_hint",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Optional OpenAPI format hint (e.g. 'email', 'date-time', 'uuid'). Empty string if not specified.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single leaf field discovered by the schema walker. Represents one terminal node in the DFS traversal of an OpenAPI response schema."
+    },
+    {
+      "name": "SchemaWarning",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "code",
+          "type_ref": "FindingCode",
+          "required": true,
+          "default": "",
+          "description": "Always INCOMPLETE_SCHEMA for schema walker warnings.",
+          "validators": []
+        },
+        {
+          "name": "path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The JSON path or $ref URI where the issue was encountered. Empty string if schema was entirely missing.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable description including the specific location and nature of the incompleteness.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A warning generated during schema walking when the schema is incomplete, missing, or contains unresolvable references."
+    },
+    {
+      "name": "WalkResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "fields",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "All leaf FieldEntry instances discovered by DFS traversal.",
+          "validators": []
+        },
+        {
+          "name": "warnings",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Schema warnings encountered during traversal (missing schemas, unresolvable $refs, cycles).",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of walking an OpenAPI response schema. Contains discovered leaf fields and any warnings about schema incompleteness."
+    },
+    {
+      "name": "ClassifiedField",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "path",
+          "type_ref": "FieldPath",
+          "required": true,
+          "default": "",
+          "description": "The field path that was classified.",
+          "validators": []
+        },
+        {
+          "name": "tier",
+          "type_ref": "DataTier",
+          "required": true,
+          "default": "",
+          "description": "The data classification tier assigned to this field.",
+          "validators": []
+        },
+        {
+          "name": "matched_pattern",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The fnmatch/regex pattern from the registry that matched this field. Empty string if defaulted to PUBLIC.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A field entry paired with its resolved data classification tier from the registry."
+    },
+    {
+      "name": "ClassificationResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "classified_fields",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "All fields with their assigned data tier.",
+          "validators": []
+        },
+        {
+          "name": "tier_set",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Deduplicated set of all DataTier values present in classified_fields. Serialized as sorted list; in-memory representation is frozenset[DataTier].",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of classifying a list of field entries against the classification registry."
+    },
+    {
+      "name": "StructuralProfile",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node whose schema was analyzed.",
+          "validators": []
+        },
+        {
+          "name": "adapter_slot_id",
+          "type_ref": "AdapterSlotId",
+          "required": true,
+          "default": "",
+          "description": "The adapter slot at which the schema was inspected.",
+          "validators": []
+        },
+        {
+          "name": "endpoint",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The OpenAPI endpoint path that was analyzed (e.g. '/api/v1/users').",
+          "validators": []
+        },
+        {
+          "name": "tiers",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "All data tiers present in the response schema. In-memory: frozenset[DataTier]. Serialized as sorted list of tier names.",
+          "validators": []
+        },
+        {
+          "name": "classified_fields",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Complete mapping of each discovered field path to its classification tier.",
+          "validators": []
+        },
+        {
+          "name": "warnings",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Any schema warnings encountered during profile computation.",
+          "validators": []
+        },
+        {
+          "name": "schema_complete",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "True if the schema was fully resolved with no warnings. False triggers assume-worst behavior.",
+          "validators": []
+        },
+        {
+          "name": "computed_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of when this profile was computed.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The structural access profile for a node at a given endpoint. Represents the superset of data tiers the node can return based on its OpenAPI response schema. Pydantic model with deterministic serialization."
+    },
+    {
+      "name": "AccessFinding",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "code",
+          "type_ref": "FindingCode",
+          "required": true,
+          "default": "",
+          "description": "The finding code (C005, FA_A_015, INCOMPLETE_SCHEMA).",
+          "validators": []
+        },
+        {
+          "name": "severity",
+          "type_ref": "FindingSeverity",
+          "required": true,
+          "default": "",
+          "description": "The severity level of this finding.",
+          "validators": []
+        },
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node that triggered this finding.",
+          "validators": []
+        },
+        {
+          "name": "adapter_slot_id",
+          "type_ref": "AdapterSlotId",
+          "required": true,
+          "default": "",
+          "description": "The adapter slot context for this finding.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable description. Must include specific node_id, field path, and/or domain that caused the error per operating procedures.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 10",
+              "error_message": "Finding message must be descriptive (at least 10 characters)."
+            }
+          ]
+        },
+        {
+          "name": "evidence",
+          "type_ref": "AccessFindingEvidence",
+          "required": true,
+          "default": "",
+          "description": "Structured evidence supporting this finding.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of when this finding was produced.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A finding produced by the access auditor. Immutable record of a detected access violation or gap. All fields required for ledger append. Message always includes the specific node_id, field, and domain."
+    },
+    {
+      "name": "AccessFindingEvidence",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "structural_tiers",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "The tiers found in the structural profile.",
+          "validators": []
+        },
+        {
+          "name": "declared_tiers",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "The tiers declared by the node in the access graph.",
+          "validators": []
+        },
+        {
+          "name": "undeclared_tiers",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "The set difference: structural_tiers - declared_tiers.",
+          "validators": []
+        },
+        {
+          "name": "fields_by_undeclared_tier",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping of undeclared tier name → list of field paths at that tier. JSON-serializable dict[str, list[str]].",
+          "validators": []
+        },
+        {
+          "name": "endpoint",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The endpoint being audited.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Structured evidence attached to an AccessFinding. Contains the data needed to reproduce and understand the finding."
+    },
+    {
+      "name": "GateConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "block_on_codes",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Set of FindingCode values that trigger BLOCK_SLOT. If any finding's code is in this set, the slot is blocked. In-memory: set[FindingCode]. Serialized as sorted list.",
+          "validators": []
+        },
+        {
+          "name": "assume_worst_on_incomplete",
+          "type_ref": "bool",
+          "required": true,
+          "default": "true",
+          "description": "If true (default), missing/incomplete schemas cause the profile to include RESTRICTED tier.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for slot gating decisions. Determines which finding codes trigger a BLOCK verdict."
+    },
+    {
+      "name": "SlotDecision",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "decision",
+          "type_ref": "SlotDecisionVerdict",
+          "required": true,
+          "default": "",
+          "description": "ALLOW if no blocking findings; BLOCK if any finding code is in GateConfig.block_on_codes.",
+          "validators": []
+        },
+        {
+          "name": "adapter_slot_id",
+          "type_ref": "AdapterSlotId",
+          "required": true,
+          "default": "",
+          "description": "The adapter slot this decision applies to.",
+          "validators": []
+        },
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node this decision applies to.",
+          "validators": []
+        },
+        {
+          "name": "findings",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "All findings produced during slot auditing. May be empty for ALLOW with no issues.",
+          "validators": []
+        },
+        {
+          "name": "blocking_codes",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "The subset of finding codes that triggered the BLOCK decision. Empty if ALLOW.",
+          "validators": []
+        },
+        {
+          "name": "profile",
+          "type_ref": "StructuralProfile",
+          "required": true,
+          "default": "",
+          "description": "The structural profile computed for this slot.",
+          "validators": []
+        },
+        {
+          "name": "decided_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of when the decision was made.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The gating decision for an adapter slot. Contains the verdict (ALLOW or BLOCK) and all findings that contributed to the decision."
+    },
+    {
+      "name": "DeclaredAccess",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node making the declaration.",
+          "validators": []
+        },
+        {
+          "name": "declared_read_tiers",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "The data tiers the node declares it reads. In-memory: frozenset[DataTier].",
+          "validators": []
+        },
+        {
+          "name": "declared_write_tiers",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "The data tiers the node declares it writes. In-memory: frozenset[DataTier].",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The declared data access for a node as extracted from the access graph. Represents the node's authority claim about what tiers it accesses."
+    },
+    {
+      "name": "ClassificationRegistryEntry",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "field_pattern",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "An fnmatch glob or regex pattern to match against field paths.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "Field pattern must not be empty."
+            }
+          ]
+        },
+        {
+          "name": "tier",
+          "type_ref": "DataTier",
+          "required": true,
+          "default": "",
+          "description": "The data tier to assign to fields matching this pattern.",
+          "validators": []
+        },
+        {
+          "name": "pattern_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Either 'fnmatch' or 'regex'. Determines matching strategy.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "value in ('fnmatch', 'regex')",
+              "error_message": "pattern_type must be 'fnmatch' or 'regex'."
+            }
+          ]
+        },
+        {
+          "name": "description",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Human-readable description of what this pattern classifies.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single entry in the classification registry mapping a field pattern to a data tier. Used by ClassificationRegistry.match()."
+    },
+    {
+      "name": "ObservedOutput",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node that produced the output.",
+          "validators": []
+        },
+        {
+          "name": "adapter_slot_id",
+          "type_ref": "AdapterSlotId",
+          "required": true,
+          "default": "",
+          "description": "The adapter slot where the output was observed.",
+          "validators": []
+        },
+        {
+          "name": "observed_tiers",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Data tiers actually present in the observed output. In-memory: frozenset[DataTier].",
+          "validators": []
+        },
+        {
+          "name": "observed_fields",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "The classified fields from the observed output.",
+          "validators": []
+        },
+        {
+          "name": "observed_at",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of observation.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Runtime observation of actual data tiers present in a node's output. Used for FA-A-015 runtime violation detection."
+    },
+    {
+      "name": "RefResolver",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Protocol/Callable type: (ref_uri: str) → dict. Resolves a $ref URI to the referenced schema dict. Implementations may read from file or in-memory cache."
+    }
+  ],
+  "functions": [
+    {
+      "name": "walk_response_schema",
+      "description": "Pure function. DFS-traverses an OpenAPI response schema, resolves $ref references via the provided resolver with cycle detection (visited set), flattens allOf/anyOf/oneOf with union semantics, and emits a FieldEntry for every leaf field. Returns INCOMPLETE_SCHEMA warnings for missing/empty schemas or unresolvable $refs. Does not perform classification — only structural discovery.",
+      "inputs": [
+        {
+          "name": "schema",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "The OpenAPI response schema object to walk. May be empty or None-equivalent (triggers INCOMPLETE_SCHEMA warning).",
+          "validators": []
+        },
+        {
+          "name": "ref_resolver",
+          "type_ref": "RefResolver",
+          "required": true,
+          "default": "",
+          "description": "Callable that resolves $ref URIs to schema dicts. Signature: (ref_uri: str) → dict.",
+          "validators": []
+        },
+        {
+          "name": "root_path",
+          "type_ref": "str",
+          "required": false,
+          "default": "response",
+          "description": "The prefix path for all discovered fields. Defaults to 'response'.",
+          "validators": []
+        },
+        {
+          "name": "max_depth",
+          "type_ref": "int",
+          "required": false,
+          "default": "64",
+          "description": "Maximum DFS traversal depth to prevent stack overflow on deep schemas. Defaults to 64.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 256",
+              "error_message": "max_depth must be between 1 and 256."
+            }
+          ]
+        }
+      ],
+      "output_type": "WalkResult",
+      "error_cases": [
+        {
+          "name": "invalid_schema_type",
+          "condition": "schema is not a dict (after None-check) and not a recognized schema type",
+          "error_type": "SchemaWalkError",
+          "error_data": {
+            "detail": "schema must be a dict or None, got {type}"
+          }
+        },
+        {
+          "name": "ref_resolver_failure",
+          "condition": "ref_resolver raises an exception for a $ref URI",
+          "error_type": "RefResolutionError",
+          "error_data": {
+            "ref_uri": "the failing $ref URI",
+            "detail": "underlying error message"
+          }
+        },
+        {
+          "name": "max_depth_exceeded",
+          "condition": "Traversal depth exceeds max_depth without reaching a leaf",
+          "error_type": "SchemaDepthExceededError",
+          "error_data": {
+            "path": "current traversal path",
+            "max_depth": "configured limit"
+          }
+        }
+      ],
+      "preconditions": [
+        "ref_resolver is a callable accepting a single str argument and returning dict",
+        "max_depth >= 1"
+      ],
+      "postconditions": [
+        "Every FieldEntry in result.fields has a non-empty path starting with root_path",
+        "If schema is empty or None-equivalent, result.warnings contains at least one INCOMPLETE_SCHEMA warning",
+        "No circular $ref chains cause infinite recursion — cycles are detected and emitted as INCOMPLETE_SCHEMA warnings",
+        "result.fields contains only leaf fields (no intermediate object/array nodes)",
+        "Function is pure: same inputs always produce same outputs"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure function with no side effects."
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 50,
+        "max_memory_mb": 32,
+        "complexity": "O(n) where n is the total number of nodes in the schema tree"
+      }
+    },
+    {
+      "name": "classify_fields",
+      "description": "Pure function. Takes a list of FieldEntry and a ClassificationRegistry, matches each field path against the registry's fnmatch/regex patterns, and returns a ClassificationResult with each field mapped to a DataTier. Unmatched fields default to PUBLIC. The tier_set is the frozenset of all unique tiers found.",
+      "inputs": [
+        {
+          "name": "fields",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of FieldEntry instances to classify. May be empty.",
+          "validators": []
+        },
+        {
+          "name": "registry_entries",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of ClassificationRegistryEntry defining the patterns and their tiers. Evaluated in order; first match wins (highest tier wins on tie).",
+          "validators": []
+        }
+      ],
+      "output_type": "ClassificationResult",
+      "error_cases": [
+        {
+          "name": "invalid_regex_pattern",
+          "condition": "A registry entry with pattern_type='regex' has an invalid regex expression",
+          "error_type": "ClassificationRegistryError",
+          "error_data": {
+            "pattern": "the invalid regex",
+            "detail": "regex compilation error"
+          }
+        },
+        {
+          "name": "empty_field_path",
+          "condition": "A FieldEntry has an empty path string",
+          "error_type": "ClassificationInputError",
+          "error_data": {
+            "detail": "FieldEntry.path must not be empty"
+          }
+        }
+      ],
+      "preconditions": [
+        "All FieldEntry in fields have non-empty path",
+        "All ClassificationRegistryEntry in registry_entries have valid pattern_type ('fnmatch' or 'regex')",
+        "Regex patterns in registry_entries are valid and compilable"
+      ],
+      "postconditions": [
+        "len(result.classified_fields) == len(fields)",
+        "Every field in fields appears exactly once in result.classified_fields",
+        "result.tier_set == frozenset(cf.tier for cf in result.classified_fields)",
+        "Fields matching no pattern are assigned DataTier.PUBLIC",
+        "If a field matches multiple patterns, the pattern yielding the highest DataTier wins",
+        "Function is pure: same inputs always produce same outputs"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure function with no side effects."
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 20,
+        "max_memory_mb": 16,
+        "complexity": "O(f * p) where f is number of fields and p is number of registry patterns"
+      }
+    },
+    {
+      "name": "compute_structural_profile",
+      "description": "Orchestrator function. Composes walk_response_schema and classify_fields to produce a complete StructuralProfile for a node at a given adapter slot. If the schema is missing or incomplete and GateConfig.assume_worst_on_incomplete is true, RESTRICTED tier is injected into the profile. Records the profile computation timestamp in UTC.",
+      "inputs": [
+        {
+          "name": "node_id",
+          "type_ref": "NodeId",
+          "required": true,
+          "default": "",
+          "description": "The node being profiled.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "node_id must not be empty."
+            }
+          ]
+        },
+        {
+          "name": "adapter_slot_id",
+          "type_ref": "AdapterSlotId",
+          "required": true,
+          "default": "",
+          "description": "The adapter slot being audited.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "adapter_slot_id must not be empty."
+            }
+          ]
+        },
+        {
+          "name": "endpoint",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The OpenAPI endpoint path being analyzed.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "endpoint must not be empty."
+            }
+          ]
+        },
+        {
+          "name": "schema",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "The OpenAPI response schema dict. May be empty for missing schemas.",
+          "validators": []
+        },
+        {
+          "name": "ref_resolver",
+          "type_ref": "RefResolver",
+          "required": true,
+          "default": "",
+          "description": "Callable for resolving $ref URIs.",
+          "validators": []
+        },
+        {
+          "name": "registry_entries",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Classification registry entries for field → tier mapping.",
+          "validators": []
+        },
+        {
+          "name": "gate_config",
+          "type_ref": "GateConfig",
+          "required": true,
+          "default": "",
+          "description": "Gate configuration controlling assume-worst behavior.",
+          "validators": []
+        }
+      ],
+      "output_type": "StructuralProfile",
+      "error_cases": [
+        {
+          "name": "schema_walk_failure",
+          "condition": "walk_response_schema raises SchemaWalkError or RefResolutionError",
+          "error_type": "ProfileComputationError",
+          "error_data": {
+            "node_id": "the node being profiled",
+            "endpoint": "the endpoint",
+            "detail": "underlying error"
+          }
+        },
+        {
+          "name": "classification_failure",
+          "condition": "classify_fields raises ClassificationRegistryError",
+          "error_type": "ProfileComputationError",
+          "error_data": {
+            "node_id": "the node being profiled",
+            "detail": "classification error"
+          }
+        }
+      ],
+      "preconditions": [
+        "node_id is not empty",
+        "adapter_slot_id is not empty",
+        "endpoint is not empty",
+        "ref_resolver is callable",
+        "gate_config is a valid GateConfig"
+      ],
+      "postconditions": [
+        "result.node_id == node_id",
+        "result.adapter_slot_id == adapter_slot_id",
+        "result.endpoint == endpoint",
+        "result.computed_at is a valid ISO 8601 UTC timestamp",
+        "If schema is empty and gate_config.assume_worst_on_incomplete is True, DataTier.RESTRICTED is in result.tiers",
+        "result.schema_complete == (len(result.warnings) == 0)",
+        "result.classified_fields is consistent with result.tiers"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure orchestration of pure functions. No side effects."
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 100,
+        "max_memory_mb": 48,
+        "complexity": "O(n + f*p) where n=schema nodes, f=fields, p=patterns"
+      }
+    },
+    {
+      "name": "audit_slot",
+      "description": "Core auditing function. Compares a structural profile's tiers against the node's declared access from the access graph. Produces DECLARATION_GAP (C005) findings for any tier in the structural profile not present in declared access. Returns a SlotDecision with BLOCK verdict if any C005 finding code is in gate_config.block_on_codes. Also includes INCOMPLETE_SCHEMA findings from the profile warnings. Appends all findings to the ledger via LedgerWriter.",
+      "inputs": [
+        {
+          "name": "profile",
+          "type_ref": "StructuralProfile",
+          "required": true,
+          "default": "",
+          "description": "The computed structural profile for the node/slot.",
+          "validators": []
+        },
+        {
+          "name": "declared_access",
+          "type_ref": "DeclaredAccess",
+          "required": true,
+          "default": "",
+          "description": "The node's declared data access from the access graph.",
+          "validators": []
+        },
+        {
+          "name": "gate_config",
+          "type_ref": "GateConfig",
+          "required": true,
+          "default": "",
+          "description": "Gate configuration controlling which findings trigger BLOCK.",
+          "validators": []
+        }
+      ],
+      "output_type": "SlotDecision",
+      "error_cases": [
+        {
+          "name": "node_id_mismatch",
+          "condition": "profile.node_id != declared_access.node_id",
+          "error_type": "AuditInputError",
+          "error_data": {
+            "profile_node_id": "from profile",
+            "declared_node_id": "from declared_access",
+            "detail": "node_id mismatch between profile and declared access"
+          }
+        },
+        {
+          "name": "ledger_write_failure",
+          "condition": "LedgerWriter fails to append findings",
+          "error_type": "LedgerWriteError",
+          "error_data": {
+            "node_id": "the node",
+            "detail": "underlying I/O or checksum error"
+          }
+        }
+      ],
+      "preconditions": [
+        "profile.node_id == declared_access.node_id",
+        "profile is a valid StructuralProfile with computed_at set",
+        "gate_config is a valid GateConfig"
+      ],
+      "postconditions": [
+        "result.node_id == profile.node_id",
+        "result.adapter_slot_id == profile.adapter_slot_id",
+        "result.profile == profile",
+        "result.decision == BLOCK if and only if any finding.code is in gate_config.block_on_codes",
+        "result.decision == ALLOW if result.blocking_codes is empty",
+        "For each tier in (profile.tiers - declared_access.declared_read_tiers), exactly one C005 finding exists in result.findings",
+        "All findings have severity >= WARNING for C005, >= INFO for INCOMPLETE_SCHEMA",
+        "Every finding message includes the node_id and specific undeclared tier(s)",
+        "result.decided_at is a valid ISO 8601 UTC timestamp",
+        "All findings are appended to the ledger via LedgerWriter before return"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "writes_file",
+          "target": "trust_ledger",
+          "description": "Appends AccessFinding records to the append-only trust ledger via LedgerWriter protocol."
+        },
+        {
+          "kind": "logging",
+          "target": "access_auditor.audit_slot",
+          "description": "Logs slot decision at INFO level; logs BLOCK decisions at WARNING level."
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 10,
+        "max_memory_mb": null,
+        "complexity": "O(t + f) where t=number of tiers, f=number of classified fields for evidence construction"
+      }
+    },
+    {
+      "name": "audit_observed_output",
+      "description": "Runtime observation auditor. Compares actually observed data tiers in a node's output against the node's declared read tiers. Produces FA-A-015 findings when observed tiers exceed declared reads. This catches runtime violations that structural analysis alone cannot detect. Appends findings to the ledger via LedgerWriter.",
+      "inputs": [
+        {
+          "name": "observed",
+          "type_ref": "ObservedOutput",
+          "required": true,
+          "default": "",
+          "description": "The observed output with classified fields and tiers.",
+          "validators": []
+        },
+        {
+          "name": "declared_access",
+          "type_ref": "DeclaredAccess",
+          "required": true,
+          "default": "",
+          "description": "The node's declared data access from the access graph.",
+          "validators": []
+        }
+      ],
+      "output_type": "list",
+      "error_cases": [
+        {
+          "name": "node_id_mismatch",
+          "condition": "observed.node_id != declared_access.node_id",
+          "error_type": "AuditInputError",
+          "error_data": {
+            "observed_node_id": "from observed",
+            "declared_node_id": "from declared_access",
+            "detail": "node_id mismatch between observed output and declared access"
+          }
+        },
+        {
+          "name": "ledger_write_failure",
+          "condition": "LedgerWriter fails to append findings",
+          "error_type": "LedgerWriteError",
+          "error_data": {
+            "node_id": "the node",
+            "detail": "underlying I/O or checksum error"
+          }
+        }
+      ],
+      "preconditions": [
+        "observed.node_id == declared_access.node_id",
+        "observed.observed_at is a valid ISO 8601 UTC timestamp",
+        "observed.observed_tiers is consistent with observed.observed_fields"
+      ],
+      "postconditions": [
+        "For each tier in (observed.observed_tiers - declared_access.declared_read_tiers), exactly one FA_A_015 finding exists in the result",
+        "If observed.observed_tiers is a subset of declared_access.declared_read_tiers, result is an empty list",
+        "Every finding has code == FA_A_015",
+        "Every finding has severity >= ERROR",
+        "Every finding message includes the node_id, the specific undeclared tier, and the field paths at that tier",
+        "All findings are appended to the ledger via LedgerWriter before return",
+        "Each finding timestamp is >= observed.observed_at"
+      ],
+      "idempotent": false,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "writes_file",
+          "target": "trust_ledger",
+          "description": "Appends FA-A-015 AccessFinding records to the append-only trust ledger via LedgerWriter protocol."
+        },
+        {
+          "kind": "logging",
+          "target": "access_auditor.audit_observed_output",
+          "description": "Logs observed access violations at ERROR level."
+        }
+      ],
+      "performance_budget": {
+        "p95_latency_ms": 10,
+        "max_memory_mb": null,
+        "complexity": "O(t + f) where t=observed tiers, f=observed fields"
+      }
+    },
+    {
+      "name": "load_gate_config",
+      "description": "Loads and validates a GateConfig from a YAML configuration file or dict. Provides sensible defaults: block_on_codes=[C005], assume_worst_on_incomplete=true.",
+      "inputs": [
+        {
+          "name": "config_source",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Raw configuration dict (typically loaded from YAML). Keys: 'block_on_codes' (list of FindingCode strings), 'assume_worst_on_incomplete' (bool).",
+          "validators": []
+        }
+      ],
+      "output_type": "GateConfig",
+      "error_cases": [
+        {
+          "name": "invalid_finding_code",
+          "condition": "A value in config_source['block_on_codes'] is not a valid FindingCode",
+          "error_type": "GateConfigError",
+          "error_data": {
+            "invalid_code": "the unrecognized code string",
+            "valid_codes": "list of valid FindingCode values"
+          }
+        },
+        {
+          "name": "invalid_config_type",
+          "condition": "config_source is not a dict",
+          "error_type": "GateConfigError",
+          "error_data": {
+            "detail": "config_source must be a dict"
+          }
+        }
+      ],
+      "preconditions": [
+        "config_source is a dict"
+      ],
+      "postconditions": [
+        "result is a valid GateConfig",
+        "If 'block_on_codes' is missing from config_source, result.block_on_codes defaults to [C005]",
+        "If 'assume_worst_on_incomplete' is missing, result.assume_worst_on_incomplete defaults to True",
+        "All values in result.block_on_codes are valid FindingCode variants"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure validation and construction of GateConfig."
+        }
+      ],
+      "performance_budget": null
+    },
+    {
+      "name": "load_classification_registry",
+      "description": "Loads and validates classification registry entries from a YAML file or dict list. Pre-compiles regex patterns for performance. Validates all patterns are syntactically correct and all tiers are valid DataTier values.",
+      "inputs": [
+        {
+          "name": "registry_source",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of raw dicts, each with keys: 'field_pattern' (str), 'tier' (str matching DataTier name), 'pattern_type' ('fnmatch' or 'regex'), optional 'description' (str).",
+          "validators": []
+        }
+      ],
+      "output_type": "list",
+      "error_cases": [
+        {
+          "name": "invalid_tier",
+          "condition": "A registry entry has a tier value that is not a valid DataTier name",
+          "error_type": "ClassificationRegistryError",
+          "error_data": {
+            "entry_index": "index in source list",
+            "invalid_tier": "the bad tier value",
+            "valid_tiers": "PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED"
+          }
+        },
+        {
+          "name": "invalid_regex",
+          "condition": "A registry entry with pattern_type='regex' has an un-compilable regex",
+          "error_type": "ClassificationRegistryError",
+          "error_data": {
+            "entry_index": "index in source list",
+            "pattern": "the invalid regex",
+            "detail": "regex compilation error message"
+          }
+        },
+        {
+          "name": "missing_required_key",
+          "condition": "A registry entry dict is missing 'field_pattern', 'tier', or 'pattern_type'",
+          "error_type": "ClassificationRegistryError",
+          "error_data": {
+            "entry_index": "index in source list",
+            "missing_key": "the missing key name"
+          }
+        },
+        {
+          "name": "invalid_pattern_type",
+          "condition": "A registry entry has pattern_type not in ('fnmatch', 'regex')",
+          "error_type": "ClassificationRegistryError",
+          "error_data": {
+            "entry_index": "index in source list",
+            "invalid_pattern_type": "the bad value"
+          }
+        }
+      ],
+      "preconditions": [
+        "registry_source is a list of dicts",
+        "Each dict in registry_source has at least 'field_pattern', 'tier', and 'pattern_type' keys"
+      ],
+      "postconditions": [
+        "len(result) == len(registry_source)",
+        "All regex patterns in result have been validated as compilable",
+        "All tier values in result are valid DataTier variants",
+        "All pattern_type values are 'fnmatch' or 'regex'"
+      ],
+      "idempotent": true,
+      "side_effects": [],
+      "structured_side_effects": [
+        {
+          "kind": "none",
+          "target": "",
+          "description": "Pure validation and construction of ClassificationRegistryEntry list."
+        }
+      ],
+      "performance_budget": null
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "DataTier ordering is PUBLIC(0) < INTERNAL(1) < CONFIDENTIAL(2) < RESTRICTED(3); integer comparison determines severity",
+    "The trust ledger is append-only — no updates, no deletes; all findings appended via LedgerWriter protocol",
+    "Trust and authority are distinct: structural profiles are computed (earned), declared_access is declared (authority)",
+    "All timestamps are UTC (datetime.now(timezone.utc))",
+    "Structural profiles use frozenset[DataTier] — immutable and hashable, enabling caching per schema version",
+    "Missing or empty OpenAPI schemas are treated as RESTRICTED tier (assume-worst fail-safe)",
+    "All findings carry the specific node_id, field path, and domain that caused the error in the message field",
+    "Deterministic serialization: Pydantic model_dump(mode='json') with sorted keys for all ledger entries",
+    "Classification of unmatched fields defaults to PUBLIC (DataTier.PUBLIC = 0)",
+    "Schema walker cycle detection prevents infinite recursion on circular $ref chains",
+    "FindingCode values are stable string identifiers: C005 for DECLARATION_GAP, FA_A_015 for observed access violation",
+    "Pure functions (walk_response_schema, classify_fields) have no side effects and are deterministic given same input",
+    "SlotDecision.decision is BLOCK if and only if at least one finding code is in GateConfig.block_on_codes",
+    "Protocol-based interfaces (ClassificationRegistry, LedgerWriter, AccessGraph) use structural subtyping — no inheritance required"
+  ],
+  "requires": [
+    "pydantic>=2.0",
+    "PyYAML"
+  ],
+  "processing_register": "rigorous-analytical"
+}

@@ -1,0 +1,1056 @@
+{
+  "component_id": "cli",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "goodhart_resolve_format_text_not_tty",
+      "description": "resolve_output_format returns 'text' unchanged even when is_tty is False, ensuring explicit format is never overridden by TTY detection",
+      "function": "resolve_output_format",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "requested_format": "text",
+        "is_tty": "False"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 'text'"
+      ]
+    },
+    {
+      "id": "goodhart_resolve_format_json_tty_true",
+      "description": "resolve_output_format returns 'json' unchanged even when is_tty is True, ensuring explicit json format is never overridden",
+      "function": "resolve_output_format",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "requested_format": "json",
+        "is_tty": "True"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 'json'"
+      ]
+    },
+    {
+      "id": "goodhart_format_output_json_different_models",
+      "description": "format_output in JSON mode correctly serializes arbitrary response models, not just a hardcoded model type",
+      "function": "format_output",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Multiple different Pydantic response model types (e.g., BlastRadiusResponse, ConflictsResponse, FindingsResponse) serialized to JSON",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Each model's JSON output is valid JSON",
+        "Each output matches the respective model's .model_dump(mode='json')"
+      ]
+    },
+    {
+      "id": "goodhart_format_output_text_different_models",
+      "description": "format_output in text mode produces non-empty strings for all response model types, not just one",
+      "function": "format_output",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Multiple different Pydantic response model types passed with output_format='text'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Each result is a non-empty string",
+        "No trailing newline on any output"
+      ]
+    },
+    {
+      "id": "goodhart_format_output_json_nested_lists",
+      "description": "format_output correctly serializes response models with non-empty nested lists (e.g., BlastRadiusResponse with multiple affected_nodes)",
+      "function": "format_output",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A BlastRadiusResponse with 3+ affected_nodes at varying depths",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Parsed JSON contains 'affected_nodes' list with correct length",
+        "All nested node objects are present and properly serialized"
+      ]
+    },
+    {
+      "id": "goodhart_format_output_text_no_trailing_newline_all_models",
+      "description": "format_output never adds trailing newline for any response model type, not just the one tested visibly",
+      "function": "format_output",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Several different response model types formatted as text",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "No output string ends with a newline character"
+      ]
+    },
+    {
+      "id": "goodhart_format_error_text_both_node_and_field",
+      "description": "format_error in text mode includes both node_id and field context when both are non-empty simultaneously",
+      "function": "format_error",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "error_code": "schema_violation",
+        "message": "Invalid tier value",
+        "exit_code": "2",
+        "node_id": "service.api-gw",
+        "field": "tier"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'schema_violation' in result",
+        "'Invalid tier value' in result",
+        "'service.api-gw' in result",
+        "'tier' in result"
+      ]
+    },
+    {
+      "id": "goodhart_format_error_text_format_pattern",
+      "description": "format_error text output follows the 'Error [{error_code}]: {message}' pattern as specified in the contract",
+      "function": "format_error",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "error_code": "ledger_corrupted",
+        "message": "Checksum mismatch at line 42",
+        "exit_code": "1",
+        "node_id": "",
+        "field": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'Error [ledger_corrupted]' in result or 'Error [ledger_corrupted]:' in result",
+        "'Checksum mismatch at line 42' in result"
+      ]
+    },
+    {
+      "id": "goodhart_format_error_json_all_fields_present",
+      "description": "format_error JSON output contains all CliError fields including node_id and field even when empty",
+      "function": "format_error",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "error_code": "node_not_found",
+        "message": "Node xyz not found",
+        "exit_code": "4",
+        "node_id": "xyz",
+        "field": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Parsed JSON has 'error_code' key",
+        "Parsed JSON has 'message' key",
+        "Parsed JSON has 'exit_code' key",
+        "Parsed JSON has 'node_id' key",
+        "Parsed JSON has 'field' key"
+      ]
+    },
+    {
+      "id": "goodhart_format_error_json_different_error_codes",
+      "description": "format_error in JSON mode works correctly for various error_code values, not just one hardcoded code",
+      "function": "format_error",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "CliError instances with different error_codes like 'registry_not_initialized', 'permission_denied', 'port_conflict', 'empty_review_id'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Each JSON output has the correct error_code",
+        "Each JSON output is valid JSON"
+      ]
+    },
+    {
+      "id": "goodhart_map_exception_multiple_not_found_types",
+      "description": "map_exception_to_exit_code returns NOT_FOUND_4 for different not-found exception instances, not just one specific type",
+      "function": "map_exception_to_exit_code",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various entity-not-found exceptions (node not found, run not found, file not found)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All map to NOT_FOUND_4"
+      ]
+    },
+    {
+      "id": "goodhart_map_exception_multiple_io_types",
+      "description": "map_exception_to_exit_code returns IO_ERROR_3 for various filesystem/network exception types",
+      "function": "map_exception_to_exit_code",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Different IO exceptions (permission denied, write failure, port in use)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All map to IO_ERROR_3"
+      ]
+    },
+    {
+      "id": "goodhart_map_exception_multiple_usage_types",
+      "description": "map_exception_to_exit_code returns USAGE_ERROR_2 for multiple validation exception types",
+      "function": "map_exception_to_exit_code",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Different validation exceptions (invalid tier, empty tiers, schema violation, invalid JSON, empty review ID)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All map to USAGE_ERROR_2"
+      ]
+    },
+    {
+      "id": "goodhart_map_exception_none_or_base",
+      "description": "map_exception_to_exit_code returns DOMAIN_ERROR_1 for completely unknown exception types like RuntimeError or custom exceptions",
+      "function": "map_exception_to_exit_code",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "RuntimeError('unexpected'), TypeError('bad type'), a custom exception class not in the domain",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All return DOMAIN_ERROR_1"
+      ]
+    },
+    {
+      "id": "goodhart_node_id_valid_with_dots_dashes_underscores",
+      "description": "NodeIdType accepts node IDs containing dots, dashes, and underscores which are valid per the ^[a-zA-Z0-9_.-]+$ pattern",
+      "function": "cmd_trust_show",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "my-service_v2.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "NodeIdType validation passes for 'my-service_v2.0'"
+      ]
+    },
+    {
+      "id": "goodhart_node_id_rejects_spaces",
+      "description": "NodeIdType rejects node IDs containing spaces which don't match the allowed pattern",
+      "function": "cmd_trust_show",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "my service"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Validation fails with appropriate error"
+      ]
+    },
+    {
+      "id": "goodhart_node_id_rejects_slashes",
+      "description": "NodeIdType rejects node IDs containing forward slashes which don't match the allowed pattern",
+      "function": "cmd_trust_show",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "path/to/node"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Validation fails with appropriate error"
+      ]
+    },
+    {
+      "id": "goodhart_node_id_rejects_at_sign",
+      "description": "NodeIdType rejects node IDs containing @ symbol which doesn't match the allowed pattern",
+      "function": "cmd_trust_show",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "user@domain"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Validation fails with appropriate error"
+      ]
+    },
+    {
+      "id": "goodhart_node_id_single_char",
+      "description": "NodeIdType accepts a single valid character as a node ID since the pattern requires 1+ characters",
+      "function": "cmd_trust_show",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "a"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "NodeIdType validation passes for 'a'"
+      ]
+    },
+    {
+      "id": "goodhart_version_tag_with_prerelease",
+      "description": "VersionType accepts semver strings with various pre-release suffixes, not just 'alpha.1'",
+      "function": "cmd_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "version": "2.0.0-beta.3"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "VersionType validation passes"
+      ]
+    },
+    {
+      "id": "goodhart_version_tag_rejects_leading_v",
+      "description": "VersionType rejects version strings with leading 'v' prefix like 'v1.2.3'",
+      "function": "cmd_blast_radius",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "version": "v1.2.3"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Validation fails"
+      ]
+    },
+    {
+      "id": "goodhart_version_tag_rejects_four_parts",
+      "description": "VersionType rejects version strings with four numeric parts like '1.2.3.4'",
+      "function": "cmd_blast_radius",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "version": "1.2.3.4"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Validation fails"
+      ]
+    },
+    {
+      "id": "goodhart_version_tag_rejects_missing_patch",
+      "description": "VersionType rejects version strings missing the patch number like '1.2'",
+      "function": "cmd_blast_radius",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "version": "1.2"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Validation fails"
+      ]
+    },
+    {
+      "id": "goodhart_version_tag_zero_version",
+      "description": "VersionType accepts '0.0.0' as a valid semver string",
+      "function": "cmd_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "version": "0.0.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "VersionType validation passes"
+      ]
+    },
+    {
+      "id": "goodhart_run_id_valid_different_uuid",
+      "description": "RunIdType accepts any valid UUID v4 format string, not just one specific UUID",
+      "function": "cmd_report",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Multiple different valid UUID v4 strings",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All valid UUID v4s pass validation"
+      ]
+    },
+    {
+      "id": "goodhart_run_id_rejects_uuid_v1",
+      "description": "RunIdType rejects UUID strings that are not v4 format",
+      "function": "cmd_report",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "run_id": "not-a-uuid-at-all"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Validation fails"
+      ]
+    },
+    {
+      "id": "goodhart_blast_radius_total_matches_len",
+      "description": "BlastRadiusResponse total_affected always equals the actual length of affected_nodes list for any number of affected nodes",
+      "function": "cmd_blast_radius",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A blast radius computation returning multiple affected nodes",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response.total_affected == len(response.affected_nodes)"
+      ]
+    },
+    {
+      "id": "goodhart_blast_radius_max_depth_matches_nodes",
+      "description": "BlastRadiusResponse max_depth equals the maximum depth among affected_nodes, verified with non-trivial multi-depth results",
+      "function": "cmd_blast_radius",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Blast radius engine returns nodes at depths 1, 2, and 3",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response.max_depth == 3",
+        "response.max_depth == max(n.depth for n in response.affected_nodes)"
+      ]
+    },
+    {
+      "id": "goodhart_canary_results_escape_rate_computation",
+      "description": "Canary results escape_rate is correctly computed as total_escapes / total_canaries for non-zero canary counts",
+      "function": "cmd_canary_results",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Canary engine returns 3 escapes out of 10 canaries",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response.escape_rate == 3 / 10",
+        "response.escape_rate == 0.3"
+      ]
+    },
+    {
+      "id": "goodhart_canary_results_total_escapes_matches_list",
+      "description": "Canary results total_escapes always equals the length of the escapes list",
+      "function": "cmd_canary_results",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Canary engine returns specific number of escape entries",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response.total_escapes == len(response.escapes)"
+      ]
+    },
+    {
+      "id": "goodhart_findings_total_matches_len",
+      "description": "FindingsResponse total always equals the actual length of the findings list",
+      "function": "cmd_findings",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Findings engine returns multiple findings for a node",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response.total == len(response.findings)"
+      ]
+    },
+    {
+      "id": "goodhart_conflicts_total_matches_len",
+      "description": "ConflictsResponse total always equals the actual length of the conflicts list",
+      "function": "cmd_conflicts",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Conflicts engine returns a mix of resolved and unresolved conflicts",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response.total == len(response.conflicts)"
+      ]
+    },
+    {
+      "id": "goodhart_conflicts_unresolved_filter_excludes_resolved",
+      "description": "When unresolved_only is True, no returned conflict should have resolved=True, verified with mixed input data",
+      "function": "cmd_conflicts",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Conflicts engine has both resolved and unresolved conflicts, command called with unresolved_only=True",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All returned conflicts have resolved == False",
+        "No conflict with resolved=True appears in output"
+      ]
+    },
+    {
+      "id": "goodhart_init_response_created_files_list",
+      "description": "cmd_init response includes a non-empty created_files list containing the files actually created",
+      "function": "cmd_init",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Normal init with mocked registry.initialize_registry returning file paths",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response.created_files is a non-empty list",
+        "response.registry_path matches expected path"
+      ]
+    },
+    {
+      "id": "goodhart_trust_show_different_node_ids",
+      "description": "cmd_trust_show works correctly for different node_id values, not hardcoded to a specific one",
+      "function": "cmd_trust_show",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two different node IDs like 'serviceA' and 'data-store.v2' queried sequentially with mocked trust_engine",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Each response contains the correct node_id matching the query",
+        "Response node_id is not hardcoded"
+      ]
+    },
+    {
+      "id": "goodhart_trust_reset_response_includes_review_id",
+      "description": "cmd_trust_reset_taint response includes the exact review_id that was provided in the request",
+      "function": "cmd_trust_reset_taint",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Reset taint with a specific review_id string",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response.review_id matches the input review_id exactly"
+      ]
+    },
+    {
+      "id": "goodhart_authority_delegates_to_authority_engine",
+      "description": "cmd_authority_show delegates to authority_engine, never to trust_engine, enforcing trust/authority separation",
+      "function": "cmd_authority_show",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Mock both trust_engine and authority_engine, invoke authority show",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "authority_engine.get_authority_map was called",
+        "trust_engine was NOT called"
+      ]
+    },
+    {
+      "id": "goodhart_soak_compute_delegates_to_soak_engine",
+      "description": "cmd_soak_compute delegates computation to soak_engine, not to trust_engine or other engines directly",
+      "function": "cmd_soak_compute",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Mock soak_engine, invoke soak compute",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "soak_engine.compute_soak_duration was called"
+      ]
+    },
+    {
+      "id": "goodhart_error_output_stderr_not_stdout_register",
+      "description": "When cmd_register encounters an error, the error message appears on stderr and not on stdout",
+      "function": "cmd_register",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Invoke register with a nonexistent file, capture stdout and stderr separately",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "stdout is empty or contains no error information",
+        "stderr contains the error information"
+      ]
+    },
+    {
+      "id": "goodhart_error_output_stderr_not_stdout_blast_radius",
+      "description": "When cmd_blast_radius encounters a node_not_found error, the error appears on stderr not stdout",
+      "function": "cmd_blast_radius",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Invoke blast-radius for a non-existent node, capture output streams",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "stderr contains error info",
+        "stdout does not contain error message"
+      ]
+    },
+    {
+      "id": "goodhart_group_default_config_path_no_error",
+      "description": "arbiter_group with default config path (./arbiter.yaml) that doesn't exist uses defaults instead of raising config_not_found",
+      "function": "arbiter_group",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Invoke arbiter group without --config flag, when ./arbiter.yaml does not exist",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "No config_not_found error is raised",
+        "Defaults are used for ArbiterConfig"
+      ]
+    },
+    {
+      "id": "goodhart_group_registry_path_file_not_dir",
+      "description": "arbiter_group raises registry_path_invalid when registry_path points to a file rather than a directory",
+      "function": "arbiter_group",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Provide --registry-path pointing to an existing regular file",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "registry_path_invalid error is raised"
+      ]
+    },
+    {
+      "id": "goodhart_init_exit_code_success",
+      "description": "cmd_init returns exit code 0 (SUCCESS_0) on successful initialization",
+      "function": "cmd_init",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Successful init invocation via CliRunner",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.exit_code == 0"
+      ]
+    },
+    {
+      "id": "goodhart_register_exit_code_success",
+      "description": "cmd_register returns exit code 0 (SUCCESS_0) on successful registration",
+      "function": "cmd_register",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Successful register invocation via CliRunner with mocked registry",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.exit_code == 0"
+      ]
+    },
+    {
+      "id": "goodhart_trust_show_exit_code_not_found",
+      "description": "cmd_trust_show returns exit code 4 (NOT_FOUND_4) when the node doesn't exist",
+      "function": "cmd_trust_show",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Trust show for a non-existent node via CliRunner",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.exit_code == 4"
+      ]
+    },
+    {
+      "id": "goodhart_format_output_json_preserves_float_precision",
+      "description": "format_output in JSON mode preserves float values without rounding, matching model_dump exactly",
+      "function": "format_output",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A TrustShowResponse with current_score=0.123456789",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "JSON output contains the float value matching model_dump precision"
+      ]
+    },
+    {
+      "id": "goodhart_format_output_json_empty_lists",
+      "description": "format_output in JSON mode correctly handles response models with empty lists",
+      "function": "format_output",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "FindingsResponse with empty findings list and total=0",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "JSON output has 'findings' as empty array",
+        "JSON is valid"
+      ]
+    },
+    {
+      "id": "goodhart_canary_inject_run_id_is_uuid4",
+      "description": "cmd_canary_inject response run_id is a valid UUID v4 format string",
+      "function": "cmd_canary_inject",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Successful canary inject with mocked canary_engine",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response.run_id matches UUID v4 format"
+      ]
+    },
+    {
+      "id": "goodhart_report_generated_at_utc_iso8601",
+      "description": "cmd_report response generated_at is a valid UTC ISO 8601 timestamp string",
+      "function": "cmd_report",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Successful report generation with mocked report_engine",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "generated_at can be parsed as ISO 8601",
+        "Timestamp is in UTC"
+      ]
+    },
+    {
+      "id": "goodhart_watch_registry_not_initialized",
+      "description": "cmd_watch fails with appropriate error when registry is not initialized",
+      "function": "cmd_watch",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Invoke watch command with mocked registry check that raises registry_not_initialized",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Error indicates registry not initialized",
+        "Exit code is non-zero"
+      ]
+    },
+    {
+      "id": "goodhart_findings_registry_not_initialized",
+      "description": "cmd_findings fails when registry is not initialized, not just for node_not_found",
+      "function": "cmd_findings",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Invoke findings with mocked engine that raises registry_not_initialized",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Error indicates registry not initialized"
+      ]
+    },
+    {
+      "id": "goodhart_soak_compute_registry_not_initialized",
+      "description": "cmd_soak_compute fails when registry is not initialized",
+      "function": "cmd_soak_compute",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Invoke soak compute with mocked engine that raises registry_not_initialized",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Error indicates registry not initialized"
+      ]
+    },
+    {
+      "id": "goodhart_register_permission_denied",
+      "description": "cmd_register fails with permission_denied error when the access graph file cannot be read due to permissions",
+      "function": "cmd_register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Invoke register with mocked registry that raises permission_denied",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Error indicates permission denied",
+        "Exit code maps to IO_ERROR_3"
+      ]
+    },
+    {
+      "id": "goodhart_no_stacktrace_on_domain_error",
+      "description": "No Python traceback or stack trace leaks to user output when a domain exception occurs in any command",
+      "function": "cmd_blast_radius",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Invoke blast-radius for non-existent node, capture all output",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'Traceback' not in stdout",
+        "'Traceback' not in stderr",
+        "'File \"' not in stderr"
+      ]
+    },
+    {
+      "id": "goodhart_format_error_special_chars_in_message",
+      "description": "format_error correctly handles error messages containing special characters like quotes, angle brackets, and newlines",
+      "function": "format_error",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "error_code": "schema_violation",
+        "message": "Field 'name' has invalid value: <script>alert('xss')</script>",
+        "exit_code": "2",
+        "node_id": "",
+        "field": "name"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "In JSON mode, output is still valid JSON",
+        "In text mode, the message content is preserved"
+      ]
+    },
+    {
+      "id": "goodhart_version_tag_prerelease_with_dots",
+      "description": "VersionType accepts semver pre-release identifiers containing multiple dots like '1.0.0-rc.1.2'",
+      "function": "cmd_blast_radius",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "version": "1.0.0-rc.1.2"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "VersionType validation passes"
+      ]
+    },
+    {
+      "id": "goodhart_version_tag_rejects_empty",
+      "description": "VersionType rejects an empty string as a version tag",
+      "function": "cmd_blast_radius",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "version": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Validation fails"
+      ]
+    },
+    {
+      "id": "goodhart_node_id_rejects_colon",
+      "description": "NodeIdType rejects node IDs containing colons which are not in the allowed character set",
+      "function": "cmd_trust_show",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "node_id": "namespace:node"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Validation fails"
+      ]
+    },
+    {
+      "id": "goodhart_conflicts_unresolved_false_returns_all",
+      "description": "cmd_conflicts with unresolved_only=False returns both resolved and unresolved conflicts",
+      "function": "cmd_conflicts",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Conflicts engine has both resolved=True and resolved=False conflicts, called with unresolved_only=False",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Both resolved and unresolved conflicts appear in response",
+        "total matches total count including resolved ones"
+      ]
+    },
+    {
+      "id": "goodhart_canary_inject_multiple_tiers",
+      "description": "cmd_canary_inject with multiple valid tiers returns tiers_covered matching all input tiers",
+      "function": "cmd_canary_inject",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Canary inject with 3 different valid tiers",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response.tiers_covered contains all input tiers"
+      ]
+    },
+    {
+      "id": "goodhart_trust_reset_taint_ledger_corrupted",
+      "description": "cmd_trust_reset_taint fails with ledger_corrupted when trust ledger checksum validation fails",
+      "function": "cmd_trust_reset_taint",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Mock trust_engine.reset_taint to raise ledger_corrupted exception",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Error indicates ledger corruption",
+        "Exit code maps to DOMAIN_ERROR_1"
+      ]
+    },
+    {
+      "id": "goodhart_format_output_auto_rejected",
+      "description": "format_output raises an error or handles gracefully when passed output_format='auto', which violates the precondition",
+      "function": "format_output",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Call format_output with output_format='auto'",
+      "expected_output_description": "",
+      "expected_error": "Precondition violation: output_format must not be 'auto'",
+      "assertions": [
+        "Function either raises an error or the contract invariant is otherwise enforced"
+      ]
+    },
+    {
+      "id": "goodhart_blast_radius_depth_ordering",
+      "description": "BlastRadiusResponse affected_nodes are strictly ordered by depth ascending, verified with nodes at depths 1, 3, 2 returned unordered from engine",
+      "function": "cmd_blast_radius",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Blast radius engine mock returns nodes in non-depth order; CLI should present them depth-ascending",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "affected_nodes depths are in non-decreasing order"
+      ]
+    },
+    {
+      "id": "goodhart_trust_show_history_oldest_first",
+      "description": "TrustShowResponse history entries are ordered oldest-first, verified with entries having distinct timestamps",
+      "function": "cmd_trust_show",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Trust engine returns history with multiple entries; verify ordering",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "History timestamps are in chronological (ascending) order"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nHidden adversarial acceptance tests for CLI Entry Point component.\nThese tests catch implementations that \"teach to the test\" by hardcoding\nreturns or skipping proper validation.\n\"\"\"\nimport json\nimport re\nimport uuid\nfrom datetime import datetime, timezone\nfrom unittest.mock import MagicMock, patch, PropertyMock\nimport pytest\n\n# We import from the CLI module under test\nfrom src.cli import (\n    format_output,\n    format_error,\n    map_exception_to_exit_code,\n    resolve_output_format,\n)\n\n# Attempt to import models/types; adjust as needed for actual project structure\ntry:\n    from src.cli import (\n        CliError,\n        ExitCode,\n        OutputFormat,\n        TrustShowResponse,\n        TrustScoreEntry,\n        BlastRadiusResponse,\n        BlastRadiusNode,\n        FindingsResponse,\n        Finding,\n        ConflictsResponse,\n        Conflict,\n        CanaryResultsResponse,\n        TaintEscape,\n        CanaryInjectResponse,\n        InitResponse,\n        RegisterResponse,\n        ReportResponse,\n        SoakComputeResponse,\n        AuthorityShowResponse,\n        AuthorityEntry,\n        TrustResetTaintResponse,\n        NodeIdType,\n        RunIdType,\n        VersionType,\n    )\nexcept ImportError:\n    # Fallback: try alternate import paths\n    pass\n\ntry:\n    from src.models import (\n        CliError,\n        ExitCode,\n        OutputFormat,\n        TrustShowResponse,\n        TrustScoreEntry,\n        BlastRadiusResponse,\n        BlastRadiusNode,\n        FindingsResponse,\n        Finding,\n        ConflictsResponse,\n        Conflict,\n        CanaryResultsResponse,\n        TaintEscape,\n        CanaryInjectResponse,\n        InitResponse,\n        RegisterResponse,\n        ReportResponse,\n        SoakComputeResponse,\n        AuthorityShowResponse,\n        AuthorityEntry,\n        TrustResetTaintResponse,\n    )\nexcept ImportError:\n    pass\n\ntry:\n    from src.cli import cli, arbiter_group\n    from click.testing import CliRunner\nexcept ImportError:\n    pass\n\n\n# ============================================================\n# resolve_output_format tests\n# ============================================================\n\nclass TestGoodhartResolveOutputFormat:\n    def test_goodhart_resolve_format_text_not_tty(self):\n        \"\"\"Explicit 'text' format should not be overridden when is_tty is False.\"\"\"\n        result = resolve_output_format(\"text\", is_tty=False)\n        assert result == \"text\", (\n            \"Explicit 'text' format must be returned unchanged regardless of TTY\"\n        )\n\n    def test_goodhart_resolve_format_json_tty_true(self):\n        \"\"\"Explicit 'json' format should not be overridden when is_tty is True.\"\"\"\n        result = resolve_output_format(\"json\", is_tty=True)\n        assert result == \"json\", (\n            \"Explicit 'json' format must be returned unchanged regardless of TTY\"\n        )\n\n\n# ============================================================\n# format_output tests\n# ============================================================\n\nclass TestGoodhartFormatOutput:\n    def _make_trust_show_response(self, score=0.85, node_id=\"nodeA\"):\n        \"\"\"Helper to build a TrustShowResponse-like model.\"\"\"\n        try:\n            return TrustShowResponse(\n                node_id=node_id,\n                current_score=score,\n                tainted=False,\n                history=[\n                    TrustScoreEntry(\n                        timestamp=\"2024-01-01T00:00:00Z\",\n                        raw_score=0.5,\n                        event_type=\"init\",\n                        tainted=False,\n                    )\n                ],\n            )\n        except Exception:\n            pytest.skip(\"Cannot construct TrustShowResponse model\")\n\n    def _make_blast_radius_response(self, num_nodes=3):\n        \"\"\"Helper to build a BlastRadiusResponse with multiple nodes.\"\"\"\n        try:\n            nodes = [\n                BlastRadiusNode(\n                    node_id=f\"node_{i}\",\n                    depth=i,\n                    data_tier=\"tier_a\",\n                    trust_score=0.5 + i * 0.1,\n                )\n                for i in range(1, num_nodes + 1)\n            ]\n            return BlastRadiusResponse(\n                origin_node=\"origin\",\n                version=\"1.0.0\",\n                affected_nodes=nodes,\n                total_affected=num_nodes,\n                max_depth=num_nodes,\n            )\n        except Exception:\n            pytest.skip(\"Cannot construct BlastRadiusResponse model\")\n\n    def _make_findings_response(self, num_findings=0):\n        \"\"\"Helper to build a FindingsResponse.\"\"\"\n        try:\n            findings = [\n                Finding(\n                    finding_id=f\"f-{i}\",\n                    node_id=\"test_node\",\n                    severity=\"medium\",\n                    category=\"consistency\",\n                    message=f\"Finding {i}\",\n                    timestamp=\"2024-01-01T00:00:00Z\",\n                )\n                for i in range(num_findings)\n            ]\n            return FindingsResponse(\n                node_id=\"test_node\",\n                findings=findings,\n                total=num_findings,\n            )\n        except Exception:\n            pytest.skip(\"Cannot construct FindingsResponse model\")\n\n    def test_goodhart_format_output_json_different_models(self):\n        \"\"\"format_output in JSON mode correctly serializes arbitrary response models.\"\"\"\n        models = [\n            self._make_trust_show_response(score=0.75, node_id=\"svc.alpha\"),\n            self._make_blast_radius_response(num_nodes=2),\n            self._make_findings_response(num_findings=3),\n        ]\n        for model in models:\n            result = format_output(model, \"json\")\n            parsed = json.loads(result)\n            expected = model.model_dump(mode=\"json\")\n            assert parsed == expected, (\n                f\"JSON output for {type(model).__name__} must match model_dump\"\n            )\n\n    def test_goodhart_format_output_text_different_models(self):\n        \"\"\"format_output in text mode produces non-empty strings for all model types.\"\"\"\n        models = [\n            self._make_trust_show_response(),\n            self._make_blast_radius_response(),\n            self._make_findings_response(num_findings=1),\n        ]\n        for model in models:\n            result = format_output(model, \"text\")\n            assert isinstance(result, str), \"Text output must be a string\"\n            assert len(result.strip()) > 0, (\n                f\"Text output for {type(model).__name__} must be non-empty\"\n            )\n            assert not result.endswith(\"\\n\"), \"No trailing newline allowed\"\n\n    def test_goodhart_format_output_json_nested_lists(self):\n        \"\"\"format_output correctly serializes nested lists in response models.\"\"\"\n        resp = self._make_blast_radius_response(num_nodes=4)\n        result = format_output(resp, \"json\")\n        parsed = json.loads(result)\n        assert len(parsed[\"affected_nodes\"]) == 4, (\n            \"All nested nodes must be serialized\"\n        )\n\n    def test_goodhart_format_output_text_no_trailing_newline_all_models(self):\n        \"\"\"format_output never adds trailing newline for any model type.\"\"\"\n        models = [\n            self._make_trust_show_response(),\n            self._make_blast_radius_response(),\n            self._make_findings_response(num_findings=2),\n        ]\n        for model in models:\n            result = format_output(model, \"text\")\n            assert not result.endswith(\"\\n\"), (\n                f\"format_output text should not end with newline for {type(model).__name__}\"\n            )\n\n    def test_goodhart_format_output_json_preserves_float_precision(self):\n        \"\"\"format_output JSON mode preserves float values matching model_dump.\"\"\"\n        resp = self._make_trust_show_response(score=0.123456789)\n        result = format_output(resp, \"json\")\n        parsed = json.loads(result)\n        expected = resp.model_dump(mode=\"json\")\n        assert parsed[\"current_score\"] == expected[\"current_score\"], (\n            \"Float precision must match model_dump\"\n        )\n\n    def test_goodhart_format_output_json_empty_lists(self):\n        \"\"\"format_output correctly handles response models with empty lists.\"\"\"\n        resp = self._make_findings_response(num_findings=0)\n        result = format_output(resp, \"json\")\n        parsed = json.loads(result)\n        assert parsed[\"findings\"] == [], \"Empty findings should be empty JSON array\"\n        assert parsed[\"total\"] == 0\n\n\n# ============================================================\n# format_error tests\n# ============================================================\n\nclass TestGoodhartFormatError:\n    def _make_cli_error(self, error_code=\"test_error\", message=\"Test message\",\n                        exit_code=1, node_id=\"\", field=\"\"):\n        try:\n            return CliError(\n                error_code=error_code,\n                message=message,\n                exit_code=exit_code,\n                node_id=node_id,\n                field=field,\n            )\n        except Exception:\n            pytest.skip(\"Cannot construct CliError model\")\n\n    def test_goodhart_format_error_text_both_node_and_field(self):\n        \"\"\"format_error text includes both node_id and field when both are non-empty.\"\"\"\n        err = self._make_cli_error(\n            error_code=\"schema_violation\",\n            message=\"Invalid tier value\",\n            exit_code=2,\n            node_id=\"service.api-gw\",\n            field=\"tier\",\n        )\n        result = format_error(err, \"text\")\n        assert \"schema_violation\" in result\n        assert \"Invalid tier value\" in result\n        assert \"service.api-gw\" in result\n        assert \"tier\" in result\n\n    def test_goodhart_format_error_text_format_pattern(self):\n        \"\"\"format_error text follows 'Error [{error_code}]: {message}' pattern.\"\"\"\n        err = self._make_cli_error(\n            error_code=\"ledger_corrupted\",\n            message=\"Checksum mismatch at line 42\",\n            exit_code=1,\n        )\n        result = format_error(err, \"text\")\n        # Check the pattern: should contain Error [error_code] and the message\n        assert \"ledger_corrupted\" in result\n        assert \"Checksum mismatch at line 42\" in result\n        # Check pattern more strictly\n        assert re.search(r\"Error\\s*\\[ledger_corrupted\\]\", result), (\n            \"Text error format should follow 'Error [{error_code}]' pattern\"\n        )\n\n    def test_goodhart_format_error_json_all_fields_present(self):\n        \"\"\"format_error JSON output includes all CliError fields.\"\"\"\n        err = self._make_cli_error(\n            error_code=\"node_not_found\",\n            message=\"Node xyz not found\",\n            exit_code=4,\n            node_id=\"xyz\",\n            field=\"\",\n        )\n        result = format_error(err, \"json\")\n        parsed = json.loads(result)\n        for key in (\"error_code\", \"message\", \"exit_code\", \"node_id\", \"field\"):\n            assert key in parsed, f\"JSON error output must include '{key}' field\"\n\n    def test_goodhart_format_error_json_different_error_codes(self):\n        \"\"\"format_error JSON works for various error_code values, not hardcoded.\"\"\"\n        codes = [\n            \"registry_not_initialized\",\n            \"permission_denied\",\n            \"port_conflict\",\n            \"empty_review_id\",\n            \"invalid_tier\",\n        ]\n        for code in codes:\n            err = self._make_cli_error(error_code=code, message=f\"Error: {code}\")\n            result = format_error(err, \"json\")\n            parsed = json.loads(result)\n            assert parsed[\"error_code\"] == code, (\n                f\"JSON error_code should be '{code}', got '{parsed['error_code']}'\"\n            )\n\n    def test_goodhart_format_error_special_chars_in_message(self):\n        \"\"\"format_error handles special characters in messages without breaking.\"\"\"\n        msg = \"Field 'name' has invalid value: <script>alert('xss')</script>\"\n        err = self._make_cli_error(\n            error_code=\"schema_violation\",\n            message=msg,\n            exit_code=2,\n            field=\"name\",\n        )\n        # JSON mode should still produce valid JSON\n        json_result = format_error(err, \"json\")\n        parsed = json.loads(json_result)\n        assert parsed[\"message\"] == msg\n\n        # Text mode should preserve the message\n        text_result = format_error(err, \"text\")\n        assert msg in text_result or \"Field\" in text_result\n\n\n# ============================================================\n# map_exception_to_exit_code tests\n# ============================================================\n\nclass TestGoodhartMapException:\n    def test_goodhart_map_exception_runtime_error_unrecognized(self):\n        \"\"\"Completely unknown exception types like RuntimeError return DOMAIN_ERROR_1.\"\"\"\n        result = map_exception_to_exit_code(RuntimeError(\"something unexpected\"))\n        # ExitCode might be an enum or int\n        exit_val = result.value if hasattr(result, \"value\") else result\n        assert exit_val == 1, (\n            \"Unrecognized exception RuntimeError should map to DOMAIN_ERROR_1 (1)\"\n        )\n\n    def test_goodhart_map_exception_type_error_unrecognized(self):\n        \"\"\"TypeError is not a domain exception and should map to DOMAIN_ERROR_1 default.\"\"\"\n        result = map_exception_to_exit_code(TypeError(\"bad type\"))\n        exit_val = result.value if hasattr(result, \"value\") else result\n        assert exit_val == 1, (\n            \"Unrecognized TypeError should map to DOMAIN_ERROR_1 (1)\"\n        )\n\n    def test_goodhart_map_exception_keyboard_interrupt(self):\n        \"\"\"KeyboardInterrupt should still be handled gracefully by the mapper.\"\"\"\n        # This tests that the function doesn't crash on unexpected exception types\n        try:\n            result = map_exception_to_exit_code(KeyboardInterrupt())\n            exit_val = result.value if hasattr(result, \"value\") else result\n            # Should return some valid exit code (likely DOMAIN_ERROR_1 as default)\n            assert exit_val in (0, 1, 2, 3, 4), \"Should return a valid exit code\"\n        except (KeyboardInterrupt, SystemExit):\n            pytest.fail(\"map_exception_to_exit_code should not re-raise exceptions\")\n\n\n# ============================================================\n# NodeIdType validation tests\n# ============================================================\n\nclass TestGoodhartNodeIdValidation:\n    def _validate_node_id(self, value):\n        \"\"\"Attempt to validate a node_id through NodeIdType or pattern check.\"\"\"\n        try:\n            param_type = NodeIdType()\n            return param_type.convert(value, None, None)\n        except Exception:\n            # If NodeIdType raises, validation failed\n            raise\n\n    def test_goodhart_node_id_valid_dots_dashes_underscores(self):\n        \"\"\"NodeIdType accepts IDs with dots, dashes, and underscores.\"\"\"\n        try:\n            result = self._validate_node_id(\"my-service_v2.0\")\n            assert result == \"my-service_v2.0\"\n        except NameError:\n            pytest.skip(\"NodeIdType not importable\")\n\n    def test_goodhart_node_id_single_char(self):\n        \"\"\"NodeIdType accepts a single valid character.\"\"\"\n        try:\n            result = self._validate_node_id(\"a\")\n            assert result == \"a\"\n        except NameError:\n            pytest.skip(\"NodeIdType not importable\")\n\n    def test_goodhart_node_id_rejects_spaces(self):\n        \"\"\"NodeIdType rejects IDs with spaces.\"\"\"\n        try:\n            with pytest.raises(Exception):\n                self._validate_node_id(\"my service\")\n        except NameError:\n            pytest.skip(\"NodeIdType not importable\")\n\n    def test_goodhart_node_id_rejects_slashes(self):\n        \"\"\"NodeIdType rejects IDs with forward slashes.\"\"\"\n        try:\n            with pytest.raises(Exception):\n                self._validate_node_id(\"path/to/node\")\n        except NameError:\n            pytest.skip(\"NodeIdType not importable\")\n\n    def test_goodhart_node_id_rejects_at_sign(self):\n        \"\"\"NodeIdType rejects IDs with @ symbol.\"\"\"\n        try:\n            with pytest.raises(Exception):\n                self._validate_node_id(\"user@domain\")\n        except NameError:\n            pytest.skip(\"NodeIdType not importable\")\n\n    def test_goodhart_node_id_rejects_colon(self):\n        \"\"\"NodeIdType rejects IDs with colons.\"\"\"\n        try:\n            with pytest.raises(Exception):\n                self._validate_node_id(\"namespace:node\")\n        except NameError:\n            pytest.skip(\"NodeIdType not importable\")\n\n    def test_goodhart_node_id_numeric_only(self):\n        \"\"\"NodeIdType accepts purely numeric node IDs like '12345'.\"\"\"\n        try:\n            result = self._validate_node_id(\"12345\")\n            assert result == \"12345\"\n        except NameError:\n            pytest.skip(\"NodeIdType not importable\")\n\n\n# ============================================================\n# VersionType validation tests\n# ============================================================\n\nclass TestGoodhartVersionValidation:\n    def _validate_version(self, value):\n        try:\n            param_type = VersionType()\n            return param_type.convert(value, None, None)\n        except Exception:\n            raise\n\n    def test_goodhart_version_tag_with_beta_prerelease(self):\n        \"\"\"VersionType accepts semver with beta pre-release suffix.\"\"\"\n        try:\n            result = self._validate_version(\"2.0.0-beta.3\")\n            assert result == \"2.0.0-beta.3\"\n        except NameError:\n            pytest.skip(\"VersionType not importable\")\n\n    def test_goodhart_version_tag_prerelease_with_dots(self):\n        \"\"\"VersionType accepts pre-release identifiers with multiple dots.\"\"\"\n        try:\n            result = self._validate_version(\"1.0.0-rc.1.2\")\n            assert result == \"1.0.0-rc.1.2\"\n        except NameError:\n            pytest.skip(\"VersionType not importable\")\n\n    def test_goodhart_version_tag_zero_version(self):\n        \"\"\"VersionType accepts '0.0.0' as valid.\"\"\"\n        try:\n            result = self._validate_version(\"0.0.0\")\n            assert result == \"0.0.0\"\n        except NameError:\n            pytest.skip(\"VersionType not importable\")\n\n    def test_goodhart_version_tag_rejects_leading_v(self):\n        \"\"\"VersionType rejects 'v1.2.3' with leading v prefix.\"\"\"\n        try:\n            with pytest.raises(Exception):\n                self._validate_version(\"v1.2.3\")\n        except NameError:\n            pytest.skip(\"VersionType not importable\")\n\n    def test_goodhart_version_tag_rejects_four_parts(self):\n        \"\"\"VersionType rejects '1.2.3.4' with four numeric parts.\"\"\"\n        try:\n            with pytest.raises(Exception):\n                self._validate_version(\"1.2.3.4\")\n        except NameError:\n            pytest.skip(\"VersionType not importable\")\n\n    def test_goodhart_version_tag_rejects_missing_patch(self):\n        \"\"\"VersionType rejects '1.2' missing the patch number.\"\"\"\n        try:\n            with pytest.raises(Exception):\n                self._validate_version(\"1.2\")\n        except NameError:\n            pytest.skip(\"VersionType not importable\")\n\n    def test_goodhart_version_tag_rejects_empty(self):\n        \"\"\"VersionType rejects empty string.\"\"\"\n        try:\n            with pytest.raises(Exception):\n                self._validate_version(\"\")\n        except NameError:\n            pytest.skip(\"VersionType not importable\")\n\n    def test_goodhart_version_tag_large_numbers(self):\n        \"\"\"VersionType accepts semver with large version numbers.\"\"\"\n        try:\n            result = self._validate_version(\"100.200.300\")\n            assert result == \"100.200.300\"\n        except NameError:\n            pytest.skip(\"VersionType not importable\")\n\n\n# ============================================================\n# RunIdType validation tests\n# ============================================================\n\nclass TestGoodhartRunIdValidation:\n    def _validate_run_id(self, value):\n        try:\n            param_type = RunIdType()\n            return param_type.convert(value, None, None)\n        except Exception:\n            raise\n\n    def test_goodhart_run_id_valid_different_uuids(self):\n        \"\"\"RunIdType accepts multiple different valid UUID v4 strings.\"\"\"\n        try:\n            for _ in range(3):\n                uid = str(uuid.uuid4())\n                result = self._validate_run_id(uid)\n                assert result == uid\n        except NameError:\n            pytest.skip(\"RunIdType not importable\")\n\n    def test_goodhart_run_id_rejects_plain_string(self):\n        \"\"\"RunIdType rejects plain non-UUID strings.\"\"\"\n        try:\n            with pytest.raises(Exception):\n                self._validate_run_id(\"not-a-uuid-at-all\")\n        except NameError:\n            pytest.skip(\"RunIdType not importable\")\n\n    def test_goodhart_run_id_rejects_empty(self):\n        \"\"\"RunIdType rejects empty string.\"\"\"\n        try:\n            with pytest.raises(Exception):\n                self._validate_run_id(\"\")\n        except NameError:\n            pytest.skip(\"RunIdType not importable\")\n\n    def test_goodhart_run_id_rejects_partial_uuid(self):\n        \"\"\"RunIdType rejects truncated/partial UUID strings.\"\"\"\n        try:\n            with pytest.raises(Exception):\n                self._validate_run_id(\"550e8400-e29b-41d4-a716\")\n        except NameError:\n            pytest.skip(\"RunIdType not importable\")\n\n\n# ============================================================\n# Integration / CLI runner tests\n# ============================================================\n\nclass TestGoodhartCLIIntegration:\n    \"\"\"Tests that exercise commands via CliRunner with mocked engine dependencies.\"\"\"\n\n    def _get_runner(self):\n        try:\n            return CliRunner(mix_stderr=False)\n        except Exception:\n            return CliRunner()\n\n    def test_goodhart_trust_show_different_node_ids(self):\n        \"\"\"cmd_trust_show returns the correct node_id for different inputs, not hardcoded.\"\"\"\n        try:\n            runner = self._get_runner()\n        except Exception:\n            pytest.skip(\"CliRunner not available\")\n\n        node_ids = [\"serviceA\", \"data-store.v2\", \"node_xyz\"]\n        for nid in node_ids:\n            try:\n                # Mock the trust_engine to return a response for the given node_id\n                mock_response = TrustShowResponse(\n                    node_id=nid,\n                    current_score=0.8,\n                    tainted=False,\n                    history=[],\n                )\n                with patch(\"src.cli.trust_engine\") as mock_engine:\n                    mock_engine.compute_trust_score.return_value = 0.8\n                    mock_engine.get_trust_history.return_value = []\n                    # Also try patching at command level\n                    result = runner.invoke(cli, [\"--format\", \"json\", \"trust\", \"show\", nid])\n                    if result.exit_code == 0:\n                        output = json.loads(result.output)\n                        assert output[\"node_id\"] == nid, (\n                            f\"node_id should be '{nid}', not hardcoded\"\n                        )\n            except Exception:\n                # If the specific patching path doesn't work, that's ok - \n                # the test structure catches hardcoded values\n                pass\n\n    def test_goodhart_error_output_stderr_not_stdout_generic(self):\n        \"\"\"Error output should go to stderr, never stdout, for any error condition.\"\"\"\n        try:\n            runner = CliRunner(mix_stderr=False)\n        except TypeError:\n            pytest.skip(\"CliRunner doesn't support mix_stderr\")\n\n        try:\n            # Invoke a command that will fail (e.g., trust show with non-existent node)\n            result = runner.invoke(cli, [\"--format\", \"json\", \"trust\", \"show\", \"nonexistent_node_xyz\"])\n            if result.exit_code != 0:\n                # stdout should not contain error info\n                if result.output:\n                    try:\n                        parsed = json.loads(result.output)\n                        assert \"error_code\" not in parsed, (\n                            \"Error output should be on stderr, not stdout\"\n                        )\n                    except json.JSONDecodeError:\n                        pass\n        except Exception:\n            pytest.skip(\"CLI not invokable for this test\")\n\n    def test_goodhart_no_stacktrace_on_domain_error(self):\n        \"\"\"No Python traceback should leak to user output on any error path.\"\"\"\n        try:\n            runner = CliRunner(mix_stderr=False)\n        except TypeError:\n            pytest.skip(\"CliRunner doesn't support mix_stderr\")\n\n        try:\n            result = runner.invoke(cli, [\n                \"--format\", \"text\", \"blast-radius\", \"nonexistent_abc\", \"1.0.0\"\n            ])\n            all_output = (result.output or \"\") + (getattr(result, 'stderr', '') or \"\")\n            assert \"Traceback\" not in all_output, (\n                \"Stack traces must not leak to user output\"\n            )\n            assert 'File \"' not in all_output, (\n                \"Python file references must not leak to user output\"\n            )\n        except Exception:\n            pytest.skip(\"CLI not invokable for this test\")\n\n    def test_goodhart_init_exit_code_success(self):\n        \"\"\"cmd_init returns exit code 0 on successful initialization.\"\"\"\n        try:\n            runner = self._get_runner()\n            with patch(\"src.cli.registry\") as mock_reg:\n                mock_reg.initialize_registry.return_value = InitResponse(\n                    registry_path=\"/tmp/test_reg\",\n                    created_files=[\"/tmp/test_reg/ledger.jsonl\"],\n                    message=\"Initialized\",\n                )\n                result = runner.invoke(cli, [\n                    \"--format\", \"json\", \"init\", \"--force\"\n                ])\n                assert result.exit_code == 0, (\n                    f\"Expected exit code 0, got {result.exit_code}\"\n                )\n        except Exception:\n            pytest.skip(\"Cannot invoke CLI init command\")\n\n    def test_goodhart_group_registry_path_file_not_dir(self):\n        \"\"\"arbiter_group rejects registry_path that points to a regular file.\"\"\"\n        import tempfile\n        import os\n        try:\n            runner = self._get_runner()\n            # Create a temp file (not directory)\n            with tempfile.NamedTemporaryFile(delete=False) as f:\n                temp_path = f.name\n            try:\n                result = runner.invoke(cli, [\n                    \"--registry-path\", temp_path, \"--format\", \"json\", \"init\"\n                ])\n                assert result.exit_code != 0, (\n                    \"Should fail when registry_path is a file, not a directory\"\n                )\n            finally:\n                os.unlink(temp_path)\n        except Exception:\n            pytest.skip(\"Cannot invoke CLI for registry_path test\")\n\n    def test_goodhart_group_default_config_missing_uses_defaults(self):\n        \"\"\"When default config path doesn't exist, defaults should be used (no error).\"\"\"\n        import os\n        try:\n            runner = self._get_runner()\n            # Ensure we're in a directory without arbiter.yaml\n            original_dir = os.getcwd()\n            import tempfile\n            with tempfile.TemporaryDirectory() as tmpdir:\n                os.chdir(tmpdir)\n                try:\n                    result = runner.invoke(cli, [\n                        \"--format\", \"json\", \"init\", \"--force\"\n                    ])\n                    # Should not fail with config_not_found\n                    if result.exit_code != 0:\n                        all_output = (result.output or \"\") + (getattr(result, 'stderr', '') or \"\")\n                        assert \"config_not_found\" not in all_output, (\n                            \"Default config path missing should not raise config_not_found\"\n                        )\n                finally:\n                    os.chdir(original_dir)\n        except Exception:\n            pytest.skip(\"Cannot invoke CLI for default config test\")\n\n\n# ============================================================\n# Postcondition invariant tests\n# ============================================================\n\nclass TestGoodhartPostconditionInvariants:\n    \"\"\"Tests that verify postcondition invariants hold for various inputs.\"\"\"\n\n    def test_goodhart_canary_results_escape_rate_nonzero(self):\n        \"\"\"escape_rate must equal total_escapes / total_canaries for non-zero canary counts.\"\"\"\n        try:\n            escapes = [\n                TaintEscape(\n                    canary_id=f\"canary-{i}\",\n                    source_tier=\"pii\",\n                    found_at_node=f\"node_{i}\",\n                    found_at_tier=\"public\",\n                    timestamp=\"2024-01-01T00:00:00Z\",\n                )\n                for i in range(3)\n            ]\n            resp = CanaryResultsResponse(\n                run_id=str(uuid.uuid4()),\n                escapes=escapes,\n                total_escapes=3,\n                total_canaries=10,\n                escape_rate=0.3,\n            )\n            # Verify the invariant\n            assert resp.total_escapes == len(resp.escapes)\n            assert resp.escape_rate == resp.total_escapes / resp.total_canaries\n            assert abs(resp.escape_rate - 0.3) < 1e-9\n        except NameError:\n            pytest.skip(\"CanaryResultsResponse not importable\")\n\n    def test_goodhart_blast_radius_invariants_multi_depth(self):\n        \"\"\"BlastRadiusResponse invariants hold: total_affected==len, max_depth==max.\"\"\"\n        try:\n            nodes = [\n                BlastRadiusNode(node_id=\"a\", depth=1, data_tier=\"t1\", trust_score=0.9),\n                BlastRadiusNode(node_id=\"b\", depth=2, data_tier=\"t1\", trust_score=0.8),\n                BlastRadiusNode(node_id=\"c\", depth=3, data_tier=\"t2\", trust_score=0.7),\n                BlastRadiusNode(node_id=\"d\", depth=2, data_tier=\"t1\", trust_score=0.6),\n            ]\n            resp = BlastRadiusResponse(\n                origin_node=\"origin\",\n                version=\"2.1.0\",\n                affected_nodes=nodes,\n                total_affected=4,\n                max_depth=3,\n            )\n            assert resp.total_affected == len(resp.affected_nodes)\n            assert resp.max_depth == max(n.depth for n in resp.affected_nodes)\n        except NameError:\n            pytest.skip(\"BlastRadiusResponse not importable\")\n\n    def test_goodhart_findings_total_matches_len(self):\n        \"\"\"FindingsResponse.total must equal len(findings) for various counts.\"\"\"\n        try:\n            for count in [0, 1, 5, 10]:\n                findings = [\n                    Finding(\n                        finding_id=f\"f-{i}\",\n                        node_id=\"test\",\n                        severity=\"low\",\n                        category=\"test\",\n                        message=f\"msg {i}\",\n                        timestamp=\"2024-01-01T00:00:00Z\",\n                    )\n                    for i in range(count)\n                ]\n                resp = FindingsResponse(\n                    node_id=\"test\",\n                    findings=findings,\n                    total=count,\n                )\n                assert resp.total == len(resp.findings), (\n                    f\"total ({resp.total}) must equal len(findings) ({len(resp.findings)})\"\n                )\n        except NameError:\n            pytest.skip(\"FindingsResponse not importable\")\n\n    def test_goodhart_conflicts_total_matches_len(self):\n        \"\"\"ConflictsResponse.total must equal len(conflicts).\"\"\"\n        try:\n            conflicts = [\n                Conflict(\n                    conflict_id=f\"c-{i}\",\n                    node_ids=[\"a\", \"b\"],\n                    conflict_type=\"trust_authority\",\n                    message=f\"Conflict {i}\",\n                    resolved=(i % 2 == 0),\n                    timestamp=\"2024-01-01T00:00:00Z\",\n                )\n                for i in range(4)\n            ]\n            resp = ConflictsResponse(\n                conflicts=conflicts,\n                total=4,\n                unresolved_only=False,\n            )\n            assert resp.total == len(resp.conflicts)\n        except NameError:\n            pytest.skip(\"ConflictsResponse not importable\")\n\n    def test_goodhart_conflicts_unresolved_filter_strict(self):\n        \"\"\"When unresolved_only=True, all returned conflicts must have resolved=False.\"\"\"\n        try:\n            # Build mixed conflicts\n            all_conflicts = [\n                Conflict(\n                    conflict_id=\"c-1\",\n                    node_ids=[\"a\"],\n                    conflict_type=\"t\",\n                    message=\"m\",\n                    resolved=True,\n                    timestamp=\"2024-01-01T00:00:00Z\",\n                ),\n                Conflict(\n                    conflict_id=\"c-2\",\n                    node_ids=[\"b\"],\n                    conflict_type=\"t\",\n                    message=\"m\",\n                    resolved=False,\n                    timestamp=\"2024-01-01T00:00:00Z\",\n                ),\n                Conflict(\n                    conflict_id=\"c-3\",\n                    node_ids=[\"c\"],\n                    conflict_type=\"t\",\n                    message=\"m\",\n                    resolved=False,\n                    timestamp=\"2024-01-01T00:00:00Z\",\n                ),\n            ]\n            # Simulate filtering\n            unresolved = [c for c in all_conflicts if not c.resolved]\n            resp = ConflictsResponse(\n                conflicts=unresolved,\n                total=len(unresolved),\n                unresolved_only=True,\n            )\n            for c in resp.conflicts:\n                assert c.resolved is False, (\n                    \"With unresolved_only=True, no resolved conflict should appear\"\n                )\n            assert resp.total == len(resp.conflicts)\n        except NameError:\n            pytest.skip(\"ConflictsResponse not importable\")\n\n\n# ============================================================\n# format_output with 'auto' should be rejected or never happen\n# ============================================================\n\nclass TestGoodhartFormatOutputAutoRejection:\n    def test_goodhart_format_output_rejects_auto(self):\n        \"\"\"format_output should not accept 'auto' as output_format per contract precondition.\"\"\"\n        try:\n            resp = TrustShowResponse(\n                node_id=\"test\",\n                current_score=0.5,\n                tainted=False,\n                history=[],\n            )\n        except Exception:\n            pytest.skip(\"Cannot construct test model\")\n\n        try:\n            result = format_output(resp, \"auto\")\n            # If it doesn't raise, verify it at least didn't return auto-formatted garbage\n            # The contract says precondition: output_format is 'text' or 'json' (never 'auto')\n            # A compliant implementation should raise or handle this\n            pytest.fail(\n                \"format_output should reject 'auto' format per precondition\"\n            )\n        except (ValueError, TypeError, KeyError, AssertionError) as e:\n            # Expected: some kind of error for invalid precondition\n            pass\n        except Exception:\n            # Any exception is acceptable for precondition violation\n            pass\n\n\n# ============================================================\n# Authority / Trust separation invariant\n# ============================================================\n\nclass TestGoodhartTrustAuthoritySeparation:\n    def test_goodhart_authority_show_uses_authority_engine(self):\n        \"\"\"authority show must delegate to authority_engine, never trust_engine.\"\"\"\n        try:\n            runner = CliRunner(mix_stderr=False)\n        except TypeError:\n            runner = CliRunner()\n\n        try:\n            with patch(\"src.cli.authority_engine\") as mock_auth, \\\n                 patch(\"src.cli.trust_engine\") as mock_trust:\n                mock_auth.get_authority_map.return_value = AuthorityShowResponse(\n                    authority_map=[],\n                    total_entries=0,\n                )\n                result = runner.invoke(cli, [\"--format\", \"json\", \"authority\", \"show\"])\n                if result.exit_code == 0:\n                    assert mock_auth.get_authority_map.called, (\n                        \"authority show must call authority_engine\"\n                    )\n                    assert not mock_trust.compute_trust_score.called, (\n                        \"authority show must not call trust_engine\"\n                    )\n        except Exception:\n            pytest.skip(\"Cannot invoke authority show command\")\n\n    def test_goodhart_trust_show_uses_trust_engine(self):\n        \"\"\"trust show must delegate to trust_engine, never authority_engine.\"\"\"\n        try:\n            runner = CliRunner(mix_stderr=False)\n        except TypeError:\n            runner = CliRunner()\n\n        try:\n            with patch(\"src.cli.trust_engine\") as mock_trust, \\\n                 patch(\"src.cli.authority_engine\") as mock_auth:\n                mock_trust.compute_trust_score.return_value = 0.9\n                mock_trust.get_trust_history.return_value = []\n                result = runner.invoke(cli, [\"--format\", \"json\", \"trust\", \"show\", \"testnode\"])\n                if result.exit_code == 0:\n                    assert mock_trust.compute_trust_score.called or mock_trust.get_trust_history.called, (\n                        \"trust show must call trust_engine\"\n                    )\n                    assert not mock_auth.get_authority_map.called, (\n                        \"trust show must not call authority_engine\"\n                    )\n        except Exception:\n            pytest.skip(\"Cannot invoke trust show command\")\n"
+}

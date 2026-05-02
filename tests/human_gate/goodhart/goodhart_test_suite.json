@@ -1,0 +1,997 @@
+{
+  "component_id": "human_gate",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "goodhart_eval_financial_with_different_finding_types",
+      "description": "FINANCIAL data tier should trigger FINANCIAL_TIER regardless of finding_type — the trigger is tier-based, not finding-based",
+      "function": "evaluate_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "FINANCIAL tier with each FindingType variant",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All five FindingType variants produce triggered=true with FINANCIAL_TIER reason"
+      ]
+    },
+    {
+      "id": "goodhart_eval_summary_contains_node_id_various",
+      "description": "The summary field must contain the node_id for any arbitrary node_id string, not just common test values",
+      "function": "evaluate_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various unusual node_id strings like UUIDs, paths, unicode",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "summary contains the exact node_id string for both triggered and non-triggered results"
+      ]
+    },
+    {
+      "id": "goodhart_eval_low_trust_authoritative_near_zero",
+      "description": "LOW_TRUST_AUTHORITATIVE should trigger for any trust below 0.5 when authoritative, including very small values like 0.001",
+      "function": "evaluate_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "trust_score=0.001, is_authoritative=true, non-triggering tier",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "triggered=true",
+        "trigger_reason is LOW_TRUST_AUTHORITATIVE"
+      ]
+    },
+    {
+      "id": "goodhart_eval_unresolvable_conflict_regardless_of_tier",
+      "description": "UNRESOLVABLE_CONFLICT should trigger for any data tier, not just the ones tested in visible tests",
+      "function": "evaluate_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "is_unresolvable_conflict=true with PUBLIC, INTERNAL, CONFIDENTIAL tiers",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "triggered=true for all non-triggering tiers when is_unresolvable_conflict=true"
+      ]
+    },
+    {
+      "id": "goodhart_eval_financial_overrides_low_trust",
+      "description": "When multiple trigger conditions are met (e.g., FINANCIAL tier AND low trust authoritative), the tier-based reason should take precedence or at least one valid reason is returned",
+      "function": "evaluate_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "FINANCIAL tier, trust=0.1, is_authoritative=true",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "triggered=true",
+        "trigger_reason is not None",
+        "required_action is not None"
+      ]
+    },
+    {
+      "id": "goodhart_eval_non_authoritative_low_trust_no_trigger",
+      "description": "Low trust alone without is_authoritative=true must NOT trigger LOW_TRUST_AUTHORITATIVE on non-triggering tiers",
+      "function": "evaluate_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "trust_score=0.1, is_authoritative=false, PUBLIC tier, no conflict",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "triggered=false",
+        "trigger_reason is None",
+        "required_action is None"
+      ]
+    },
+    {
+      "id": "goodhart_eval_trust_slightly_above_zero",
+      "description": "trust_score=0.0001 should be valid and trigger LOW_TRUST_AUTHORITATIVE when authoritative",
+      "function": "evaluate_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "trust_score=0.0001, is_authoritative=true, INTERNAL tier",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "triggered=true",
+        "trigger_reason is LOW_TRUST_AUTHORITATIVE"
+      ]
+    },
+    {
+      "id": "goodhart_eval_error_trust_slightly_over_one",
+      "description": "trust_score just barely above 1.0 (e.g., 1.0000001) must be rejected as invalid",
+      "function": "evaluate_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "trust_score=1.0000001",
+      "expected_output_description": "",
+      "expected_error": "invalid_trust_score",
+      "assertions": [
+        "raises ValueError or similar for trust_score=1.0000001"
+      ]
+    },
+    {
+      "id": "goodhart_eval_error_trust_slightly_below_zero",
+      "description": "trust_score just barely below 0.0 (e.g., -0.0000001) must be rejected as invalid",
+      "function": "evaluate_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "trust_score=-0.0000001",
+      "expected_output_description": "",
+      "expected_error": "invalid_trust_score",
+      "assertions": [
+        "raises ValueError or similar for trust_score=-0.0000001"
+      ]
+    },
+    {
+      "id": "goodhart_eval_error_negative_infinity",
+      "description": "trust_score of negative infinity must be rejected",
+      "function": "evaluate_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "trust_score=float('-inf')",
+      "expected_output_description": "",
+      "expected_error": "invalid_trust_score",
+      "assertions": [
+        "raises error for negative infinity"
+      ]
+    },
+    {
+      "id": "goodhart_eval_error_tab_only_node_id",
+      "description": "A node_id consisting only of tab characters is whitespace-only and must be rejected",
+      "function": "evaluate_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "node_id='\\t\\t'",
+      "expected_output_description": "",
+      "expected_error": "empty_node_id",
+      "assertions": [
+        "raises error for tab-only node_id"
+      ]
+    },
+    {
+      "id": "goodhart_eval_error_newline_only_node_id",
+      "description": "A node_id consisting only of newline characters is whitespace-only and must be rejected",
+      "function": "evaluate_gate",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "node_id='\\n\\n'",
+      "expected_output_description": "",
+      "expected_error": "empty_node_id",
+      "assertions": [
+        "raises error for newline-only node_id"
+      ]
+    },
+    {
+      "id": "goodhart_eval_auth_tier_all_trust_levels",
+      "description": "AUTH data tier should trigger AUTH_TIER regardless of trust_score value within valid range",
+      "function": "evaluate_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "AUTH tier with trust_score=0.0, 0.5, 1.0",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "triggered=true and trigger_reason=AUTH_TIER for all valid trust scores"
+      ]
+    },
+    {
+      "id": "goodhart_eval_compliance_not_authoritative",
+      "description": "COMPLIANCE data tier triggers COMPLIANCE_TIER even when is_authoritative=false",
+      "function": "evaluate_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "COMPLIANCE tier, is_authoritative=false, trust_score=0.9",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "triggered=true",
+        "trigger_reason is COMPLIANCE_TIER"
+      ]
+    },
+    {
+      "id": "goodhart_build_different_finding_types",
+      "description": "build_gate_event should correctly propagate any FindingType, not just the one used in visible tests",
+      "function": "build_gate_event",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Each FindingType variant with a triggered decision",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "GateEvent.finding_type matches input finding_type for all variants"
+      ]
+    },
+    {
+      "id": "goodhart_build_different_data_tiers",
+      "description": "build_gate_event should correctly propagate any DataTier, not just FINANCIAL",
+      "function": "build_gate_event",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "AUTH and COMPLIANCE data tiers with corresponding decisions",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "GateEvent.data_tier matches input data_tier"
+      ]
+    },
+    {
+      "id": "goodhart_build_preserves_trust_score",
+      "description": "build_gate_event should preserve the exact trust_score float value in the GateEvent",
+      "function": "build_gate_event",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "trust_score=0.123456789",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "GateEvent.trust_score equals the exact input trust_score"
+      ]
+    },
+    {
+      "id": "goodhart_build_preserves_summary_from_decision",
+      "description": "build_gate_event should propagate the summary from the GateDecision into the GateEvent",
+      "function": "build_gate_event",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Decision with a specific summary string",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "GateEvent.summary matches decision.summary"
+      ]
+    },
+    {
+      "id": "goodhart_build_unique_event_ids",
+      "description": "Multiple calls to build_gate_event should produce distinct UUID4 event_ids",
+      "function": "build_gate_event",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Call build_gate_event 10 times with same inputs",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All 10 event_ids are unique"
+      ]
+    },
+    {
+      "id": "goodhart_build_timestamp_is_timezone_aware_utc",
+      "description": "The timestamp in GateEvent must be timezone-aware with UTC tzinfo, not naive",
+      "function": "build_gate_event",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Any valid triggered decision",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Parsed timestamp has tzinfo set to UTC"
+      ]
+    },
+    {
+      "id": "goodhart_validate_disabled_with_empty_url_valid",
+      "description": "When enabled=false, an empty webhook_url should not produce a validation error for the enabled+url check",
+      "function": "validate_human_gate_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "enabled=false, webhook_url='', timeout_seconds=5.0, schema_version='1'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "No error about enabled requiring webhook_url"
+      ]
+    },
+    {
+      "id": "goodhart_validate_ftp_url_scheme",
+      "description": "An ftp:// URL scheme should be rejected by validation",
+      "function": "validate_human_gate_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "webhook_url='ftp://example.com/hook'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns non-empty error list mentioning URL scheme"
+      ]
+    },
+    {
+      "id": "goodhart_validate_timeout_zero",
+      "description": "timeout_seconds=0.0 is below minimum 0.1 and must be invalid",
+      "function": "validate_human_gate_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "timeout_seconds=0.0",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns non-empty error list"
+      ]
+    },
+    {
+      "id": "goodhart_validate_timeout_negative",
+      "description": "Negative timeout_seconds must be invalid",
+      "function": "validate_human_gate_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "timeout_seconds=-1.0",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns non-empty error list"
+      ]
+    },
+    {
+      "id": "goodhart_validate_schema_version_2",
+      "description": "schema_version='2' is not recognized for this contract version and must be invalid",
+      "function": "validate_human_gate_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "schema_version='2'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns non-empty error list"
+      ]
+    },
+    {
+      "id": "goodhart_validate_schema_version_empty",
+      "description": "Empty schema_version string must be rejected",
+      "function": "validate_human_gate_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "schema_version=''",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns non-empty error list"
+      ]
+    },
+    {
+      "id": "goodhart_validate_url_no_scheme",
+      "description": "A webhook_url without any scheme (e.g., 'example.com/hook') must be rejected",
+      "function": "validate_human_gate_config",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "webhook_url='example.com/hook', enabled=true",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns non-empty error list about URL scheme"
+      ]
+    },
+    {
+      "id": "goodhart_trigger_disabled_does_not_call_emitter",
+      "description": "When config.enabled is false, the stigmergy_emitter callable should never be invoked",
+      "function": "trigger_human_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy_emitter": "Mock callable that records invocations"
+      },
+      "input_values": {},
+      "input_description": "config.enabled=false, mock emitter that tracks calls",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Emitter mock was never called",
+        "triggered=false"
+      ]
+    },
+    {
+      "id": "goodhart_trigger_not_triggered_does_not_call_emitter",
+      "description": "When gate evaluates to not-triggered, emitter and webhook should not be invoked",
+      "function": "trigger_human_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy_emitter": "Mock callable that records invocations"
+      },
+      "input_values": {},
+      "input_description": "PUBLIC tier, high trust, no conflict, no authority — gate not triggered",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Emitter mock was never called",
+        "notification_sent=false",
+        "stigmergy_emitted=false"
+      ]
+    },
+    {
+      "id": "goodhart_trigger_event_id_is_valid_uuid4",
+      "description": "The event_id in GateResult must be a valid UUID4 string, even when not triggered",
+      "function": "trigger_human_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Both triggered and non-triggered scenarios",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "event_id parses as valid UUID4 or is empty/sentinel when not triggered"
+      ]
+    },
+    {
+      "id": "goodhart_trigger_stigmergy_emitter_receives_gate_event",
+      "description": "The stigmergy emitter callable must receive a GateEvent object with correct fields",
+      "function": "trigger_human_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy_emitter": "Mock callable that captures its argument"
+      },
+      "input_values": {},
+      "input_description": "FINANCIAL tier triggering scenario, mock emitter captures argument",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Emitter was called with a GateEvent",
+        "GateEvent.node_id matches input",
+        "GateEvent.data_tier matches input",
+        "GateEvent.trigger_reason is FINANCIAL_TIER"
+      ]
+    },
+    {
+      "id": "goodhart_trigger_notification_error_none_when_sent",
+      "description": "notification_error must be None when notification_sent is true",
+      "function": "trigger_human_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy_emitter": "Returns True",
+        "send_gate_notification": "Returns success WebhookResult"
+      },
+      "input_values": {},
+      "input_description": "Successful webhook scenario",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "notification_sent=true implies notification_error is None"
+      ]
+    },
+    {
+      "id": "goodhart_trigger_notification_error_none_when_not_triggered",
+      "description": "notification_error must be None when gate is not triggered",
+      "function": "trigger_human_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Non-triggering scenario",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "notification_error is None when triggered=false"
+      ]
+    },
+    {
+      "id": "goodhart_trigger_blocked_false_when_not_triggered",
+      "description": "blocked must be false when the gate is not triggered, even if block_on_gate is true",
+      "function": "trigger_human_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Non-triggering scenario with block_on_gate=true",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "blocked=false",
+        "triggered=false"
+      ]
+    },
+    {
+      "id": "goodhart_trigger_blocked_false_when_disabled",
+      "description": "blocked must be false when config.enabled is false, even if block_on_gate is true",
+      "function": "trigger_human_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "config.enabled=false, block_on_gate=true",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "blocked=false",
+        "triggered=false"
+      ]
+    },
+    {
+      "id": "goodhart_trigger_auth_tier_orchestration",
+      "description": "Full orchestration should work correctly for AUTH data tier, not just FINANCIAL",
+      "function": "trigger_human_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy_emitter": "Returns True"
+      },
+      "input_values": {},
+      "input_description": "AUTH data tier, enabled config, mock emitter returns true",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "triggered=true",
+        "trigger_reason is AUTH_TIER",
+        "stigmergy_emitted=true"
+      ]
+    },
+    {
+      "id": "goodhart_trigger_compliance_tier_orchestration",
+      "description": "Full orchestration should work correctly for COMPLIANCE data tier",
+      "function": "trigger_human_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy_emitter": "Returns True"
+      },
+      "input_values": {},
+      "input_description": "COMPLIANCE data tier, enabled config, mock emitter returns true",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "triggered=true",
+        "trigger_reason is COMPLIANCE_TIER",
+        "stigmergy_emitted=true"
+      ]
+    },
+    {
+      "id": "goodhart_trigger_unresolvable_conflict_orchestration",
+      "description": "Full orchestration should work correctly for UNRESOLVABLE_CONFLICT trigger reason",
+      "function": "trigger_human_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy_emitter": "Returns True"
+      },
+      "input_values": {},
+      "input_description": "PUBLIC tier with is_unresolvable_conflict=true",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "triggered=true",
+        "trigger_reason is UNRESOLVABLE_CONFLICT"
+      ]
+    },
+    {
+      "id": "goodhart_trigger_stigmergy_false_still_reports_emitted_false",
+      "description": "When stigmergy emitter returns False (delivery failure), stigmergy_emitted should be false",
+      "function": "trigger_human_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy_emitter": "Returns False"
+      },
+      "input_values": {},
+      "input_description": "Triggering scenario, emitter returns False",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "stigmergy_emitted=false",
+        "triggered=true"
+      ]
+    },
+    {
+      "id": "goodhart_trigger_frozen_gate_result",
+      "description": "GateResult must be a frozen Pydantic model that cannot be mutated after construction",
+      "function": "trigger_human_gate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Any triggering scenario",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Attempting to set an attribute on GateResult raises an error"
+      ]
+    },
+    {
+      "id": "goodhart_notify_response_body_truncated_to_1024",
+      "description": "On non-2xx responses, response_body must be truncated to at most 1024 characters",
+      "function": "send_gate_notification",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request": "Mock returning 500 with large body"
+      },
+      "input_values": {},
+      "input_description": "Mock server returning 500 with 2000-character body",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response_body length <= 1024"
+      ]
+    },
+    {
+      "id": "goodhart_notify_success_response_body_is_none",
+      "description": "On success (2xx), response_body must be None — not the actual body",
+      "function": "send_gate_notification",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request": "Mock returning 200 with body"
+      },
+      "input_values": {},
+      "input_description": "Mock server returning 200 with some body",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "response_body is None",
+        "success=true"
+      ]
+    },
+    {
+      "id": "goodhart_notify_success_error_message_is_none",
+      "description": "On success (2xx), error_message must be None",
+      "function": "send_gate_notification",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request": "Mock returning 200"
+      },
+      "input_values": {},
+      "input_description": "Mock server returning 200",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "error_message is None",
+        "success=true"
+      ]
+    },
+    {
+      "id": "goodhart_notify_error_message_contains_node_id",
+      "description": "Error messages on failure must contain the event's node_id for diagnostic context",
+      "function": "send_gate_notification",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request": "Raises connection error"
+      },
+      "input_values": {},
+      "input_description": "Connection error scenario with distinctive node_id",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "error_message contains node_id string"
+      ]
+    },
+    {
+      "id": "goodhart_notify_error_message_contains_webhook_url",
+      "description": "Error messages on failure must contain the webhook_url for diagnostic context",
+      "function": "send_gate_notification",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request": "Raises connection error"
+      },
+      "input_values": {},
+      "input_description": "Connection error scenario with distinctive webhook URL",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "error_message contains webhook_url string"
+      ]
+    },
+    {
+      "id": "goodhart_notify_request_body_contains_schema_version",
+      "description": "The JSON request body sent to the webhook must include schema_version field",
+      "function": "send_gate_notification",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request": "Mock capturing request body and returning 200"
+      },
+      "input_values": {},
+      "input_description": "Mock capturing request body, event with schema_version='1'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Request body JSON contains 'schema_version' key with value '1'"
+      ]
+    },
+    {
+      "id": "goodhart_notify_201_is_success",
+      "description": "HTTP 201 (Created) is a 2xx status and should be treated as success",
+      "function": "send_gate_notification",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request": "Mock returning 201"
+      },
+      "input_values": {},
+      "input_description": "Mock server returning 201",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "success=true",
+        "status_code=201"
+      ]
+    },
+    {
+      "id": "goodhart_notify_204_is_success",
+      "description": "HTTP 204 (No Content) is a 2xx status and should be treated as success",
+      "function": "send_gate_notification",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request": "Mock returning 204"
+      },
+      "input_values": {},
+      "input_description": "Mock server returning 204",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "success=true",
+        "status_code=204"
+      ]
+    },
+    {
+      "id": "goodhart_notify_301_is_redirect_failure",
+      "description": "HTTP 301 (Moved Permanently) must be treated as redirect failure, not success",
+      "function": "send_gate_notification",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request": "Mock returning 301"
+      },
+      "input_values": {},
+      "input_description": "Mock server returning 301",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "success=false",
+        "error_message mentions redirect"
+      ]
+    },
+    {
+      "id": "goodhart_notify_302_is_redirect_failure",
+      "description": "HTTP 302 (Found) must be treated as redirect failure",
+      "function": "send_gate_notification",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request": "Mock returning 302"
+      },
+      "input_values": {},
+      "input_description": "Mock server returning 302",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "success=false",
+        "error_message mentions redirect"
+      ]
+    },
+    {
+      "id": "goodhart_notify_non_2xx_has_status_code",
+      "description": "On non-2xx response, status_code must be set (not None)",
+      "function": "send_gate_notification",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "urllib.request": "Mock returning 500"
+      },
+      "input_values": {},
+      "input_description": "Mock server returning 500",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "status_code is not None",
+        "status_code=500"
+      ]
+    },
+    {
+      "id": "goodhart_notify_frozen_webhook_result",
+      "description": "WebhookResult must be a frozen Pydantic model",
+      "function": "send_gate_notification",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Any scenario",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Attempting to set an attribute on WebhookResult raises an error"
+      ]
+    },
+    {
+      "id": "goodhart_eval_required_action_for_unresolvable",
+      "description": "UNRESOLVABLE_CONFLICT trigger should map to RESOLVE_CONFLICT required action",
+      "function": "evaluate_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "is_unresolvable_conflict=true, non-triggering tier",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "required_action is RESOLVE_CONFLICT"
+      ]
+    },
+    {
+      "id": "goodhart_eval_canary_finding_type_accepted",
+      "description": "CANARY_TRIGGERED finding type should be accepted as valid input",
+      "function": "evaluate_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "finding_type=CANARY_TRIGGERED with FINANCIAL tier",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "No error raised",
+        "triggered=true"
+      ]
+    },
+    {
+      "id": "goodhart_eval_classification_mismatch_finding_type",
+      "description": "CLASSIFICATION_MISMATCH finding type should be accepted as valid input",
+      "function": "evaluate_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "finding_type=CLASSIFICATION_MISMATCH with PUBLIC tier, no other triggers",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "No error raised",
+        "triggered=false for non-triggering conditions"
+      ]
+    },
+    {
+      "id": "goodhart_validate_returns_list_type",
+      "description": "validate_human_gate_config must always return a list, never None or other types",
+      "function": "validate_human_gate_config",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Both valid and invalid configs",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Return type is list for valid config (empty list)",
+        "Return type is list for invalid config"
+      ]
+    },
+    {
+      "id": "goodhart_validate_timeout_just_below_minimum",
+      "description": "timeout_seconds=0.09 is just below 0.1 minimum and must be invalid",
+      "function": "validate_human_gate_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "timeout_seconds=0.09",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns non-empty error list"
+      ]
+    },
+    {
+      "id": "goodhart_validate_timeout_just_above_maximum",
+      "description": "timeout_seconds=30.01 is just above 30.0 maximum and must be invalid",
+      "function": "validate_human_gate_config",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "timeout_seconds=30.01",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returns non-empty error list"
+      ]
+    },
+    {
+      "id": "goodhart_eval_unresolvable_with_financial_tier",
+      "description": "When both FINANCIAL tier and unresolvable_conflict are true, gate must trigger (at least one reason applies)",
+      "function": "evaluate_gate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "FINANCIAL tier, is_unresolvable_conflict=true",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "triggered=true",
+        "trigger_reason is not None"
+      ]
+    },
+    {
+      "id": "goodhart_trigger_low_trust_authoritative_orchestration",
+      "description": "Full orchestration should work for LOW_TRUST_AUTHORITATIVE trigger reason",
+      "function": "trigger_human_gate",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "stigmergy_emitter": "Returns True"
+      },
+      "input_values": {},
+      "input_description": "INTERNAL tier, trust=0.2, is_authoritative=true",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "triggered=true",
+        "trigger_reason is LOW_TRUST_AUTHORITATIVE"
+      ]
+    },
+    {
+      "id": "goodhart_build_schema_version_propagated",
+      "description": "build_gate_event must propagate the exact schema_version string to GateEvent",
+      "function": "build_gate_event",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "schema_version='1'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "GateEvent.schema_version == '1'"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nAdversarial hidden acceptance tests for the Human Gate component.\nThese tests target gaps in visible test coverage to catch implementations\nthat hardcode returns or take shortcuts based on visible test inputs.\n\"\"\"\nimport math\nimport json\nimport uuid\nfrom datetime import datetime, timezone\nfrom unittest.mock import MagicMock, patch, call\nfrom urllib.error import URLError, HTTPError\nfrom io import BytesIO\n\nimport pytest\n\nfrom src.human_gate import (\n    evaluate_gate,\n    build_gate_event,\n    send_gate_notification,\n    trigger_human_gate,\n    validate_human_gate_config,\n    GateTriggerReason,\n    FindingType,\n    DataTier,\n    RequiredAction,\n    HumanGateConfig,\n    GateDecision,\n    GateEvent,\n    WebhookResult,\n    GateResult,\n)\n\n\n# ─── Helper factories ────────────────────────────────────────────────\n\ndef _make_config(**overrides):\n    defaults = dict(\n        enabled=True,\n        webhook_url=\"https://hooks.example.com/gate\",\n        block_on_gate=False,\n        timeout_seconds=5.0,\n        schema_version=\"1\",\n    )\n    defaults.update(overrides)\n    return HumanGateConfig(**defaults)\n\n\ndef _make_triggered_decision(**overrides):\n    defaults = dict(\n        triggered=True,\n        trigger_reason=GateTriggerReason.FINANCIAL_TIER,\n        required_action=RequiredAction.REVIEW_AND_APPROVE,\n        summary=\"Gate triggered for node-abc\",\n    )\n    defaults.update(overrides)\n    return GateDecision(**defaults)\n\n\ndef _make_gate_event(**overrides):\n    defaults = dict(\n        event_id=str(uuid.uuid4()),\n        timestamp=datetime.now(timezone.utc).isoformat(),\n        node_id=\"node-test-123\",\n        finding_type=FindingType.TRUST_VIOLATION,\n        trust_score=0.3,\n        data_tier=DataTier.FINANCIAL,\n        trigger_reason=GateTriggerReason.FINANCIAL_TIER,\n        required_action=RequiredAction.REVIEW_AND_APPROVE,\n        summary=\"Test gate event\",\n        schema_version=\"1\",\n    )\n    defaults.update(overrides)\n    return GateEvent(**defaults)\n\n\n# ─── evaluate_gate tests ─────────────────────────────────────────────\n\nclass TestGoodhartEvaluateGate:\n\n    def test_goodhart_financial_with_all_finding_types(self):\n        \"\"\"FINANCIAL data tier should trigger FINANCIAL_TIER regardless of finding_type\"\"\"\n        for ft in FindingType:\n            result = evaluate_gate(\n                node_id=\"node-fin-ft\",\n                finding_type=ft,\n                trust_score=0.8,\n                data_tier=DataTier.FINANCIAL,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n            assert result.triggered is True, f\"Should trigger for FINANCIAL with {ft}\"\n            assert result.trigger_reason == GateTriggerReason.FINANCIAL_TIER, f\"Reason should be FINANCIAL_TIER with {ft}\"\n\n    def test_goodhart_summary_contains_various_node_ids(self):\n        \"\"\"summary field must contain the node_id for arbitrary node_id strings\"\"\"\n        node_ids = [\n            \"node-with-dashes\",\n            \"node/with/slashes\",\n            \"node.with.dots\",\n            \"a\" * 200,\n            \"nöde-ünïcödé\",\n            \"node_123_abc\",\n            \"x\",\n        ]\n        for nid in node_ids:\n            result = evaluate_gate(\n                node_id=nid,\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.8,\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n            assert nid in result.summary, f\"summary should contain node_id '{nid}'\"\n\n    def test_goodhart_summary_contains_node_id_when_triggered(self):\n        \"\"\"summary must contain node_id even when gate is triggered\"\"\"\n        nid = \"unique-node-xyz-789\"\n        result = evaluate_gate(\n            node_id=nid,\n            finding_type=FindingType.ACCESS_CONFLICT,\n            trust_score=0.3,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=True,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is True\n        assert nid in result.summary\n\n    def test_goodhart_low_trust_authoritative_near_zero(self):\n        \"\"\"LOW_TRUST_AUTHORITATIVE triggers for very small trust like 0.001 when authoritative\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-lt-001\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.001,\n            data_tier=DataTier.INTERNAL,\n            is_authoritative=True,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is True\n        assert result.trigger_reason == GateTriggerReason.LOW_TRUST_AUTHORITATIVE\n\n    def test_goodhart_unresolvable_conflict_all_non_triggering_tiers(self):\n        \"\"\"UNRESOLVABLE_CONFLICT fires for any data tier, including non-triggering ones\"\"\"\n        for tier in [DataTier.PUBLIC, DataTier.INTERNAL, DataTier.CONFIDENTIAL]:\n            result = evaluate_gate(\n                node_id=\"node-unres\",\n                finding_type=FindingType.ACCESS_CONFLICT,\n                trust_score=0.9,\n                data_tier=tier,\n                is_authoritative=False,\n                is_unresolvable_conflict=True,\n            )\n            assert result.triggered is True, f\"Should trigger UNRESOLVABLE for {tier}\"\n            assert result.trigger_reason == GateTriggerReason.UNRESOLVABLE_CONFLICT\n\n    def test_goodhart_financial_and_low_trust_auth_overlap(self):\n        \"\"\"When FINANCIAL tier AND low trust authoritative both apply, gate must trigger\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-overlap\",\n            finding_type=FindingType.BLAST_RADIUS_EXCEEDED,\n            trust_score=0.1,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=True,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is True\n        assert result.trigger_reason is not None\n        assert result.required_action is not None\n\n    def test_goodhart_non_authoritative_low_trust_no_trigger(self):\n        \"\"\"Low trust without is_authoritative=true must NOT trigger on non-triggering tier\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-nonauth\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.1,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is False\n        assert result.trigger_reason is None\n        assert result.required_action is None\n\n    def test_goodhart_trust_slightly_above_zero(self):\n        \"\"\"trust_score=0.0001 is valid and triggers LOW_TRUST_AUTHORITATIVE when authoritative\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-tiny-trust\",\n            finding_type=FindingType.CANARY_TRIGGERED,\n            trust_score=0.0001,\n            data_tier=DataTier.INTERNAL,\n            is_authoritative=True,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is True\n        assert result.trigger_reason == GateTriggerReason.LOW_TRUST_AUTHORITATIVE\n\n    def test_goodhart_error_trust_slightly_over_one(self):\n        \"\"\"trust_score just barely above 1.0 must be rejected\"\"\"\n        with pytest.raises(Exception):\n            evaluate_gate(\n                node_id=\"node-err\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=1.0000001,\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n\n    def test_goodhart_error_trust_slightly_below_zero(self):\n        \"\"\"trust_score just barely below 0.0 must be rejected\"\"\"\n        with pytest.raises(Exception):\n            evaluate_gate(\n                node_id=\"node-err2\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=-0.0000001,\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n\n    def test_goodhart_error_negative_infinity(self):\n        \"\"\"Negative infinity trust_score must be rejected\"\"\"\n        with pytest.raises(Exception):\n            evaluate_gate(\n                node_id=\"node-neginf\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=float(\"-inf\"),\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n\n    def test_goodhart_error_tab_only_node_id(self):\n        \"\"\"Tab-only node_id is whitespace-only and must be rejected\"\"\"\n        with pytest.raises(Exception):\n            evaluate_gate(\n                node_id=\"\\t\\t\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.5,\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n\n    def test_goodhart_error_newline_only_node_id(self):\n        \"\"\"Newline-only node_id is whitespace-only and must be rejected\"\"\"\n        with pytest.raises(Exception):\n            evaluate_gate(\n                node_id=\"\\n\\n\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.5,\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n\n    def test_goodhart_auth_tier_triggers_across_trust_levels(self):\n        \"\"\"AUTH tier triggers AUTH_TIER regardless of trust_score\"\"\"\n        for ts in [0.0, 0.25, 0.5, 0.75, 1.0]:\n            result = evaluate_gate(\n                node_id=\"node-auth-ts\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=ts,\n                data_tier=DataTier.AUTH,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n            )\n            assert result.triggered is True, f\"AUTH should trigger at trust={ts}\"\n            assert result.trigger_reason == GateTriggerReason.AUTH_TIER\n\n    def test_goodhart_compliance_non_authoritative(self):\n        \"\"\"COMPLIANCE tier triggers COMPLIANCE_TIER even when is_authoritative=false\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-comp-noauth\",\n            finding_type=FindingType.CLASSIFICATION_MISMATCH,\n            trust_score=0.9,\n            data_tier=DataTier.COMPLIANCE,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is True\n        assert result.trigger_reason == GateTriggerReason.COMPLIANCE_TIER\n\n    def test_goodhart_required_action_for_unresolvable(self):\n        \"\"\"UNRESOLVABLE_CONFLICT should map to RESOLVE_CONFLICT required action\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-unres-action\",\n            finding_type=FindingType.ACCESS_CONFLICT,\n            trust_score=0.8,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=False,\n            is_unresolvable_conflict=True,\n        )\n        assert result.triggered is True\n        assert result.required_action == RequiredAction.RESOLVE_CONFLICT\n\n    def test_goodhart_canary_finding_type_accepted(self):\n        \"\"\"CANARY_TRIGGERED finding type should be accepted\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-canary\",\n            finding_type=FindingType.CANARY_TRIGGERED,\n            trust_score=0.8,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is True\n\n    def test_goodhart_classification_mismatch_no_trigger_on_public(self):\n        \"\"\"CLASSIFICATION_MISMATCH finding type is valid, gate depends on tier not finding type\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-classmis\",\n            finding_type=FindingType.CLASSIFICATION_MISMATCH,\n            trust_score=0.8,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n        )\n        assert result.triggered is False\n\n    def test_goodhart_unresolvable_with_financial_tier(self):\n        \"\"\"Both FINANCIAL tier and unresolvable_conflict true: must trigger\"\"\"\n        result = evaluate_gate(\n            node_id=\"node-both\",\n            finding_type=FindingType.ACCESS_CONFLICT,\n            trust_score=0.8,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=True,\n        )\n        assert result.triggered is True\n        assert result.trigger_reason is not None\n\n\n# ─── build_gate_event tests ──────────────────────────────────────────\n\nclass TestGoodhartBuildGateEvent:\n\n    def test_goodhart_different_finding_types(self):\n        \"\"\"build_gate_event propagates any FindingType, not just the one in visible tests\"\"\"\n        for ft in FindingType:\n            decision = _make_triggered_decision()\n            event = build_gate_event(\n                node_id=\"node-ft-test\",\n                finding_type=ft,\n                trust_score=0.5,\n                data_tier=DataTier.FINANCIAL,\n                decision=decision,\n                schema_version=\"1\",\n            )\n            assert event.finding_type == ft\n\n    def test_goodhart_different_data_tiers(self):\n        \"\"\"build_gate_event propagates AUTH and COMPLIANCE data tiers correctly\"\"\"\n        for tier, reason in [\n            (DataTier.AUTH, GateTriggerReason.AUTH_TIER),\n            (DataTier.COMPLIANCE, GateTriggerReason.COMPLIANCE_TIER),\n        ]:\n            decision = _make_triggered_decision(trigger_reason=reason)\n            event = build_gate_event(\n                node_id=\"node-tier-test\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.5,\n                data_tier=tier,\n                decision=decision,\n                schema_version=\"1\",\n            )\n            assert event.data_tier == tier\n            assert event.trigger_reason == reason\n\n    def test_goodhart_preserves_trust_score_exactly(self):\n        \"\"\"build_gate_event preserves exact trust_score float value\"\"\"\n        ts = 0.123456789\n        decision = _make_triggered_decision()\n        event = build_gate_event(\n            node_id=\"node-trust-exact\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=ts,\n            data_tier=DataTier.FINANCIAL,\n            decision=decision,\n            schema_version=\"1\",\n        )\n        assert event.trust_score == ts\n\n    def test_goodhart_preserves_summary_from_decision(self):\n        \"\"\"build_gate_event propagates summary from decision\"\"\"\n        summary = \"Custom summary for node-xyz-999\"\n        decision = _make_triggered_decision(summary=summary)\n        event = build_gate_event(\n            node_id=\"node-xyz-999\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.5,\n            data_tier=DataTier.FINANCIAL,\n            decision=decision,\n            schema_version=\"1\",\n        )\n        assert event.summary == summary\n\n    def test_goodhart_unique_event_ids_across_calls(self):\n        \"\"\"Multiple calls produce distinct UUID4 event_ids\"\"\"\n        decision = _make_triggered_decision()\n        event_ids = set()\n        for _ in range(10):\n            event = build_gate_event(\n                node_id=\"node-uniq\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.5,\n                data_tier=DataTier.FINANCIAL,\n                decision=decision,\n                schema_version=\"1\",\n            )\n            event_ids.add(event.event_id)\n        assert len(event_ids) == 10\n\n    def test_goodhart_timestamp_is_timezone_aware_utc(self):\n        \"\"\"Timestamp must be timezone-aware with UTC\"\"\"\n        decision = _make_triggered_decision()\n        event = build_gate_event(\n            node_id=\"node-tz\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.5,\n            data_tier=DataTier.FINANCIAL,\n            decision=decision,\n            schema_version=\"1\",\n        )\n        ts = datetime.fromisoformat(event.timestamp)\n        assert ts.tzinfo is not None, \"Timestamp must be timezone-aware\"\n        assert ts.utcoffset().total_seconds() == 0, \"Timestamp must be UTC\"\n\n    def test_goodhart_schema_version_propagated(self):\n        \"\"\"schema_version is propagated exactly to GateEvent\"\"\"\n        decision = _make_triggered_decision()\n        event = build_gate_event(\n            node_id=\"node-sv\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.5,\n            data_tier=DataTier.FINANCIAL,\n            decision=decision,\n            schema_version=\"1\",\n        )\n        assert event.schema_version == \"1\"\n\n    def test_goodhart_node_id_propagated(self):\n        \"\"\"node_id is propagated exactly to GateEvent\"\"\"\n        nid = \"very-specific-node-id-12345\"\n        decision = _make_triggered_decision()\n        event = build_gate_event(\n            node_id=nid,\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.5,\n            data_tier=DataTier.FINANCIAL,\n            decision=decision,\n            schema_version=\"1\",\n        )\n        assert event.node_id == nid\n\n    def test_goodhart_required_action_propagated(self):\n        \"\"\"required_action from decision is propagated to GateEvent\"\"\"\n        for action in RequiredAction:\n            decision = _make_triggered_decision(required_action=action)\n            event = build_gate_event(\n                node_id=\"node-act\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.5,\n                data_tier=DataTier.FINANCIAL,\n                decision=decision,\n                schema_version=\"1\",\n            )\n            assert event.required_action == action\n\n\n# ─── validate_human_gate_config tests ────────────────────────────────\n\nclass TestGoodhartValidateConfig:\n\n    def test_goodhart_disabled_with_empty_url_valid(self):\n        \"\"\"When enabled=false, empty webhook_url should not trigger the 'enabled requires url' error\"\"\"\n        config = _make_config(enabled=False, webhook_url=\"\")\n        errors = validate_human_gate_config(config)\n        # Should not have an error about enabled requiring webhook_url\n        # May have other errors (e.g., about URL scheme) but the enabled+url check shouldn't fire\n        enabled_url_errors = [e for e in errors if \"enabled\" in e.lower() and \"url\" in e.lower()]\n        assert len(enabled_url_errors) == 0\n\n    def test_goodhart_ftp_url_rejected(self):\n        \"\"\"ftp:// URL scheme must be rejected\"\"\"\n        config = _make_config(webhook_url=\"ftp://example.com/hook\")\n        errors = validate_human_gate_config(config)\n        assert len(errors) > 0\n\n    def test_goodhart_timeout_zero_rejected(self):\n        \"\"\"timeout_seconds=0.0 is below minimum\"\"\"\n        config = _make_config(timeout_seconds=0.0)\n        errors = validate_human_gate_config(config)\n        assert len(errors) > 0\n\n    def test_goodhart_timeout_negative_rejected(self):\n        \"\"\"Negative timeout is invalid\"\"\"\n        config = _make_config(timeout_seconds=-1.0)\n        errors = validate_human_gate_config(config)\n        assert len(errors) > 0\n\n    def test_goodhart_schema_version_2_rejected(self):\n        \"\"\"schema_version='2' is not recognized\"\"\"\n        config = _make_config(schema_version=\"2\")\n        errors = validate_human_gate_config(config)\n        assert len(errors) > 0\n\n    def test_goodhart_schema_version_empty_rejected(self):\n        \"\"\"Empty schema_version is invalid\"\"\"\n        config = _make_config(schema_version=\"\")\n        errors = validate_human_gate_config(config)\n        assert len(errors) > 0\n\n    def test_goodhart_url_no_scheme_rejected(self):\n        \"\"\"URL without scheme must be rejected\"\"\"\n        config = _make_config(webhook_url=\"example.com/hook\")\n        errors = validate_human_gate_config(config)\n        assert len(errors) > 0\n\n    def test_goodhart_returns_list_type_always(self):\n        \"\"\"Return type is always list\"\"\"\n        valid_config = _make_config()\n        result = validate_human_gate_config(valid_config)\n        assert isinstance(result, list)\n        assert len(result) == 0\n\n        invalid_config = _make_config(timeout_seconds=-1.0, schema_version=\"9\")\n        result = validate_human_gate_config(invalid_config)\n        assert isinstance(result, list)\n        assert len(result) > 0\n\n    def test_goodhart_timeout_just_below_minimum(self):\n        \"\"\"timeout_seconds=0.09 is just below 0.1 minimum\"\"\"\n        config = _make_config(timeout_seconds=0.09)\n        errors = validate_human_gate_config(config)\n        assert len(errors) > 0\n\n    def test_goodhart_timeout_just_above_maximum(self):\n        \"\"\"timeout_seconds=30.01 is just above 30.0 maximum\"\"\"\n        config = _make_config(timeout_seconds=30.01)\n        errors = validate_human_gate_config(config)\n        assert len(errors) > 0\n\n    def test_goodhart_ws_url_rejected(self):\n        \"\"\"ws:// and wss:// URL schemes must be rejected\"\"\"\n        config = _make_config(webhook_url=\"ws://example.com/hook\")\n        errors = validate_human_gate_config(config)\n        assert len(errors) > 0\n\n    def test_goodhart_valid_http_url_accepted(self):\n        \"\"\"http:// URL should be accepted (not just https://)\"\"\"\n        config = _make_config(webhook_url=\"http://internal.example.com/hook\")\n        errors = validate_human_gate_config(config)\n        assert len(errors) == 0\n\n\n# ─── send_gate_notification tests ────────────────────────────────────\n\nclass TestGoodhartSendNotification:\n\n    def test_goodhart_response_body_truncated_to_1024(self):\n        \"\"\"Non-2xx response body must be truncated to max 1024 chars\"\"\"\n        event = _make_gate_event()\n        config = _make_config()\n        large_body = \"X\" * 2000\n\n        with patch(\"src.human_gate.urllib.request.urlopen\") as mock_urlopen:\n            mock_resp = MagicMock()\n            mock_resp.status = 500\n            mock_resp.getcode.return_value = 500\n            mock_resp.read.return_value = large_body.encode(\"utf-8\")\n            mock_resp.headers = {}\n            mock_resp.__enter__ = MagicMock(return_value=mock_resp)\n            mock_resp.__exit__ = MagicMock(return_value=False)\n\n            error = HTTPError(\n                url=config.webhook_url,\n                code=500,\n                msg=\"Internal Server Error\",\n                hdrs={},\n                fp=BytesIO(large_body.encode(\"utf-8\")),\n            )\n            mock_urlopen.side_effect = error\n\n            result = send_gate_notification(event, config)\n            assert result.success is False\n            if result.response_body is not None:\n                assert len(result.response_body) <= 1024\n\n    def test_goodhart_success_response_body_is_none(self):\n        \"\"\"On 2xx success, response_body must be None\"\"\"\n        event = _make_gate_event()\n        config = _make_config()\n\n        with patch(\"src.human_gate.urllib.request.urlopen\") as mock_urlopen:\n            mock_resp = MagicMock()\n            mock_resp.status = 200\n            mock_resp.getcode.return_value = 200\n            mock_resp.read.return_value = b'{\"ok\": true}'\n            mock_resp.headers = {}\n            mock_resp.__enter__ = MagicMock(return_value=mock_resp)\n            mock_resp.__exit__ = MagicMock(return_value=False)\n            mock_urlopen.return_value = mock_resp\n\n            result = send_gate_notification(event, config)\n            assert result.success is True\n            assert result.response_body is None\n\n    def test_goodhart_success_error_message_is_none(self):\n        \"\"\"On 2xx success, error_message must be None\"\"\"\n        event = _make_gate_event()\n        config = _make_config()\n\n        with patch(\"src.human_gate.urllib.request.urlopen\") as mock_urlopen:\n            mock_resp = MagicMock()\n            mock_resp.status = 200\n            mock_resp.getcode.return_value = 200\n            mock_resp.read.return_value = b\"\"\n            mock_resp.headers = {}\n            mock_resp.__enter__ = MagicMock(return_value=mock_resp)\n            mock_resp.__exit__ = MagicMock(return_value=False)\n            mock_urlopen.return_value = mock_resp\n\n            result = send_gate_notification(event, config)\n            assert result.success is True\n            assert result.error_message is None\n\n    def test_goodhart_error_message_contains_node_id(self):\n        \"\"\"Error messages must contain the event's node_id\"\"\"\n        unique_nid = \"distinctive-node-id-for-error-check-42\"\n        event = _make_gate_event(node_id=unique_nid)\n        config = _make_config()\n\n        with patch(\"src.human_gate.urllib.request.urlopen\") as mock_urlopen:\n            mock_urlopen.side_effect = URLError(\"Connection refused\")\n            result = send_gate_notification(event, config)\n            assert result.success is False\n            assert unique_nid in result.error_message\n\n    def test_goodhart_error_message_contains_webhook_url(self):\n        \"\"\"Error messages must contain the webhook_url\"\"\"\n        unique_url = \"https://unique-webhook-host-999.example.com/gate-hook\"\n        event = _make_gate_event()\n        config = _make_config(webhook_url=unique_url)\n\n        with patch(\"src.human_gate.urllib.request.urlopen\") as mock_urlopen:\n            mock_urlopen.side_effect = URLError(\"Connection refused\")\n            result = send_gate_notification(event, config)\n            assert result.success is False\n            assert unique_url in result.error_message\n\n    def test_goodhart_request_body_contains_schema_version(self):\n        \"\"\"JSON request body must include schema_version\"\"\"\n        event = _make_gate_event(schema_version=\"1\")\n        config = _make_config()\n        captured_request = {}\n\n        with patch(\"src.human_gate.urllib.request.urlopen\") as mock_urlopen:\n            def capture_request(req, **kwargs):\n                captured_request[\"data\"] = req.data\n                mock_resp = MagicMock()\n                mock_resp.status = 200\n                mock_resp.getcode.return_value = 200\n                mock_resp.read.return_value = b\"\"\n                mock_resp.headers = {}\n                mock_resp.__enter__ = MagicMock(return_value=mock_resp)\n                mock_resp.__exit__ = MagicMock(return_value=False)\n                return mock_resp\n\n            mock_urlopen.side_effect = capture_request\n            result = send_gate_notification(event, config)\n\n            if \"data\" in captured_request and captured_request[\"data\"]:\n                body = json.loads(captured_request[\"data\"])\n                assert \"schema_version\" in body\n                assert body[\"schema_version\"] == \"1\"\n\n    def test_goodhart_201_is_success(self):\n        \"\"\"HTTP 201 should be treated as success\"\"\"\n        event = _make_gate_event()\n        config = _make_config()\n\n        with patch(\"src.human_gate.urllib.request.urlopen\") as mock_urlopen:\n            mock_resp = MagicMock()\n            mock_resp.status = 201\n            mock_resp.getcode.return_value = 201\n            mock_resp.read.return_value = b\"\"\n            mock_resp.headers = {}\n            mock_resp.__enter__ = MagicMock(return_value=mock_resp)\n            mock_resp.__exit__ = MagicMock(return_value=False)\n            mock_urlopen.return_value = mock_resp\n\n            result = send_gate_notification(event, config)\n            assert result.success is True\n            assert result.status_code == 201\n\n    def test_goodhart_204_is_success(self):\n        \"\"\"HTTP 204 should be treated as success\"\"\"\n        event = _make_gate_event()\n        config = _make_config()\n\n        with patch(\"src.human_gate.urllib.request.urlopen\") as mock_urlopen:\n            mock_resp = MagicMock()\n            mock_resp.status = 204\n            mock_resp.getcode.return_value = 204\n            mock_resp.read.return_value = b\"\"\n            mock_resp.headers = {}\n            mock_resp.__enter__ = MagicMock(return_value=mock_resp)\n            mock_resp.__exit__ = MagicMock(return_value=False)\n            mock_urlopen.return_value = mock_resp\n\n            result = send_gate_notification(event, config)\n            assert result.success is True\n            assert result.status_code == 204\n\n    def test_goodhart_301_is_redirect_failure(self):\n        \"\"\"HTTP 301 redirect must be treated as failure\"\"\"\n        event = _make_gate_event()\n        config = _make_config()\n\n        with patch(\"src.human_gate.urllib.request.urlopen\") as mock_urlopen:\n            error = HTTPError(\n                url=config.webhook_url,\n                code=301,\n                msg=\"Moved Permanently\",\n                hdrs={},\n                fp=BytesIO(b\"\"),\n            )\n            mock_urlopen.side_effect = error\n\n            result = send_gate_notification(event, config)\n            assert result.success is False\n            assert result.error_message is not None\n            assert \"redirect\" in result.error_message.lower()\n\n    def test_goodhart_302_is_redirect_failure(self):\n        \"\"\"HTTP 302 redirect must be treated as failure\"\"\"\n        event = _make_gate_event()\n        config = _make_config()\n\n        with patch(\"src.human_gate.urllib.request.urlopen\") as mock_urlopen:\n            error = HTTPError(\n                url=config.webhook_url,\n                code=302,\n                msg=\"Found\",\n                hdrs={},\n                fp=BytesIO(b\"\"),\n            )\n            mock_urlopen.side_effect = error\n\n            result = send_gate_notification(event, config)\n            assert result.success is False\n            assert result.error_message is not None\n            assert \"redirect\" in result.error_message.lower()\n\n    def test_goodhart_non_2xx_has_status_code_set(self):\n        \"\"\"On non-2xx response, status_code must not be None\"\"\"\n        event = _make_gate_event()\n        config = _make_config()\n\n        with patch(\"src.human_gate.urllib.request.urlopen\") as mock_urlopen:\n            error = HTTPError(\n                url=config.webhook_url,\n                code=500,\n                msg=\"Internal Server Error\",\n                hdrs={},\n                fp=BytesIO(b\"server error\"),\n            )\n            mock_urlopen.side_effect = error\n\n            result = send_gate_notification(event, config)\n            assert result.success is False\n            assert result.status_code is not None\n            assert result.status_code == 500\n\n    def test_goodhart_frozen_webhook_result(self):\n        \"\"\"WebhookResult must be frozen\"\"\"\n        event = _make_gate_event()\n        config = _make_config()\n\n        with patch(\"src.human_gate.urllib.request.urlopen\") as mock_urlopen:\n            mock_resp = MagicMock()\n            mock_resp.status = 200\n            mock_resp.getcode.return_value = 200\n            mock_resp.read.return_value = b\"\"\n            mock_resp.headers = {}\n            mock_resp.__enter__ = MagicMock(return_value=mock_resp)\n            mock_resp.__exit__ = MagicMock(return_value=False)\n            mock_urlopen.return_value = mock_resp\n\n            result = send_gate_notification(event, config)\n            with pytest.raises(Exception):\n                result.success = False\n\n    def test_goodhart_connection_error_status_code_is_none(self):\n        \"\"\"On connection error, status_code must be None\"\"\"\n        event = _make_gate_event()\n        config = _make_config()\n\n        with patch(\"src.human_gate.urllib.request.urlopen\") as mock_urlopen:\n            mock_urlopen.side_effect = URLError(\"Connection refused\")\n            result = send_gate_notification(event, config)\n            assert result.success is False\n            assert result.status_code is None\n\n\n# ─── trigger_human_gate tests ────────────────────────────────────────\n\nclass TestGoodhartTriggerHumanGate:\n\n    def test_goodhart_disabled_does_not_call_emitter(self):\n        \"\"\"When disabled, stigmergy emitter must never be invoked\"\"\"\n        mock_emitter = MagicMock(return_value=True)\n        config = _make_config(enabled=False)\n        result = trigger_human_gate(\n            node_id=\"node-disabled\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.5,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=config,\n            stigmergy_emitter=mock_emitter,\n        )\n        assert result.triggered is False\n        mock_emitter.assert_not_called()\n\n    def test_goodhart_not_triggered_does_not_call_emitter(self):\n        \"\"\"When gate doesn't trigger, emitter must not be called\"\"\"\n        mock_emitter = MagicMock(return_value=True)\n        config = _make_config()\n        result = trigger_human_gate(\n            node_id=\"node-no-trigger\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.9,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=config,\n            stigmergy_emitter=mock_emitter,\n        )\n        assert result.triggered is False\n        assert result.stigmergy_emitted is False\n        assert result.notification_sent is False\n        mock_emitter.assert_not_called()\n\n    def test_goodhart_event_id_is_valid_uuid4_when_triggered(self):\n        \"\"\"event_id must be valid UUID4 when triggered\"\"\"\n        mock_emitter = MagicMock(return_value=True)\n        config = _make_config()\n\n        with patch(\"src.human_gate.send_gate_notification\") as mock_notify:\n            mock_notify.return_value = WebhookResult(\n                success=True, status_code=200, error_message=None,\n                response_body=None, elapsed_ms=10.0\n            )\n            result = trigger_human_gate(\n                node_id=\"node-uuid-check\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.5,\n                data_tier=DataTier.FINANCIAL,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n                config=config,\n                stigmergy_emitter=mock_emitter,\n            )\n            assert result.triggered is True\n            parsed = uuid.UUID(result.event_id, version=4)\n            assert str(parsed) == result.event_id\n\n    def test_goodhart_emitter_receives_gate_event_with_correct_fields(self):\n        \"\"\"Stigmergy emitter must receive GateEvent with fields matching inputs\"\"\"\n        captured = {}\n\n        def capture_emitter(event):\n            captured[\"event\"] = event\n            return True\n\n        config = _make_config()\n\n        with patch(\"src.human_gate.send_gate_notification\") as mock_notify:\n            mock_notify.return_value = WebhookResult(\n                success=True, status_code=200, error_message=None,\n                response_body=None, elapsed_ms=10.0\n            )\n            trigger_human_gate(\n                node_id=\"node-emitter-check\",\n                finding_type=FindingType.BLAST_RADIUS_EXCEEDED,\n                trust_score=0.3,\n                data_tier=DataTier.FINANCIAL,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n                config=config,\n                stigmergy_emitter=capture_emitter,\n            )\n\n        assert \"event\" in captured\n        event = captured[\"event\"]\n        assert isinstance(event, GateEvent)\n        assert event.node_id == \"node-emitter-check\"\n        assert event.finding_type == FindingType.BLAST_RADIUS_EXCEEDED\n        assert event.data_tier == DataTier.FINANCIAL\n        assert event.trigger_reason == GateTriggerReason.FINANCIAL_TIER\n\n    def test_goodhart_notification_error_none_when_sent(self):\n        \"\"\"notification_error must be None when notification_sent is true\"\"\"\n        mock_emitter = MagicMock(return_value=True)\n        config = _make_config()\n\n        with patch(\"src.human_gate.send_gate_notification\") as mock_notify:\n            mock_notify.return_value = WebhookResult(\n                success=True, status_code=200, error_message=None,\n                response_body=None, elapsed_ms=5.0\n            )\n            result = trigger_human_gate(\n                node_id=\"node-notif-ok\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.5,\n                data_tier=DataTier.FINANCIAL,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n                config=config,\n                stigmergy_emitter=mock_emitter,\n            )\n            assert result.notification_sent is True\n            assert result.notification_error is None\n\n    def test_goodhart_notification_error_none_when_not_triggered(self):\n        \"\"\"notification_error must be None when gate not triggered\"\"\"\n        mock_emitter = MagicMock(return_value=True)\n        config = _make_config()\n        result = trigger_human_gate(\n            node_id=\"node-no-notif\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.9,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=config,\n            stigmergy_emitter=mock_emitter,\n        )\n        assert result.triggered is False\n        assert result.notification_error is None\n\n    def test_goodhart_blocked_false_when_not_triggered_despite_block_on_gate(self):\n        \"\"\"blocked is false when not triggered, even if block_on_gate=true\"\"\"\n        mock_emitter = MagicMock(return_value=True)\n        config = _make_config(block_on_gate=True)\n        result = trigger_human_gate(\n            node_id=\"node-block-no-trig\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.9,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=config,\n            stigmergy_emitter=mock_emitter,\n        )\n        assert result.triggered is False\n        assert result.blocked is False\n\n    def test_goodhart_blocked_false_when_disabled_despite_block_on_gate(self):\n        \"\"\"blocked is false when disabled, even if block_on_gate=true\"\"\"\n        mock_emitter = MagicMock(return_value=True)\n        config = _make_config(enabled=False, block_on_gate=True)\n        result = trigger_human_gate(\n            node_id=\"node-block-disabled\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.5,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=config,\n            stigmergy_emitter=mock_emitter,\n        )\n        assert result.triggered is False\n        assert result.blocked is False\n\n    def test_goodhart_auth_tier_orchestration(self):\n        \"\"\"Full orchestration works for AUTH tier\"\"\"\n        mock_emitter = MagicMock(return_value=True)\n        config = _make_config()\n\n        with patch(\"src.human_gate.send_gate_notification\") as mock_notify:\n            mock_notify.return_value = WebhookResult(\n                success=True, status_code=200, error_message=None,\n                response_body=None, elapsed_ms=5.0\n            )\n            result = trigger_human_gate(\n                node_id=\"node-auth-orch\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.8,\n                data_tier=DataTier.AUTH,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n                config=config,\n                stigmergy_emitter=mock_emitter,\n            )\n            assert result.triggered is True\n            assert result.trigger_reason == GateTriggerReason.AUTH_TIER\n            assert result.stigmergy_emitted is True\n\n    def test_goodhart_compliance_tier_orchestration(self):\n        \"\"\"Full orchestration works for COMPLIANCE tier\"\"\"\n        mock_emitter = MagicMock(return_value=True)\n        config = _make_config()\n\n        with patch(\"src.human_gate.send_gate_notification\") as mock_notify:\n            mock_notify.return_value = WebhookResult(\n                success=True, status_code=200, error_message=None,\n                response_body=None, elapsed_ms=5.0\n            )\n            result = trigger_human_gate(\n                node_id=\"node-comp-orch\",\n                finding_type=FindingType.CLASSIFICATION_MISMATCH,\n                trust_score=0.7,\n                data_tier=DataTier.COMPLIANCE,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n                config=config,\n                stigmergy_emitter=mock_emitter,\n            )\n            assert result.triggered is True\n            assert result.trigger_reason == GateTriggerReason.COMPLIANCE_TIER\n\n    def test_goodhart_unresolvable_conflict_orchestration(self):\n        \"\"\"Full orchestration works for UNRESOLVABLE_CONFLICT\"\"\"\n        mock_emitter = MagicMock(return_value=True)\n        config = _make_config()\n\n        with patch(\"src.human_gate.send_gate_notification\") as mock_notify:\n            mock_notify.return_value = WebhookResult(\n                success=True, status_code=200, error_message=None,\n                response_body=None, elapsed_ms=5.0\n            )\n            result = trigger_human_gate(\n                node_id=\"node-unres-orch\",\n                finding_type=FindingType.ACCESS_CONFLICT,\n                trust_score=0.9,\n                data_tier=DataTier.PUBLIC,\n                is_authoritative=False,\n                is_unresolvable_conflict=True,\n                config=config,\n                stigmergy_emitter=mock_emitter,\n            )\n            assert result.triggered is True\n            assert result.trigger_reason == GateTriggerReason.UNRESOLVABLE_CONFLICT\n\n    def test_goodhart_low_trust_authoritative_orchestration(self):\n        \"\"\"Full orchestration works for LOW_TRUST_AUTHORITATIVE\"\"\"\n        mock_emitter = MagicMock(return_value=True)\n        config = _make_config()\n\n        with patch(\"src.human_gate.send_gate_notification\") as mock_notify:\n            mock_notify.return_value = WebhookResult(\n                success=True, status_code=200, error_message=None,\n                response_body=None, elapsed_ms=5.0\n            )\n            result = trigger_human_gate(\n                node_id=\"node-lta-orch\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.2,\n                data_tier=DataTier.INTERNAL,\n                is_authoritative=True,\n                is_unresolvable_conflict=False,\n                config=config,\n                stigmergy_emitter=mock_emitter,\n            )\n            assert result.triggered is True\n            assert result.trigger_reason == GateTriggerReason.LOW_TRUST_AUTHORITATIVE\n\n    def test_goodhart_stigmergy_false_reports_emitted_false(self):\n        \"\"\"When emitter returns False, stigmergy_emitted must be False\"\"\"\n        mock_emitter = MagicMock(return_value=False)\n        config = _make_config()\n\n        with patch(\"src.human_gate.send_gate_notification\") as mock_notify:\n            mock_notify.return_value = WebhookResult(\n                success=True, status_code=200, error_message=None,\n                response_body=None, elapsed_ms=5.0\n            )\n            result = trigger_human_gate(\n                node_id=\"node-stig-false\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.5,\n                data_tier=DataTier.FINANCIAL,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n                config=config,\n                stigmergy_emitter=mock_emitter,\n            )\n            assert result.triggered is True\n            assert result.stigmergy_emitted is False\n\n    def test_goodhart_frozen_gate_result(self):\n        \"\"\"GateResult must be frozen\"\"\"\n        mock_emitter = MagicMock(return_value=True)\n        config = _make_config()\n\n        with patch(\"src.human_gate.send_gate_notification\") as mock_notify:\n            mock_notify.return_value = WebhookResult(\n                success=True, status_code=200, error_message=None,\n                response_body=None, elapsed_ms=5.0\n            )\n            result = trigger_human_gate(\n                node_id=\"node-frozen\",\n                finding_type=FindingType.TRUST_VIOLATION,\n                trust_score=0.5,\n                data_tier=DataTier.FINANCIAL,\n                is_authoritative=False,\n                is_unresolvable_conflict=False,\n                config=config,\n                stigmergy_emitter=mock_emitter,\n            )\n            with pytest.raises(Exception):\n                result.triggered = False\n\n    def test_goodhart_disabled_with_financial_tier(self):\n        \"\"\"When disabled, even FINANCIAL tier must not trigger\"\"\"\n        mock_emitter = MagicMock(return_value=True)\n        config = _make_config(enabled=False)\n        result = trigger_human_gate(\n            node_id=\"node-dis-fin\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.5,\n            data_tier=DataTier.FINANCIAL,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=config,\n            stigmergy_emitter=mock_emitter,\n        )\n        assert result.triggered is False\n        assert result.stigmergy_emitted is False\n        assert result.notification_sent is False\n        assert result.blocked is False\n\n    def test_goodhart_trigger_reason_none_when_not_triggered(self):\n        \"\"\"trigger_reason must be None when not triggered\"\"\"\n        mock_emitter = MagicMock(return_value=True)\n        config = _make_config()\n        result = trigger_human_gate(\n            node_id=\"node-reason-none\",\n            finding_type=FindingType.TRUST_VIOLATION,\n            trust_score=0.9,\n            data_tier=DataTier.PUBLIC,\n            is_authoritative=False,\n            is_unresolvable_conflict=False,\n            config=config,\n            stigmergy_emitter=mock_emitter,\n        )\n        assert result.triggered is False\n        assert result.trigger_reason is None\n"
+}
