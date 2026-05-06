@@ -86,6 +86,10 @@ def register_graph(graph_data: dict[str, Any]) -> GraphSnapshot:
             details=["Graph must contain at least one node"],
         )
 
+    # Accept Pact's "components" key as an alias for "nodes"
+    if "nodes" not in graph_data and "components" in graph_data:
+        graph_data["nodes"] = graph_data.pop("components")
+
     nodes_raw = graph_data.get("nodes")
     if not nodes_raw:
         raise InvalidGraphError(
