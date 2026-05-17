@@ -79,7 +79,9 @@ def register_graph(graph_data: dict[str, Any]) -> GraphSnapshot:
     """Validate and atomically register a new access graph."""
     global _snapshot
 
-    if not graph_data:
+    normalized_graph_data = dict(graph_data)
+
+    if not normalized_graph_data:
         raise InvalidGraphError(
             message="Graph data is empty",
             error_code="EMPTY_GRAPH",
@@ -87,10 +89,10 @@ def register_graph(graph_data: dict[str, Any]) -> GraphSnapshot:
         )
 
     # Accept Pact's "components" key as an alias for "nodes"
-    if "nodes" not in graph_data and "components" in graph_data:
-        graph_data["nodes"] = graph_data.pop("components")
+    if "nodes" not in normalized_graph_data and "components" in normalized_graph_data:
+        normalized_graph_data["nodes"] = normalized_graph_data["components"]
 
-    nodes_raw = graph_data.get("nodes")
+    nodes_raw = normalized_graph_data.get("nodes")
     if not nodes_raw:
         raise InvalidGraphError(
             message="Graph contains no nodes",
@@ -99,14 +101,14 @@ def register_graph(graph_data: dict[str, Any]) -> GraphSnapshot:
         )
 
     # Provide defaults for optional top-level fields
-    if "graph_version" not in graph_data:
-        graph_data["graph_version"] = "1"
-    if "created_at" not in graph_data:
-        graph_data["created_at"] = datetime.now(timezone.utc).isoformat()
+    if "graph_version" not in normalized_graph_data:
+        normalized_graph_data["graph_version"] = "1"
+    if "created_at" not in normalized_graph_data:
+        normalized_graph_data["created_at"] = datetime.now(timezone.utc).isoformat()
 
     # Parse + structural validation (dangling edges, id/key mismatch)
     try:
-        access_graph = AccessGraph(**graph_data)
+        access_graph = AccessGraph(**normalized_graph_data)
     except DuplicateAuthorityError:
         raise
     except ValidationError as exc:
