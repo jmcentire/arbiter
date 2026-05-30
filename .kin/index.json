@@ -1,0 +1,4632 @@
+{
+  "domains": [
+    "code",
+    "python"
+  ],
+  "node_count": 420,
+  "nodes": [
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-011e9b74373e",
+      "title": "src/arbiter/consistency/models.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-08b97d234a8c",
+      "title": "src/arbiter/report/generator.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-0f66eae44bb7",
+      "title": "src/arbiter/cli/main.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-102d48c5267a",
+      "title": "src/arbiter/conflicts/config.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-11ee5f230809",
+      "title": "src/arbiter/access/auditor.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-137c9798646f",
+      "title": "contracts/conflicts/interface.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-140671828ffd",
+      "title": "src/arbiter/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-146ce8e182ec",
+      "title": "src/arbiter/taint/corpus.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-1f0644a5eab3",
+      "title": "src/arbiter/registry/classification.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-27b2c2217331",
+      "title": "src/arbiter/taint/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-29f858717c50",
+      "title": "src/arbiter/conflicts/errors.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-2e8d2b8fff56",
+      "title": "src/arbiter/trust/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-30ba2e5e0a32",
+      "title": "src/arbiter/stigmergy/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-3e0a29489d42",
+      "title": "src/arbiter/models/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-412650f66a3b",
+      "title": "src/arbiter/models/findings.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-442c862eb024",
+      "title": "src/arbiter/trust/ledger.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-472716701a67",
+      "title": "src/arbiter/conflicts/models.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-4b1347a22728",
+      "title": "contracts/models/interface.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-4b813104e64f",
+      "title": "contracts/registry/interface.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-50ce0ebcb024",
+      "title": "src/arbiter/models/types.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-5127db048c19",
+      "title": "src/arbiter/registry/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-5af3aafa5e4a",
+      "title": "src/arbiter/access/walker.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-5d2431b7db1e",
+      "title": "src/arbiter/api/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-5ec7c606e89d",
+      "title": "src/arbiter/taint/models.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-605c905b4903",
+      "title": "src/arbiter/api/server.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-638736cf5b6b",
+      "title": "src/arbiter/access/models.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-65e31744cb0d",
+      "title": "src/arbiter/models/functions.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-6b39a2f1a639",
+      "title": "src/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-6eef2f30cb55",
+      "title": "src/arbiter/consistency/store.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-740c5271f771",
+      "title": "src/arbiter/blast/traversal.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-75c4d5d81c0f",
+      "title": "src/arbiter/conflicts/detector.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-787dcc8ed58c",
+      "title": "src/arbiter/models/enums.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-7956254b82ec",
+      "title": "src/arbiter/registry/traversal.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-7b14eb11f6d2",
+      "title": "src/arbiter/conflicts/protocols.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-81a6bf0d2c18",
+      "title": "src/arbiter/models/trust.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-85f56cc92d1e",
+      "title": "src/arbiter/conflicts/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-8794e9838d07",
+      "title": "src/arbiter/registry/store.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-8ce2d07503b6",
+      "title": "contracts/access_auditor/interface.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-93e3b48b16c3",
+      "title": "contracts/human_gate/interface.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-9409df527b50",
+      "title": "src/arbiter/cli/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-991ad8d4c44f",
+      "title": "src/arbiter/taint/scanner.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-9b1852474344",
+      "title": "src/arbiter/config/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-9b6867f0b0f4",
+      "title": "src/arbiter/trust/factors.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-9d6ff906a115",
+      "title": "src/arbiter/models/graph.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-a0b360a08a13",
+      "title": "contracts/otlp_subscriber/interface.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-a4005d34e48f",
+      "title": "contracts/cli/interface.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-a4611a7d4980",
+      "title": "src/arbiter/consistency/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-a64f3b8b302b",
+      "title": "contracts/config/interface.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-a7e3176ac3bf",
+      "title": "contracts/consistency/interface.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-ac46f40790ed",
+      "title": "src/arbiter/trust/engine.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-b052a5253abf",
+      "title": "src/arbiter/blast/classification.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-b4d490a2a124",
+      "title": "src/arbiter/registry/errors.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-bdc9fcc156f4",
+      "title": "src/arbiter/config/models.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-be796d052367",
+      "title": "src/arbiter/blast/engine.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-bfbe3ebe57c5",
+      "title": "src/arbiter/config/loader.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-c5e84242cab3",
+      "title": "src/arbiter/subscriber/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-c6cab2a8e6dd",
+      "title": "src/arbiter/models/canary.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-cccc605868fd",
+      "title": "src/arbiter/blast/errors.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-cd4decb70692",
+      "title": "src/arbiter/access/classifier.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-cd55bc6bf1e9",
+      "title": "src/arbiter/report/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-d568d11f6552",
+      "title": "src/arbiter/models/signals.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-d9d20fe754aa",
+      "title": "src/arbiter/models/api.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-dc398e1c56b7",
+      "title": "contracts/blast/interface.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-e5b67aea747c",
+      "title": "src/arbiter/registry/models.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-e5cae6d413fd",
+      "title": "src/arbiter/conflicts/queries.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-e7206927fe1a",
+      "title": "src/arbiter/consistency/analyzer.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-eaa821295d32",
+      "title": "src/arbiter/blast/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-ebc0b35937da",
+      "title": "src/arbiter/blast/soak.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-ee1964e81e69",
+      "title": "src/arbiter/conflicts/resolver.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-ee5c11165c06",
+      "title": "src/arbiter/blast/models.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-eec78cc2509f",
+      "title": "src/arbiter/access/errors.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-f694be742f27",
+      "title": "src/arbiter/access/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-f7c3e852b467",
+      "title": "contracts/http_api/interface.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-arbiter-fcfc2f7da4a6",
+      "title": "src/arbiter/stigmergy/emitter.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-01123a284367",
+      "title": "AccessGraphPayload",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-0116d17b2462",
+      "title": "FeedbackReportSection",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-012684e843bc",
+      "title": "ClassificationResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-01438698fb24",
+      "title": "SoakParams",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-01b76ae517bc",
+      "title": "ClassifiedField",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-0234bfa4472d",
+      "title": "RegisterResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-0290ec5059a9",
+      "title": "ConfigNotLoadedError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-0665063f2dca",
+      "title": "SpanAttribute",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-07eacac4175a",
+      "title": "AnalyzerKind",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-093b6ac92b0f",
+      "title": "ConflictResolver",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-0b64469b495f",
+      "title": "BlastRadiusRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-0c6a24576962",
+      "title": "DataTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-0c8f3fdd2f42",
+      "title": "NotificationError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-0dbcf2ecf76e",
+      "title": "YamlSettingsSource",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-1197cdf16a1f",
+      "title": "RegistryError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-11b9800a439c",
+      "title": "ClassificationRule",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-1419432a60bd",
+      "title": "ClassificationRegistryConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-14c0e9d84ad0",
+      "title": "AuthorityMap",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-15b7fc19fbd1",
+      "title": "AdapterObservation",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-16502c8b8ec5",
+      "title": "SpanLink",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-180e24754082",
+      "title": "AccessGraphEdge",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-18fc94d35db9",
+      "title": "SoakComputeResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-19a4affa4499",
+      "title": "ConflictEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-1ab356fcff44",
+      "title": "AdapterObservation",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-1db1e848ebec",
+      "title": "ParsedSpan",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-1de065d3e23a",
+      "title": "DataTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-1ef77092e874",
+      "title": "LedgerConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-1f19541310d5",
+      "title": "ConflictSignal",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-1f204735e647",
+      "title": "ConsistencyFinding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-1f3dc758387b",
+      "title": "StigmeryEmitter",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-1f7c214e2756",
+      "title": "StructuralProfile",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-20b9ec385eec",
+      "title": "FieldEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-21295c22ef90",
+      "title": "NodeNotFoundError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-226e7fc434e7",
+      "title": "WebhookResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-23c37f817837",
+      "title": "BlastRadiusNode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-2463664940be",
+      "title": "ArbiterConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-248818ecf98b",
+      "title": "ConfigNotLoadedError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-254a026f1794",
+      "title": "ValidationFinding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-2643aab91c26",
+      "title": "NodeMetadata",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-26cc7e9197d9",
+      "title": "AccessEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-285a982eb4fd",
+      "title": "RegistryError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-295003147e90",
+      "title": "AuthorityMismatchError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-2b03d9b52c20",
+      "title": "DataClassificationTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-2baaaae1ac25",
+      "title": "ConsistencyFinding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-2cc353782dca",
+      "title": "TrustResetTaintRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-2d7b48075c4c",
+      "title": "TrustScoreEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-2e79ff0bcddc",
+      "title": "CanaryEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-2eda00c701fb",
+      "title": "BlastRadiusRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-2f31c7e40402",
+      "title": "BlastResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-2f52622024a5",
+      "title": "SignalEmitter",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-2ffbeaddcad1",
+      "title": "SlotDecisionVerdict",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-31d71fe23539",
+      "title": "SchemaWarning",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-3266caadbe07",
+      "title": "ClassifiedField",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-3280597f2d62",
+      "title": "Conflict",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-33d19b7efaac",
+      "title": "FindingSeverity",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-366f741cda36",
+      "title": "BlastTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-36740a41f057",
+      "title": "ActionCategory",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-3680fa789ec2",
+      "title": "LedgerCheckpoint",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-36cc164c3d1f",
+      "title": "DataTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-388411edc4b0",
+      "title": "AuthorityShowResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-38995a316861",
+      "title": "ConsistencyAnalysisError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-3983b5ffcdd3",
+      "title": "ConflictStore",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-399915d23261",
+      "title": "ErrorResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-3cadffc764ce",
+      "title": "ConfigurationError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-3d7b9e97e3c6",
+      "title": "AccessFindingEvidence",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-3dc3803626ef",
+      "title": "TraversalResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-3dea83ade87f",
+      "title": "AccessGraph",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-3e11eb36678a",
+      "title": "TrustEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-3e8531d8e285",
+      "title": "FindingsRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-3ed04c44fe73",
+      "title": "Finding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-3f2c5c70b1cc",
+      "title": "ValidationErrorDetail",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-3f8ccd2cf3aa",
+      "title": "TrustLookup",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-3fc9ef0dbf12",
+      "title": "ReportRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-40b5c8e95e52",
+      "title": "FindingSeverity",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-40da53c7cebd",
+      "title": "BlastRadiusNode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-414b30b09fb7",
+      "title": "ConflictNotFoundError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-43bb842ea8fc",
+      "title": "AuthorityMap",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-43fe005a4554",
+      "title": "WatchStatus",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-443c17e6cf3a",
+      "title": "GraphSnapshot",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-4456fffc3c4f",
+      "title": "ConflictResolverConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-466dd4768d39",
+      "title": "FindingCode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-46f7b48927e6",
+      "title": "ClassificationResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-48b2aea846ae",
+      "title": "SchemaWarning",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-491eb6803501",
+      "title": "TrustConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-49f4c31cb9b9",
+      "title": "FindingSeverity",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-49f632338155",
+      "title": "HumanGateConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-4a80f78791b1",
+      "title": "DataTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-4a88ef0a3736",
+      "title": "BlastRadiusRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-4aca8aaba828",
+      "title": "TrustTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-4b07d242019a",
+      "title": "ValidationFinding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-4b70373e1255",
+      "title": "LedgerCheckpoint",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-4d3db1278fd6",
+      "title": "ResolutionStrategy",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-4e50b5b41b20",
+      "title": "SoakDurationsMap",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-4e7d11087014",
+      "title": "BlastResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-4ea4cbfd3668",
+      "title": "ClassificationRegistryEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-4f98852ba04b",
+      "title": "AuthorityLookup",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-506a80c87676",
+      "title": "CliError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-51b75d7fb6ba",
+      "title": "ConfigurationError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-51b7e4e300d8",
+      "title": "FindingStore",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-5272397bde5a",
+      "title": "FindingsResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-52dee9f8a840",
+      "title": "AuthorityLookup",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-52ff5b6e32d0",
+      "title": "SlotDecision",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-53141d7e5aac",
+      "title": "TrustScoreResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-536e09664a6c",
+      "title": "AccessGraph",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-53bcb9ccf030",
+      "title": "SlotDecision",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-5408a50b699b",
+      "title": "ConsistencyOutcome",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-546cadfdfa15",
+      "title": "OtlpConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-554c31728218",
+      "title": "GraphSnapshot",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-555d86b91fb4",
+      "title": "GateTriggerReason",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-56398b2082b9",
+      "title": "BlastRadiusEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-567460072d62",
+      "title": "AuthorityResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-57635c5e06cc",
+      "title": "ConflictConfigError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-577c31bd000a",
+      "title": "HumanGateConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-5add6f23c742",
+      "title": "AccessFinding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-5c1365685d66",
+      "title": "SoakParams",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-5c9683490248",
+      "title": "ConflictDetector",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-5d5c1c22c2a4",
+      "title": "ConflictSummary",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-5e489d8a9661",
+      "title": "ConflictsRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-5e91a8f20986",
+      "title": "RequiredAction",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-5ec29e37bc00",
+      "title": "ConflictStore",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-5feb5f9163f9",
+      "title": "InitResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-5fff6b2d2553",
+      "title": "SlotDecisionVerdict",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-6033963b9700",
+      "title": "DataClassificationTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-613a65874a5c",
+      "title": "FindingsRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-61e77ce0bb7d",
+      "title": "RegistryConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-627916008eb3",
+      "title": "AccessFinding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-63f19575aa83",
+      "title": "CanaryResultsResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-6432d95e79e8",
+      "title": "FindingsResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-64a8876531d5",
+      "title": "AccessGraphNode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-64ce49425c96",
+      "title": "ApiConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-661ebf28f39f",
+      "title": "ApiConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-68f0fe370977",
+      "title": "TaintEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-69d821e380ae",
+      "title": "FieldEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-6ab89a3a857c",
+      "title": "GraphNode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-6ae0d0d9c35d",
+      "title": "BlastTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-6b355adda3f5",
+      "title": "CanaryRecord",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-6c1351816e69",
+      "title": "TraversalResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-6e361c9a3ccc",
+      "title": "TrustShowRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-6e4e9d820892",
+      "title": "ConflictSignal",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-6ecf5c6b3b32",
+      "title": "FeedbackReportSection",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-70044874f015",
+      "title": "ClassificationResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-70bbdcfd9020",
+      "title": "StigmerySignal",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-70dee265a3ca",
+      "title": "AccessFindingEvidence",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-70e91959b400",
+      "title": "BlastRadiusResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-71a7c3678ee2",
+      "title": "ConflictResolutionError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-71de4df3635d",
+      "title": "ServerConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-7209a3701124",
+      "title": "TrustLookup",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-7276d49cb509",
+      "title": "WalkResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-73702b47868c",
+      "title": "NodeBlastDetail",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-73dccb3e7d8d",
+      "title": "SoakDurationsMap",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-740b63577fbe",
+      "title": "ValidationIssue",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-74e31ba908a0",
+      "title": "SoakConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-757c18023867",
+      "title": "ConflictErrorCode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-757c3d843246",
+      "title": "DuplicateAuthorityError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-75b1b2687efc",
+      "title": "HealthResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-7659c2419013",
+      "title": "CliContext",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-767877759fe9",
+      "title": "TaintFinding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-767d2d1316a3",
+      "title": "TaintFinding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-768101da536d",
+      "title": "TrustScoreResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-770fa5495fcf",
+      "title": "DataClassificationTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-778be966c830",
+      "title": "GateConfigError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-78d48e701fd9",
+      "title": "CanaryResultsRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-7a68ab87481b",
+      "title": "CanaryEscapeEvent",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-7b0529b77819",
+      "title": "LedgerWriteError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-7ca63818b5f4",
+      "title": "CanaryInjectRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-7d65ea62f784",
+      "title": "FindingSeverity",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-7e194ed5a5b3",
+      "title": "ConflictQueryMixin",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-7e22126355ed",
+      "title": "SpanFieldReport",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-7eb1c85fbe2e",
+      "title": "FindingsRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-7f237d00ccda",
+      "title": "LedgerEvent",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-7f67bb1e356c",
+      "title": "DataTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-7fd0be424dd8",
+      "title": "ClassificationRule",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-807cac642934",
+      "title": "GraphInconsistencyError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-809b45dbb5e6",
+      "title": "TrustEventType",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-823a7cd0f712",
+      "title": "NodeAuditClaim",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-82ad06a9a3db",
+      "title": "RegisterRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-841b36b15278",
+      "title": "Resolution",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-85814229cddf",
+      "title": "TrustConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-85cbc3b50bf9",
+      "title": "AccessGraphEdge",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-85ec540048ca",
+      "title": "SignalEmitter",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-866135c547ae",
+      "title": "GateConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-87195db47da7",
+      "title": "TrustResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-874cb0eef4a1",
+      "title": "Edge",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-87e3ef09b2eb",
+      "title": "RelationType",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-885d0d106688",
+      "title": "RegistryConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-8866483c7a35",
+      "title": "ClassificationRegistry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-88a0b30cbeaa",
+      "title": "GraphNode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-88af0c4ebb30",
+      "title": "TrustResetTaintResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-8a084144344e",
+      "title": "ValidationErrorDetail",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-8a889a0a812e",
+      "title": "AccessGraphEdge",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-8bc030242955",
+      "title": "ArbiterConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-8cbae4f34b18",
+      "title": "AccessGraph",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-8d2b60b058b3",
+      "title": "AccessGraphNode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-8dd20e216993",
+      "title": "TrustTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-8e2e709ac9ee",
+      "title": "Resolution",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-8eefc4f63af7",
+      "title": "ConflictRecord",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-9034ce9053f0",
+      "title": "ValidationErrorDetail",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-90424996d964",
+      "title": "ValidationErrorDetail",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-90db5f8203c4",
+      "title": "FindingSeverity",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-91069fd96e37",
+      "title": "WatchRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-91fd73ec62d4",
+      "title": "TaintResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-942c9c4ebc19",
+      "title": "NodeMetadata",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-942cd2eaad21",
+      "title": "HumanGateNotifier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-9512f063e990",
+      "title": "ProfileComputationError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-958c45843abb",
+      "title": "FindingSeverity",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-96206deaf154",
+      "title": "OtlpSubscriberConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-9732edf49708",
+      "title": "AnalysisResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-982f67a2850e",
+      "title": "DataClassificationTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-99e82acf8d67",
+      "title": "HealthResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-9a297388acce",
+      "title": "OutputFormat",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-9a3a281a3c62",
+      "title": "GateEvent",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-9ba442317547",
+      "title": "ConflictsResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-9bd7dd86001f",
+      "title": "WalkResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-9be829022d31",
+      "title": "ClassificationRegistry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-9ce1c9864108",
+      "title": "ErrorResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-9d407b305443",
+      "title": "DataClassificationTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-9d530b232a66",
+      "title": "ConflictRecord",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-9e26f35be093",
+      "title": "HumanGateNotifier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-9fc040a2cfc3",
+      "title": "FindingSeverity",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a157f315660a",
+      "title": "ObservedOutput",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a245c7ec309c",
+      "title": "NodeValue",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a351ec9f8836",
+      "title": "ConflictErrorCode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a49c3fce388d",
+      "title": "GateConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a4ec0fc7ec87",
+      "title": "InvalidGraphError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a539212b5828",
+      "title": "BlastRadiusResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a583755305ff",
+      "title": "SoakComputeRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a5c3a8d6532c",
+      "title": "LedgerConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a621515d0d9d",
+      "title": "InitRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a6bc99ac3d63",
+      "title": "TrustTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a6d625c4b8f8",
+      "title": "SoakConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a6e16ea392a0",
+      "title": "InvalidGraphError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a7966b944079",
+      "title": "TrustLedgerEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a82777677e00",
+      "title": "FindingSeverity",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a9661a6777c9",
+      "title": "TrustLedgerEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-a98ade4f62df",
+      "title": "CanaryInjectResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-aaa874e1cf1c",
+      "title": "TraversalResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ad9070406297",
+      "title": "CanaryInjectRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-aef32dd8afd2",
+      "title": "TrustTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-af8795576c55",
+      "title": "AccessFinding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-b0615d7d01c2",
+      "title": "TrustEventType",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-b10fe718fa2d",
+      "title": "NodeAuditClaim",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-b1f58378a970",
+      "title": "GateDecision",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-b1f65a9d7a4b",
+      "title": "BlastRadiusRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-b29dc5f22bc3",
+      "title": "CanaryCorpus",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-b3a56000b6be",
+      "title": "ServerContext",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-b47746cd4927",
+      "title": "BufferStats",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-b509616c7c7d",
+      "title": "RelationType",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-b68525b5da80",
+      "title": "BlastRadiusResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-b80029134458",
+      "title": "ClassificationRegistryEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-b8a9ea21601c",
+      "title": "FindingsRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-b98428af2989",
+      "title": "FindingCode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-bb421a9f8f5f",
+      "title": "CanaryInjectResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-bb8d827834b5",
+      "title": "ConflictSummary",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-bbb2ed5f3686",
+      "title": "RefResolutionError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-bbed30b52653",
+      "title": "ConsistencyFinding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-bc082b9f674a",
+      "title": "DeclaredAccess",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-bca4b262874b",
+      "title": "ArbiterEnrichment",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-bcecfe51d1b0",
+      "title": "FindingType",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-bd4c9df0dc43",
+      "title": "AuthorityEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-be07b47e5f62",
+      "title": "NeighborEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-be5157009a23",
+      "title": "ExportResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-c091c581a8da",
+      "title": "DataTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-c13f11a86eb8",
+      "title": "StigmerySignal",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-c2ede8467e42",
+      "title": "ConflictResolverConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-c37708652e04",
+      "title": "AnalysisPair",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-c3cf66138cba",
+      "title": "AccessFinding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-c41bacabe195",
+      "title": "ClassificationRegistryError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-c48ecad900a7",
+      "title": "ConsistencyAnalysisError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-c4dbfa3ea2ec",
+      "title": "ActionCategory",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-c51302afe693",
+      "title": "AuditInputError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-c540c5f8e32a",
+      "title": "NodeBlastDetail",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-c6a93b857fa4",
+      "title": "ClassificationRule",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-c83706809e38",
+      "title": "ClassificationRule",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-c9d2d993929b",
+      "title": "StructuralProfile",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ca8be3312294",
+      "title": "RegisterResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-cba8dac79167",
+      "title": "FindingSeverity",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-cbf28fac6e1b",
+      "title": "OtlpConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-cc3587e5d0d8",
+      "title": "TrustScoreRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-cd42ab97081f",
+      "title": "ConsistencyEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ce777564bcf3",
+      "title": "AuthorityMismatchError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ce7d151b8ec4",
+      "title": "TaintEscape",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ceb2e9a5e007",
+      "title": "Claim",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ceb85c06fda3",
+      "title": "AuthorityEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ceff06dfe63f",
+      "title": "ObservedOutput",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-d06b75868cbb",
+      "title": "TaintResetResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-d0b371e012a2",
+      "title": "ExitCode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-d0d14ded8dbe",
+      "title": "NodeNotFoundError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-d172c9dd15c4",
+      "title": "ErrorCode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-d2fb828ec20f",
+      "title": "ConsistencyFinding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-d3052567edc7",
+      "title": "CanaryRecord",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-d30527770dd1",
+      "title": "AccessGraph",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-d3a0f35a843f",
+      "title": "ClassificationInputError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-d3aac6f5136f",
+      "title": "BatonSpanContract",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-d71a6835df0c",
+      "title": "TraversalResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-d916cfa90e65",
+      "title": "ConsistencyOutcome",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-d9a6081cb657",
+      "title": "FindingsResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-da4b4533fe35",
+      "title": "ServerStatus",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-dbe69a4fe43f",
+      "title": "ResolutionStatus",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-dd9a211bc43f",
+      "title": "NodeNotFoundError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ddaf5a3266bf",
+      "title": "BlastTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-deee50ca1373",
+      "title": "SchemaDepthExceededError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-def7f7fa49a2",
+      "title": "TaintResetRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-df0cc6ca288e",
+      "title": "AccessGraph",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-df4214c00495",
+      "title": "NeighborEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-e1bd3e357492",
+      "title": "AccessGraphNode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-e2758fd60635",
+      "title": "SpanFieldReport",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-e43d79d96688",
+      "title": "ClassificationResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-e5ac6d4241f1",
+      "title": "AnalyzerError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-e5c8f93be831",
+      "title": "ReportResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-e605edf32d42",
+      "title": "SchemaWalkError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-e71db90ca156",
+      "title": "Edge",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-e76cd8741b9d",
+      "title": "TrustShowResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-e79841406e6f",
+      "title": "CanaryResultsResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-e7fa3c8bc129",
+      "title": "ConflictRecord",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-e80b401162f9",
+      "title": "ReportResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-e8761114408e",
+      "title": "BlastRadiusResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-e98ffd6cc095",
+      "title": "DataTier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ea02f6752d5c",
+      "title": "AccessGraph",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ea2b0dd4a5a2",
+      "title": "ConflictStoreError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ea6972a346e0",
+      "title": "Finding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-eb34e008be64",
+      "title": "EnrichedSpan",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-eb75002023b9",
+      "title": "DeclaredAccess",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ec2bab67ef37",
+      "title": "ClassificationRegistryConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ec76938d4c6b",
+      "title": "HealthResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ee5af110cc58",
+      "title": "ConflictRecord",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-efcdcfedfaee",
+      "title": "ValidationSeverity",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-f21ed968ddb1",
+      "title": "ResolutionStatus",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-f266f3828020",
+      "title": "ErrorResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-f5d733085fa9",
+      "title": "HumanGateConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-f60b14c98fb2",
+      "title": "DuplicateAuthorityError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-f62899674f5f",
+      "title": "FindingsResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-f790e2c9ca8e",
+      "title": "FeedbackReport",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-f7f6a54e7c80",
+      "title": "ClassificationRegistryError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-f8803cf7f0ab",
+      "title": "SpanEvent",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-f8ae9d9d430d",
+      "title": "FeedbackReport",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-f9110869b02f",
+      "title": "ReportData",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-f924f35488fc",
+      "title": "TrustScoreRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-f9d0f213473d",
+      "title": "ClassificationRegistryError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-fbbcf6831380",
+      "title": "GateResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-fcf2209b73d4",
+      "title": "NodeValue",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-fd69a0ac6c8c",
+      "title": "TrustLedger",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-fe719dfecd6e",
+      "title": "ResolutionStrategy",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-fecd8a785089",
+      "title": "FindingSeverity",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ff22c667bc6a",
+      "title": "ArbiterConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ff377a6f7919",
+      "title": "Claim",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-arbiter-ff9cb077b172",
+      "title": "AnalysisPair",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:47:05",
+      "weight": 0.5
+    }
+  ],
+  "repo": "arbiter",
+  "source_updated_at": "2026-05-30T14:47:05",
+  "version": 1
+}
